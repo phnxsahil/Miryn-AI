@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Primary Meta Tags -->
+  <title>Miryn — The Identity Engine</title>
+  <meta name="title" content="Miryn — The Identity Engine" />
+  <meta name="description"
+    content="The first AI companion that remembers your life, not just processes it. Launching March 2026." />
+  <meta name="keywords"
+    content="AI companion, memory AI, personal AI, identity engine, AI assistant, machine learning" />
+  <meta name="author" content="Miryn" />
+  <link rel="canonical" href="https://usemiryn.com" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Miryn — The Identity Engine" />
+  <meta property="og:description"
+    content="The first AI companion that remembers your life, not just processes it. Launching March 2026." />
+  <meta property="og:image" content="https://usemiryn.com/og-image.jpg" />
+  <meta property="og:url" content="https://usemiryn.com" />
+  <meta property="og:site_name" content="Miryn" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Miryn — The Identity Engine" />
+  <meta name="twitter:description" content="The first AI companion that remembers your life, not just processes it." />
+  <meta name="twitter:image" content="https://usemiryn.com/og-image.jpg" />
+  <meta name="twitter:creator" content="@yourtwitterhandle" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+
+  <style>
+    :root {
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --bg-main: #000000;
+      --text-primary: #ffffff;
+      --text-secondary: #888888;
+      --text-tertiary: #555555;
+      --border-faint: rgba(255, 255, 255, 0.08);
+      --glass-bg: rgba(255, 255, 255, 0.02);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --accent-blue: rgba(100, 100, 255, 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      cursor: none;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-main);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Custom Cursor */
+    #cursor {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      border-radius: 50%;
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      transition: transform 0.15s ease;
+    }
+
+    #cursor-follower {
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      position: fixed;
+      pointer-events: none;
+      z-index: 9998;
+      transition: all 0.3s ease;
+    }
+
+    /* Canvas Background */
+    #canvas-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    /* Layout */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .center-stage {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+    }
+
+    /* Typography */
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(4rem, 15vw, 11rem);
+      font-weight: 700;
+      line-height: 0.9;
+      letter-spacing: -0.04em;
+      margin-bottom: 2rem;
+      background: linear-gradient(180deg, #fff 0%, #888 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .chapter-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      margin-bottom: 2rem;
+    }
+
+    h2 {
+      font-family: var(--font-display);
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 600;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.5rem;
+    }
+
+    h3 {
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      line-height: 1.7;
+    }
+
+    /* Buttons */
+    .chip {
+      display: inline-block;
+      padding: 0.8rem 2rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 50px;
+      color: var(--text-primary);
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      cursor: none;
+    }
+
+    .chip:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .email-btn {
+      background: #fff;
+      color: #000;
+      border: none;
+      padding: 1.2rem 3rem;
+      border-radius: 8px;
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: none;
+      transition: all 0.3s ease;
+    }
+
+    .email-btn:hover {
+      background: #e0e0e0;
+      transform: translateY(-2px);
+    }
+
+    /* Glass Cards */
+    .glass-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 3rem;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+
+    .glass-card:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-4px);
+    }
+
+    /* Grid Layouts */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+      margin-top: 4rem;
+    }
+
+    /* Animations */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(30px);
+      animation: fadeUp 0.8s ease forwards;
+    }
+
+    @keyframes fadeUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Demo Section */
+    .demo-container {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 3rem;
+      margin-top: 3rem;
+    }
+
+    .demo-chips {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 3rem;
+    }
+
+    .demo-chip {
+      padding: 0.6rem 1.5rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      cursor: none;
+      transition: all 0.3s ease;
+    }
+
+    .demo-chip:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.3);
+      color: var(--text-primary);
+    }
+
+    #typewriter-text {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      color: var(--text-primary);
+      min-height: 60px;
+      margin-bottom: 2rem;
+    }
+
+    #belief-tag {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      color: var(--text-tertiary);
+      margin-bottom: 2rem;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    #belief-tag.active {
+      opacity: 1;
+    }
+
+    #ai-response {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      line-height: 1.8;
+      max-width: 800px;
+      margin: 0 auto;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    #ai-response.visible {
+      opacity: 1;
+    }
+
+    /* Roadmap */
+    .roadmap-container {
+      position: relative;
+      padding-left: 3rem;
+      margin-top: 3rem;
+    }
+
+    .roadmap-item {
+      position: relative;
+      margin-bottom: 3rem;
+      padding-left: 2rem;
+    }
+
+    .roadmap-item::before {
+      content: '';
+      position: absolute;
+      left: -3rem;
+      top: 0.5rem;
+      width: 12px;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+    }
+
+    .roadmap-item::after {
+      content: '';
+      position: absolute;
+      left: -2.7rem;
+      top: 1.5rem;
+      width: 2px;
+      height: calc(100% + 2rem);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .roadmap-item:last-child::after {
+      display: none;
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 900px) {
+      html {
+        cursor: auto !important;
+      }
+
+      #cursor,
+      #cursor-follower {
+        display: none !important;
+      }
+
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-title {
+        font-size: clamp(3rem, 12vw, 11rem) !important;
+      }
+
+      #waitlist-form {
+        flex-direction: column !important;
+      }
+
+      #waitlist-form button {
+        width: 100%;
+      }
+
+      .roadmap-container {
+        padding-left: 2rem;
+      }
+
+      .demo-chips {
+        flex-direction: column;
+      }
+    }
+
+    /* Input Styles */
+    input[type="email"] {
+      outline: none;
+    }
+
+    input[type="email"]::placeholder {
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Custom Cursor -->
+  <div id="cursor"></div>
+  <div id="cursor-follower"></div>
+
+  <!-- Particle Canvas -->
+  <div id="canvas-container"></div>
+
+  <!-- Hero Section -->
+  <section class="center-stage">
+    <div class="container fade-up">
+      <div class="chapter-eyebrow">Launching March 2026</div>
+      <h1 class="hero-title">MIRYN</h1>
+      <p style="font-size: 1.4rem; color: #aaa; max-width: 700px; margin: 0 auto 2rem;">
+        The first AI companion that <strong style="color: #fff;">remembers your life</strong>, not just processes it.
+      </p>
+
+      <!-- Comparison Box -->
+      <div
+        style="margin: 2rem auto 3rem; max-width: 600px; padding: 1.5rem; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;">
+        <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 1.5rem; align-items: center;">
+          <div style="text-align: right;">
+            <div
+              style="font-family: var(--font-mono); font-size: 0.7rem; color: #555; margin-bottom: 0.5rem; letter-spacing: 0.1em;">
+              CHATGPT</div>
+            <div style="font-size: 0.95rem; color: #666;">Remembers facts</div>
+          </div>
+          <div style="color: #444; font-size: 1.5rem;">→</div>
+          <div style="text-align: left;">
+            <div
+              style="font-family: var(--font-mono); font-size: 0.7rem; color: #888; margin-bottom: 0.5rem; letter-spacing: 0.1em;">
+              MIRYN</div>
+            <div style="font-size: 0.95rem; color: #fff; font-weight: 600;">Remembers YOU</div>
+          </div>
+        </div>
+      </div>
+
+      <a href="#waitlist" class="chip">Get Early Access →</a>
+    </div>
+  </section>
+
+  <!-- Email Capture Section -->
+  <section id="waitlist" class="center-stage"
+    style="min-height: 70vh; background: radial-gradient(circle at center, rgba(15,15,15,0.8) 0%, rgba(0,0,0,0.9) 70%); position: relative; overflow: hidden;">
+    <!-- Subtle glow effect -->
+    <div
+      style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 600px; height: 600px; background: radial-gradient(circle, rgba(100,100,255,0.05) 0%, transparent 70%); filter: blur(100px); pointer-events: none;">
+    </div>
+
+    <div class="container fade-up" style="position: relative; z-index: 2;">
+      <div class="chapter-eyebrow">Early Access</div>
+      <h2 style="font-size: clamp(3rem, 7vw, 5rem); line-height: 1.1; margin-bottom: 1.5rem; letter-spacing: -0.03em;">
+        The Memory Layer<br>Launches March 2026
+      </h2>
+      <p
+        style="color: #888; margin-bottom: 3rem; max-width: 600px; margin-left: auto; margin-right: auto; font-size: 1.2rem; line-height: 1.6;">
+        Join 300+ builders, founders, and thinkers on the waitlist. First 100 get lifetime Pro access.
+      </p>
+
+      <!-- Email Form -->
+      <form id="waitlist-form"
+        style="display: flex; gap: 1rem; justify-content: center; max-width: 550px; margin: 0 auto; margin-bottom: 2rem;"
+        onsubmit="handleWaitlistSubmit(event)">
+        <input type="email" id="email-input" placeholder="your@email.com" required
+          style="flex: 1; padding: 1.2rem 1.5rem; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 1rem; font-family: var(--font-display); transition: all 0.3s;"
+          onfocus="this.style.borderColor='rgba(255,255,255,0.3)'; this.style.background='rgba(255,255,255,0.05)';"
+          onblur="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.background='rgba(255,255,255,0.03)';">
+        <button type="submit" class="email-btn" style="padding: 1.2rem 3rem; white-space: nowrap;">
+          Join Waitlist
+        </button>
+      </form>
+
+      <!-- Success Message (hidden by default) -->
+      <div id="success-message"
+        style="display: none; color: #4ade80; font-size: 1.1rem; margin-top: 1rem; animation: fadeIn 0.5s;">
+        ✓ You're on the list. Check your email.
+      </div>
+
+      <!-- Stats -->
+      <div
+        style="display: flex; gap: 3rem; justify-content: center; align-items: center; margin-top: 2rem; flex-wrap: wrap;">
+        <div style="text-align: center;">
+          <span
+            style="font-family: var(--font-mono); font-size: 0.75rem; color: #555; letter-spacing: 0.1em; text-transform: uppercase; display: block; margin-bottom: 0.5rem;">Waitlist</span>
+          <span id="waitlist-count" style="font-size: 2rem; color: #fff; font-weight: 500;">247</span>
+        </div>
+        <div style="width: 1px; height: 40px; background: rgba(255,255,255,0.1);"></div>
+        <div style="text-align: center;">
+          <span
+            style="font-family: var(--font-mono); font-size: 0.75rem; color: #555; letter-spacing: 0.1em; text-transform: uppercase; display: block; margin-bottom: 0.5rem;">Spots
+            Left</span>
+          <span id="spots-left" style="font-size: 2rem; color: #888; font-weight: 500;">53</span>
+        </div>
+        <div style="width: 1px; height: 40px; background: rgba(255,255,255,0.1);"></div>
+        <div style="text-align: center;">
+          <span
+            style="font-family: var(--font-mono); font-size: 0.75rem; color: #555; letter-spacing: 0.1em; text-transform: uppercase; display: block; margin-bottom: 0.5rem;">Beta
+            Launch</span>
+          <span style="font-size: 2rem; color: #888; font-weight: 500;">Mar '26</span>
+        </div>
+      </div>
+
+      <!-- Trust Signal -->
+      <p style="margin-top: 3rem; font-size: 0.85rem; color: #555; letter-spacing: 0.05em;">
+        No spam. Privacy-first. Unsubscribe anytime.
+      </p>
+    </div>
+  </section>
+
+  <!-- The Axiom Section -->
+  <section class="center-stage" style="min-height: 80vh;">
+    <div class="container fade-up">
+      <div class="chapter-eyebrow">01 // The Axiom</div>
+      <h2>AI That Forgets<br>Is Just Software</h2>
+      <p style="max-width: 700px; margin: 2rem auto; font-size: 1.2rem;">
+        Every AI assistant you've used treats you like a stranger. Every. Single. Time.<br><br>
+        You explain your context. Your goals. Your constraints. Again and again.<br><br>
+        <strong style="color: #fff;">Miryn remembers.</strong> Not just what you said, but who you are.
+      </p>
+    </div>
+  </section>
+
+  <!-- Why Not ChatGPT Section -->
+  <section class="center-stage" style="min-height: 80vh; background: rgba(255,255,255,0.01);">
+    <div class="container fade-up">
+      <div class="chapter-eyebrow">02 // The Difference</div>
+      <h2>Why Not Just Use ChatGPT?</h2>
+      <p style="max-width: 700px; margin: 2rem auto 3rem; font-size: 1.2rem;">
+        ChatGPT's memory is <strong style="color: #fff;">passive</strong>. It remembers what you tell it.<br><br>
+        Miryn's memory is <strong style="color: #fff;">active</strong>. It connects the dots.
+      </p>
+
+      <div class="glass-card" style="max-width: 800px; margin: 0 auto; text-align: left;">
+        <h3 style="margin-bottom: 2rem; color: #fff;">Example:</h3>
+
+        <div
+          style="margin-bottom: 2rem; padding: 1.5rem; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+          <div
+            style="font-family: var(--font-mono); font-size: 0.7rem; color: #666; margin-bottom: 0.5rem; letter-spacing: 0.1em;">
+            CHATGPT</div>
+          <p style="color: #888; margin: 0; font-size: 1.05rem;">"You mentioned a project last week."</p>
+        </div>
+
+        <div
+          style="padding: 1.5rem; background: rgba(100,100,255,0.05); border-radius: 8px; border: 1px solid rgba(100,100,255,0.2);">
+          <div
+            style="font-family: var(--font-mono); font-size: 0.7rem; color: #6464ff; margin-bottom: 0.5rem; letter-spacing: 0.1em;">
+            MIRYN</div>
+          <p style="color: #fff; margin: 0; font-size: 1.05rem;">"You said you'd start the project 3 weeks ago. You've
+            mentioned feeling stuck 4 times since. What's really blocking you?"</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- The Loneliness Loop Section -->
+  <section class="center-stage" style="min-height: 80vh;">
+    <div class="container fade-up">
+      <div class="chapter-eyebrow">03 // The Problem</div>
+      <h2>The Loneliness Loop</h2>
+      <p style="max-width: 800px; margin: 2rem auto 3rem; font-size: 1.2rem;">
+        We're surrounded by AI tools, yet we've never felt more alone in our thoughts.<br><br>
+        You journal in one app. Chat in another. Take notes somewhere else.<br>
+        Your identity is fragmented. Your story is scattered.<br><br>
+        <strong style="color: #fff;">No one is listening. No one is connecting the dots.</strong>
+      </p>
+
+      <div class="grid-3">
+        <div class="glass-card">
+          <h3>Stateless AI</h3>
+          <p>ChatGPT, Claude, Gemini — they're brilliant. But they forget you the moment you close the tab.</p>
+        </div>
+        <div class="glass-card">
+          <h3>Fragmented Memory</h3>
+          <p>Your thoughts live in 12 different apps. Your patterns remain invisible. Your growth unmeasured.</p>
+        </div>
+        <div class="glass-card">
+          <h3>Surface-Level Advice</h3>
+          <p>Generic responses. No context. No accountability. Just another conversation that leads nowhere.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Demo Section -->
+  <section class="center-stage" style="min-height: 90vh;">
+    <div class="container fade-up">
+      <div class="chapter-eyebrow">04 // Experience Miryn</div>
+      <h2>Try It Yourself</h2>
+      <p style="max-width: 700px; margin: 2rem auto; font-size: 1.1rem; color: #888;">
+        Click a prompt below to see how Miryn responds with context, not clichés.
+      </p>
+
+      <div class="demo-container">
+        <div class="demo-chips">
+          <button class="demo-chip" onclick="runDemo('audit')">Audit my last month</button>
+          <button class="demo-chip" onclick="runDemo('check')">Give me a reality check</button>
+          <button class="demo-chip" onclick="runDemo('stuck')">Why am I stuck?</button>
+          <button class="demo-chip" onclick="runDemo('blindspot')">What am I missing?</button>
+        </div>
+
+        <div id="typewriter-text"></div>
+        <div id="belief-tag"></div>
+        <div id="ai-response"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Manifesto Section -->
+  <section class="center-stage" style="min-height: 80vh; background: rgba(255,255,255,0.01);">
+    <div class="container fade-up">
+      <div class="chapter-eyebrow">05 // The Manifesto</div>
+      <h2>We Believe</h2>
+      <div style="max-width: 800px; margin: 3rem auto; text-align: left;">
+        <p style="font-size: 1.3rem; line-height: 1.9; color: #aaa; margin-bottom: 2rem;">
+          <strong style="color: #fff;">Memory is identity.</strong><br>
+          Without memory, there is no growth. No accountability. No relationship.
+        </p>
+        <p style="font-size: 1.3rem; line-height: 1.9; color: #aaa; margin-bottom: 2rem;">
+          <strong style="color: #fff;">AI should evolve with you.</strong><br>
+          Not reset every conversation. Not forget your struggles. Not ignore your patterns.
+        </p>
+        <p style="font-size: 1.3rem; line-height: 1.9; color: #aaa;">
+          <strong style="color: #fff;">You deserve a companion that knows you.</strong><br>
+          One that challenges you. Remembers your commitments. Holds you accountable.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="center-stage" style="min-height: 90vh;">
+    <div class="container fade-up">
+      <div class="chapter-eyebrow">06 // What Makes Miryn Different</div>
+      <h2>Three Core Differentiators</h2>
+
+      <div class="grid-3" style="grid-template-columns: 1fr; gap: 3rem; max-width: 900px; margin: 4rem auto;">
+        <div class="glass-card" style="text-align: left;">
+          <div style="font-size: 3rem; margin-bottom: 1rem;">🧠</div>
+          <h3>Active Memory</h3>
+          <p>Miryn doesn't just remember conversations—it connects patterns, tracks commitments, and holds you
+            accountable. Your AI companion that actually knows your story.</p>
+        </div>
+
+        <div class="glass-card" style="text-align: left;">
+          <div style="font-size: 3rem; margin-bottom: 1rem;">🎭</div>
+          <h3>Personality Modes</h3>
+          <p>Best Friend when you need support. Raw Mirror when you need brutal honesty. Therapist for reflection. Coach
+            for action. Switch based on what you need right now.</p>
+        </div>
+
+        <div class="glass-card" style="text-align: left;">
+          <div style="font-size: 3rem; margin-bottom: 1rem;">🎤</div>
+          <h3>Voice Journaling</h3>
+          <p>Talk to Miryn like a friend. Async voice messages with emotional intelligence. No typing required. Just
+            think out loud and let Miryn remember.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Technology Section -->
+  <section class="center-stage" style="min-height: 80vh; background: rgba(255,255,255,0.01);">
+    <div class="container fade-up">
+      <div class="chapter-eyebrow">07 // The Stack</div>
+      <h2>Built for Scale</h2>
+      <p style="max-width: 700px; margin: 2rem auto 3rem; font-size: 1.1rem; color: #888;">
+        Production-grade architecture. Zero-failure design. Privacy-first infrastructure.
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; max-width: 900px; margin: 0 auto;">
+        <div class="glass-card">
+          <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #555; margin-bottom: 1rem;">AI & MEMORY
+          </div>
+          <p>Claude 3.5 Sonnet<br>Chroma Vector DB<br>RAG Architecture<br>Semantic Search</p>
+        </div>
+        <div class="glass-card">
+          <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #555; margin-bottom: 1rem;">BACKEND
+          </div>
+          <p>FastAPI (Python)<br>PostgreSQL<br>Supabase Auth<br>Redis Cache</p>
+        </div>
+        <div class="glass-card">
+          <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #555; margin-bottom: 1rem;">FRONTEND
+          </div>
+          <p>React + TypeScript<br>Tailwind CSS<br>Framer Motion<br>Progressive Web App</p>
+        </div>
+        <div class="glass-card">
+          <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #555; margin-bottom: 1rem;">VOICE</div>
+          <p>Deepgram STT<br>ElevenLabs TTS<br>Emotion Detection<br>Real-time Processing</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Roadmap Section -->
+  <section class="center-stage" style="min-height: 80vh;">
+    <div class="container fade-up">
+      <div class="chapter-eyebrow">08 // The Journey</div>
+      <h2>Roadmap</h2>
+
+      <div class="roadmap-container">
+        <div class="roadmap-item">
+          <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #555; margin-bottom: 0.5rem;">Q1 2026 —
+            MVP</div>
+          <h3>Foundation</h3>
+          <p>Text conversations with persistent memory. Onboarding. Best Friend mode.</p>
+        </div>
+
+        <div class="roadmap-item">
+          <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #555; margin-bottom: 0.5rem;">Q2 2026 —
+            Personality</div>
+          <h3>Multiple Modes</h3>
+          <p>Raw Mirror, Therapist, Coach. Pattern detection. Enhanced memory retrieval.</p>
+        </div>
+
+        <div class="roadmap-item">
+          <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #555; margin-bottom: 0.5rem;">Q3 2026 —
+            Voice</div>
+          <h3>Audio Intelligence</h3>
+          <p>Voice journaling. Emotional detection. Real-time conversations. Mobile apps.</p>
+        </div>
+
+        <div class="roadmap-item">
+          <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #555; margin-bottom: 0.5rem;">Q4 2026 —
+            Scale</div>
+          <h3>Growth & Expansion</h3>
+          <p>Timeline visualization. Action tracking. Team features. API for developers.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Founder Section -->
+  <section class="center-stage" style="min-height: 70vh; background: rgba(255,255,255,0.01);">
+    <div class="container fade-up">
+      <div class="chapter-eyebrow">09 // The Builder</div>
+      <h2>Built by Someone<br>Who Needed It</h2>
+      <p style="max-width: 700px; margin: 2rem auto; font-size: 1.2rem; line-height: 1.8; color: #aaa;">
+        "I've journaled for 10 years. Thousands of entries. Patterns I couldn't see. Growth I couldn't measure.<br><br>
+        I wanted an AI that knew my story. That could connect the dots. That could hold me accountable.<br><br>
+        So I built Miryn."
+      </p>
+      <p style="margin-top: 2rem; color: #888;">
+        — Sahil Sharma, Founder
+      </p>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="center-stage" style="min-height: 70vh;">
+    <div class="container fade-up">
+      <h2 style="font-size: clamp(3rem, 8vw, 6rem); margin-bottom: 2rem;">
+        Ready to Be<br>Remembered?
+      </h2>
+      <p style="max-width: 600px; margin: 0 auto 3rem; font-size: 1.2rem; color: #888;">
+        Join the waitlist. Be among the first to experience AI that actually knows you.
+      </p>
+      <a href="#waitlist" class="chip" style="font-size: 1.1rem; padding: 1rem 2.5rem;">Get Early Access →</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer style="padding: 4rem 2rem; text-align: center; border-top: 1px solid rgba(255,255,255,0.05);">
+    <p style="color: #555; font-size: 0.9rem;">
+      © 2026 Miryn. All rights reserved.<br>
+      <a href="mailto:hi@usemiryn.com" style="color: #888; text-decoration: none;">hi@usemiryn.com</a>
+    </p>
+  </footer>
+
+  <script>
+    // Custom Cursor
+    const cursor = document.getElementById('cursor');
+    const follower = document.getElementById('cursor-follower');
+    let mouseX = 0, mouseY = 0;
+    let followerX = 0, followerY = 0;
+
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      cursor.style.left = mouseX + 'px';
+      cursor.style.top = mouseY + 'px';
+    });
+
+    function animateFollower() {
+      followerX += (mouseX - followerX) * 0.1;
+      followerY += (mouseY - followerY) * 0.1;
+      follower.style.left = followerX - 20 + 'px';
+      follower.style.top = followerY - 20 + 'px';
+      requestAnimationFrame(animateFollower);
+    }
+    animateFollower();
+
+    // Particle System
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    document.getElementById('canvas-container').appendChild(canvas);
+    let width, height, particles = [];
+
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+    const PARTICLE_COUNT = isMobile ? 30 : 80;
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = (Math.random() - 0.5) * (isMobile ? 0.08 : 0.15);
+        this.vy = (Math.random() - 0.5) * (isMobile ? 0.08 : 0.15);
+        this.size = Math.random() * (isMobile ? 1 : 1.5);
+        this.alpha = Math.random() * 0.4;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < 0) this.x = width;
+        if (this.x > width) this.x = 0;
+        if (this.y < 0) this.y = height;
+        if (this.y > height) this.y = 0;
+      }
+      draw() {
+        ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      particles.push(new Particle());
+    }
+
+    let isAnimating = true;
+    if (isMobile) {
+      document.addEventListener('visibilitychange', () => {
+        isAnimating = !document.hidden;
+      });
+    }
+
+    function animateParticles() {
+      if (isAnimating) {
+        ctx.clearRect(0, 0, width, height);
+        particles.forEach(p => { p.update(); p.draw(); });
+      }
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+
+    // Demo System
+    const typeDisplay = document.getElementById('typewriter-text');
+    const responseDisplay = document.getElementById('ai-response');
+    const beliefTag = document.getElementById('belief-tag');
+
+    const demoBeliefs = {
+      'audit': "MIRYN BELIEF: PATTERNS REVEAL TRUTH.",
+      'check': "MIRYN BELIEF: COMFORT IS NOT SAFETY.",
+      'stuck': "MIRYN BELIEF: STAGNATION IS FEAR IN DISGUISE.",
+      'blindspot': "MIRYN BELIEF: WE IGNORE WHAT HURTS."
+    };
+
+    const demoInputs = {
+      'audit': "Audit my last month.",
+      'check': "Give me a reality check.",
+      'stuck': "Why am I stuck?",
+      'blindspot': "What am I missing?"
+    };
+
+    const demoResponses = {
+      'audit': "I've reviewed your last 30 days. You mentioned 'feeling overwhelmed' 12 times, usually on Tuesdays. Yet, you accepted 4 new projects in that same window. <br><br>The pattern isn't workload; it's boundaries. Shall we address that?",
+      'check': "You are currently optimizing for comfort, not growth. You avoided the difficult conversation with your co-founder again today. <br><br>Silence is a decision. What is the cost of staying silent for another week?",
+      'stuck': "You aren't stuck; you are paused. You are waiting for 'perfect conditions' to start the new module. <br><br>Perfection is a stalling tactic. What is the smallest imperfect step you can take right now?",
+      'blindspot': "You keep asking for advice on *tactics* (how to code, how to market), but you never ask about *purpose*. You are building a car without a destination. <br><br>Let's define the destination first."
+    };
+
+    function runDemo(key) {
+      typeDisplay.innerHTML = "";
+      responseDisplay.classList.remove('visible');
+      responseDisplay.innerHTML = "";
+      beliefTag.classList.remove('active');
+
+      const input = demoInputs[key];
+      typeWriter(input, 0, () => {
+        beliefTag.innerHTML = demoBeliefs[key];
+        beliefTag.classList.add('active');
+
+        responseDisplay.innerHTML = '<span style="color: #555;">Miryn is thinking...</span>';
+        responseDisplay.classList.add('visible');
+
+        setTimeout(() => {
+          responseDisplay.innerHTML = demoResponses[key];
+        }, 800);
+      });
+    }
+
+    function typeWriter(text, i, fnCallback) {
+      if (i < text.length) {
+        typeDisplay.innerHTML = text.substring(0, i + 1);
+        setTimeout(() => typeWriter(text, i + 1, fnCallback), 30);
+      } else if (typeof fnCallback == 'function') {
+        setTimeout(fnCallback, 500);
+      }
+    }
+
+    // Email Form Handler
+    async function handleWaitlistSubmit(e) {
+      e.preventDefault();
+
+      const email = document.getElementById('email-input').value;
+      const btn = e.target.querySelector('button');
+      const originalText = btn.textContent;
+
+      btn.textContent = 'Joining...';
+      btn.disabled = true;
+
+      try {
+        // TODO: Replace with your actual API endpoint
+        // For now, simulate success
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Success
+        document.getElementById('waitlist-form').style.display = 'none';
+        document.getElementById('success-message').style.display = 'block';
+
+        // Increment counter
+        const counter = document.getElementById('waitlist-count');
+        counter.textContent = parseInt(counter.textContent) + 1;
+
+        // Decrement spots
+        const spots = document.getElementById('spots-left');
+        spots.textContent = Math.max(0, parseInt(spots.textContent) - 1);
+
+        // Store email locally for now
+        console.log('Email captured:', email);
+
+      } catch (error) {
+        console.error('Waitlist error:', error);
+        alert('Something went wrong. Please try again or email hi@usemiryn.com');
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    // Scroll Animations
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -100px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('.fade-up').forEach(el => {
+      observer.observe(el);
+    });
+  </script>
+</body>
+
+</html>
