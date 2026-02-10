@@ -22,7 +22,27 @@ type RefreshResponse = {
   expires_in?: number;
 };
 
-async function refreshAccessToken(token: JWT): Promise<JWT> {
+type AuthUser = {
+  id: string;
+  email: string;
+  accessToken: string;
+  refreshToken: string | null;
+  expiresAt: number | null;
+};
+
+type ExtendedJWT = JWT & {
+  accessToken?: string;
+  refreshToken?: string | null;
+  expiresAt?: number | null;
+  error?: string;
+};
+
+const isAuthUser = (user: unknown): user is AuthUser => {
+  if (!user || typeof user !== "object") return false;
+  return "accessToken" in user && "refreshToken" in user;
+};
+
+async function refreshAccessToken(token: ExtendedJWT): Promise<ExtendedJWT> {
   if (!token.refreshToken) {
     return {
       ...token,
@@ -51,8 +71,10 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       expiresAt: payload.expires_in ? Date.now() + payload.expires_in * 1000 : null,
       error: undefined,
     };
-  } catch (error: any) {
-    console.error("Access token refresh failed", { message: error?.message || "unknown" });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error && error.message ? error.message : "unknown";
+    console.error("Access token refresh failed", { message });
     return {
       ...token,
       accessToken: undefined,
@@ -70,7 +92,7 @@ const handler = NextAuth({
         email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials): Promise<AuthUser | null> {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
@@ -109,11 +131,13 @@ const handler = NextAuth({
             accessToken: payload.access_token,
             refreshToken: payload.refresh_token || null,
             expiresAt,
-          } as any;
-        } catch (error: any) {
+          };
+        } catch (error: unknown) {
           clearTimeout(timeout);
-          const safeMessage = typeof error?.message === "string" ? error.message : "Unknown error";
-          const safeName = typeof error?.name === "string" ? error.name : "Error";
+          const safeMessage =
+            error instanceof Error && error.message ? error.message : "Unknown error";
+          const safeName =
+            error instanceof Error && error.name ? error.name : "Error";
           console.error("NextAuth authorize failed", { name: safeName, message: safeMessage });
           return null;
         }
@@ -127,28 +151,31 @@ const handler = NextAuth({
   session: { strategy: "jwt" },
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
-        token.accessToken = (user as any).accessToken;
-        token.refreshToken = (user as any).refreshToken;
-        token.expiresAt = (user as any).expiresAt;
-        token.error = undefined;
-        return token;
+      const nextToken = token as ExtendedJWT;
+
+      if (user && isAuthUser(user)) {
+        nextToken.accessToken = user.accessToken;
+        nextToken.refreshToken = user.refreshToken;
+        nextToken.expiresAt = user.expiresAt;
+        nextToken.error = undefined;
+        return nextToken;
       }
 
-      if (!token.expiresAt || !token.accessToken) {
-        return token;
+      if (!nextToken.expiresAt || !nextToken.accessToken) {
+        return nextToken;
       }
 
       const bufferMs = 60_000;
-      if (Date.now() < (token.expiresAt as number) - bufferMs) {
-        return token;
+      if (Date.now() < nextToken.expiresAt - bufferMs) {
+        return nextToken;
       }
 
-      return refreshAccessToken(token);
+      return refreshAccessToken(nextToken);
     },
     async session({ session, token }) {
-      if (token?.error) {
-        (session as any).error = token.error;
+      const nextToken = token as ExtendedJWT;
+      if (nextToken?.error) {
+        (session as { error?: string }).error = nextToken.error;
       }
       return session;
     },

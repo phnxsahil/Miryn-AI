@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { getErrorMessage } from "@/lib/utils";
 
 const questions = [
   "What do you want Miryn to remember about you?",
@@ -40,8 +41,8 @@ export default function OnboardingFlow() {
         values: {},
       });
       setStatus("Onboarding complete. You can start chatting.");
-    } catch (e: any) {
-      setStatus(e.message || "Failed to complete onboarding.");
+    } catch (e: unknown) {
+      setStatus(getErrorMessage(e, "Failed to complete onboarding."));
     } finally {
       setIsSubmitting(false);
     }

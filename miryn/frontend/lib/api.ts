@@ -1,3 +1,5 @@
+import type { IdentityUpdatePayload, OnboardingPayload } from "@/lib/types";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 class ApiClient {
@@ -31,28 +33,31 @@ class ApiClient {
     }
   }
 
-  private async parseError(res: Response) {
+  private async parseError(res: Response): Promise<string> {
     try {
-      const data = await res.json();
+      const data = (await res.json()) as unknown;
       if (typeof data === "string") return data;
-      return data?.detail || data?.message || res.statusText;
+      if (data && typeof data === "object") {
+        const detail = "detail" in data ? (data as { detail?: string }).detail : undefined;
+        const message = "message" in data ? (data as { message?: string }).message : undefined;
+        return detail || message || res.statusText;
+      }
+      return res.statusText;
     } catch {
       return res.statusText;
     }
   }
 
-  private async request(endpoint: string, options: RequestInit = {}) {
+  private async request(endpoint: string, options: RequestInit = {}): Promise<unknown> {
     if (!this.token) {
       this.loadToken();
     }
 
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    } as Record<string, string>;
+    const headers = new Headers(options.headers);
+    headers.set("Content-Type", "application/json");
 
     if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`;
+      headers.set("Authorization", `Bearer ${this.token}`);
     }
 
     const res = await fetch(`${API_URL}${endpoint}`, {
@@ -81,7 +86,7 @@ class ApiClient {
     try {
       return JSON.parse(text);
     } catch {
-      return text as any;
+      return text;
     }
   }
 
@@ -115,14 +120,14 @@ class ApiClient {
     return this.request("/identity/");
   }
 
-  async updateIdentity(payload: any) {
+  async updateIdentity(payload: IdentityUpdatePayload) {
     return this.request("/identity/", {
       method: "PATCH",
       body: JSON.stringify(payload),
     });
   }
 
-  async completeOnboarding(responses: any) {
+  async completeOnboarding(responses: OnboardingPayload) {
     return this.request("/onboarding/complete", {
       method: "POST",
       body: JSON.stringify(responses),

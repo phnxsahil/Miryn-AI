@@ -32,8 +32,27 @@ export type Identity = {
   user_id: string;
   version: number;
   state: string;
-  traits: Record<string, any>;
-  values: Record<string, any>;
-  beliefs: any[];
-  open_loops: any[];
+  traits: Record<string, unknown>;
+  values: Record<string, unknown>;
+  beliefs: Array<Record<string, unknown>>;
+  open_loops: Array<Record<string, unknown>>;
+};
+
+export type IdentityUpdatePayload = {
+  state?: string;
+  traits?: Record<string, unknown>;
+  values?: Record<string, unknown>;
+  beliefs?: Array<Record<string, unknown>>;
+  open_loops?: Array<Record<string, unknown>>;
+};
+
+export type OnboardingAnswer = {
+  question: string;
+  answer: string;
+};
+
+export type OnboardingPayload = {
+  responses: OnboardingAnswer[];
+  traits?: Record<string, unknown>;
+  values?: Record<string, unknown>;
 };

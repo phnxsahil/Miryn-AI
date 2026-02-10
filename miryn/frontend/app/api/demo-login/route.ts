@@ -3,6 +3,12 @@ import { NextResponse } from "next/server";
 const API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const DEMO_TIMEOUT_MS = 10_000;
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string") return error;
+  return fallback;
+};
+
 export async function POST() {
   if (process.env.ENABLE_DEMO !== "true") {
     return NextResponse.json({ error: "Demo login is disabled" }, { status: 403 });
@@ -33,8 +39,11 @@ export async function POST() {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    const message = error?.name === "AbortError" ? "Demo login timed out" : error?.message || "Demo login failed";
+  } catch (error: unknown) {
+    const message =
+      error instanceof DOMException && error.name === "AbortError"
+        ? "Demo login timed out"
+        : getErrorMessage(error, "Demo login failed");
     return NextResponse.json({ error: message }, { status: 500 });
   } finally {
     clearTimeout(timeout);

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { getErrorMessage } from "@/lib/utils";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -18,8 +19,8 @@ export default function LoginPage() {
       const res = await api.login(email, password);
       api.setToken(res.access_token);
       window.location.href = "/chat";
-    } catch (err: any) {
-      setError(err.message || "Login failed");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Login failed"));
     } finally {
       setLoading(false);
     }
@@ -41,8 +42,8 @@ export default function LoginPage() {
       }
       api.setToken(data.access_token);
       window.location.href = "/chat";
-    } catch (err: any) {
-      setError(err.message || "Auto-login failed");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Auto-login failed"));
     } finally {
       setLoading(false);
     }

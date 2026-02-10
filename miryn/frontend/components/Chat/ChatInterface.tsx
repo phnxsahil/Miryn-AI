@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "@/lib/api";
 import type { Message, ConversationInsights, ChatResponsePayload } from "@/lib/types";
+import { getErrorMessage } from "@/lib/utils";
 import MessageBubble from "./MessageBubble";
 import InputBox from "./InputBox";
 import InsightsPanel from "./InsightsPanel";
@@ -59,8 +60,8 @@ export default function ChatInterface() {
         content: response.response,
         timestamp: new Date().toISOString(),
       });
-    } catch (error: any) {
-      const errorMessage = error?.message || "Sorry, something went wrong. Please try again.";
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error, "Sorry, something went wrong. Please try again.");
       appendMessage({
         role: "system",
         content: errorMessage,

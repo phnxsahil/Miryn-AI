@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { getErrorMessage } from "@/lib/utils";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -20,12 +21,12 @@ export default function SignupPage() {
         const res = await api.login(email, password);
         api.setToken(res.access_token);
         window.location.href = "/onboarding";
-      } catch (loginError: any) {
+      } catch {
         setError("Account created. Please log in manually.");
         window.location.href = "/login?created=1";
       }
-    } catch (err: any) {
-      setError(err.message || "Signup failed");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Signup failed"));
     } finally {
       setLoading(false);
     }
