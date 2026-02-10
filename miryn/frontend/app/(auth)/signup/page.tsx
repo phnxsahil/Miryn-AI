@@ -1,0 +1,69 @@
+﻿"use client";
+
+import { useState } from "react";
+import { api } from "@/lib/api";
+
+export default function SignupPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      await api.signup(email, password);
+      try {
+        const res = await api.login(email, password);
+        api.setToken(res.access_token);
+        window.location.href = "/onboarding";
+      } catch (loginError: any) {
+        setError("Account created. Please log in manually.");
+        window.location.href = "/login?created=1";
+      }
+    } catch (err: any) {
+      setError(err.message || "Signup failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-void text-white flex items-center justify-center px-6">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
+        <h1 className="text-3xl font-serif font-light">Create account</h1>
+        {error && <div className="text-red-400 text-sm">{error}</div>}
+        <label className="block text-sm text-secondary" htmlFor="signup-email">
+          Email address
+        </label>
+        <input
+          id="signup-email"
+          type="email"
+          className="w-full rounded-md bg-white/5 border border-white/10 px-4 py-3"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          aria-label="Email address"
+        />
+        <label className="block text-sm text-secondary" htmlFor="signup-password">
+          Password
+        </label>
+        <input
+          id="signup-password"
+          className="w-full rounded-md bg-white/5 border border-white/10 px-4 py-3"
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          aria-label="Password"
+        />
+        <button className="w-full rounded-md bg-accent text-black py-3" disabled={loading}>
+          {loading ? "Signing up..." : "Sign up"}
+        </button>
+      </form>
+    </div>
+  );
+}
