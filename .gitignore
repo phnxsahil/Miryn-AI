@@ -42,3 +42,8 @@ __pycache__/
 Thumbs.db
 .vscode/
 .idea/
+
+# Allow env examples
+!.env.example
+!**/.env.example
+
