@@ -133,6 +133,34 @@ class ApiClient {
       body: JSON.stringify(responses),
     });
   }
+
+  async generateTool(intent: string) {
+    return this.request("/tools/generate", {
+      method: "POST",
+      body: JSON.stringify({ intent, tool_type: "python" }),
+    });
+  }
+
+  async listPendingTools() {
+    return this.request("/tools/pending");
+  }
+
+  async approveTool(toolId: string) {
+    return this.request("/tools/approve", {
+      method: "POST",
+      body: JSON.stringify({ tool_id: toolId }),
+    });
+  }
+
+  async listNotifications() {
+    return this.request("/notifications/");
+  }
+
+  async markNotificationRead(id: string) {
+    return this.request(`/notifications/read/${id}`, {
+      method: "POST",
+    });
+  }
 }
 
 export const api = new ApiClient();
