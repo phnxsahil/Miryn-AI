@@ -6,9 +6,20 @@ from app.core.database import get_db, has_sql, get_sql_session
 
 class PatternStore:
     def __init__(self):
+        """
+        Initialize a PatternStore instance and configure its storage client.
+        
+        Sets the instance attribute `supabase` to a Supabase client when SQL storage is not available; otherwise sets `supabase` to `None` to indicate SQL will be used.
+        """
         self.supabase = get_db() if not has_sql() else None
 
     def load(self, user_id: str, identity_id: str) -> List[Dict[str, Any]]:
+        """
+        Retrieve identity patterns for a given user and identity, ordered by creation time.
+        
+        Returns:
+            A list of dictionaries, each containing the keys 'pattern_type', 'description', 'signals', and 'confidence'. The list is empty if no matching patterns are found.
+        """
         if has_sql():
             with get_sql_session() as session:
                 result = session.execute(
@@ -39,6 +50,23 @@ class PatternStore:
         return response.data or []
 
     def replace(self, user_id: str, identity_id: str, patterns: List[Dict[str, Any]]) -> None:
+        """
+        Replace all identity patterns for a given user and identity with the supplied list.
+        
+        Parameters:
+            user_id (str): ID of the user owning the identity.
+            identity_id (str): ID of the identity whose patterns will be replaced.
+            patterns (List[Dict[str, Any]]): List of pattern objects to store. Each pattern may contain:
+                - "pattern_type" (str): type of the pattern (defaults to "").
+                - "description" (str): human-readable description (defaults to "").
+                - "signals" (dict): pattern signals (defaults to {}). When using the SQL backend, signals are serialized to a JSON string before storage.
+                - "confidence" (float): confidence score (defaults to 0.5).
+        
+        Notes:
+            - If a SQL backend is available, existing rows for the (user_id, identity_id) pair are deleted and the provided patterns are inserted within a transaction.
+            - If a Supabase backend is used, existing records for the pair are deleted and the provided patterns are inserted as a batch.
+            - If `patterns` is empty or no backend client is available, the method returns without inserting anything.
+        """
         if has_sql():
             with get_sql_session() as session:
                 session.execute(

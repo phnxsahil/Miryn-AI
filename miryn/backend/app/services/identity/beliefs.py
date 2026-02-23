@@ -6,9 +6,22 @@ from app.core.database import get_db, has_sql, get_sql_session
 
 class BeliefStore:
     def __init__(self):
+        """
+        Initialize the instance and select the storage backend.
+        
+        Sets self.supabase to a Supabase client when a SQL backend is not available; otherwise sets self.supabase to None to indicate SQL will be used.
+        """
         self.supabase = get_db() if not has_sql() else None
 
     def load(self, user_id: str, identity_id: str) -> List[Dict[str, Any]]:
+        """
+        Load stored beliefs for the specified user and identity from the configured backend.
+        
+        Each returned item is a dictionary with keys: "topic", "belief", "confidence", and "evidence". Results are ordered by `created_at` ascending.
+        
+        Returns:
+            List[Dict[str, Any]]: A list of belief dictionaries; an empty list if no beliefs are found or if the non-SQL backend is unavailable.
+        """
         if has_sql():
             with get_sql_session() as session:
                 result = session.execute(
@@ -39,6 +52,16 @@ class BeliefStore:
         return response.data or []
 
     def replace(self, user_id: str, identity_id: str, beliefs: List[Dict[str, Any]]) -> None:
+        """
+        Replace stored beliefs for a specific user identity with the provided list.
+        
+        This deletes any existing records for the (user_id, identity_id) pair and inserts the given beliefs into the active backend (SQL or Supabase). Each belief dictionary may include the keys "topic", "belief", "confidence", and "evidence"; missing keys use defaults (topic: "", belief: "", confidence: 0.5, evidence: {}). When the SQL backend is used, the "evidence" value is stored as a JSON-encoded string. If the Supabase client is not configured, the call is a no-op.
+        
+        Parameters:
+            user_id (str): Identifier of the user who owns the beliefs.
+            identity_id (str): Identifier of the identity the beliefs belong to.
+            beliefs (List[Dict[str, Any]]): List of belief objects to store. Each object should be a dict with optional keys "topic", "belief", "confidence", and "evidence".
+        """
         if has_sql():
             with get_sql_session() as session:
                 session.execute(

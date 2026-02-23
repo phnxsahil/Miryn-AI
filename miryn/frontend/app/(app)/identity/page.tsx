@@ -1,6 +1,10 @@
 import IdentityDashboard from "@/components/Identity/IdentityDashboard";
 
-// Server component wrapper for the identity dashboard.
+/**
+ * Server component that renders the IdentityDashboard component.
+ *
+ * @returns The JSX element for the identity dashboard page.
+ */
 export default function IdentityPage() {
   return <IdentityDashboard />;
 }

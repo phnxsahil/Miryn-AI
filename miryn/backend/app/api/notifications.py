@@ -8,6 +8,16 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 @router.get("/")
 def list_notifications(user_id: str = Depends(get_current_user_id)):
+    """
+    Retrieve up to 50 most recent notifications for the current user.
+    
+    Parameters:
+    	user_id (str): ID of the current authenticated user.
+    
+    Returns:
+    	notifications (list[dict]): List of notification objects (may be empty). Each dict contains the keys:
+    		`id`, `type`, `payload`, `status`, `created_at`, and `read_at`.
+    """
     if has_sql():
         with get_sql_session() as session:
             rows = session.execute(
@@ -38,6 +48,15 @@ def list_notifications(user_id: str = Depends(get_current_user_id)):
 
 @router.post("/read/{notification_id}")
 def mark_read(notification_id: str, user_id: str = Depends(get_current_user_id)):
+    """
+    Mark a notification as read for the current user.
+    
+    Parameters:
+        notification_id (str): ID of the notification to mark as read.
+    
+    Returns:
+        dict: {"status": "ok"} on success.
+    """
     if has_sql():
         with get_sql_session() as session:
             session.execute(

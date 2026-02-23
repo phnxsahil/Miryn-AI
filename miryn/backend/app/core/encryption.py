@@ -12,6 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 def _normalize_key(raw_key: str) -> Optional[bytes]:
+    """
+    Normalize a raw encryption key string into a 44-byte URL-safe base64 key suitable for Fernet, or return None when no key is provided.
+    
+    Parameters:
+        raw_key (str): The raw key string (e.g., from configuration); may include surrounding whitespace.
+    
+    Returns:
+        Optional[bytes]: A 44-byte URL-safe base64-encoded key as bytes suitable for constructing a Fernet instance, or `None` if `raw_key` is empty after trimming.
+    """
     trimmed = (raw_key or "").strip()
     if not trimmed:
         return None
@@ -27,6 +36,13 @@ def _normalize_key(raw_key: str) -> Optional[bytes]:
 
 
 def _get_fernet() -> Optional[Fernet]:
+    """
+    Get a Fernet cipher initialized from the configured encryption key, or None if no valid key is available.
+    
+    Returns:
+        Fernet: A Fernet instance created from the normalized `ENCRYPTION_KEY`.
+        `None` if `ENCRYPTION_KEY` is missing, normalization fails, or the key is invalid.
+    """
     key = settings.ENCRYPTION_KEY
     if not key:
         return None
@@ -41,6 +57,17 @@ def _get_fernet() -> Optional[Fernet]:
 
 
 def encrypt_text(plain: str) -> Optional[str]:
+    """
+    Encrypts a text string using the configured Fernet encryption key.
+    
+    If `plain` is None or a usable encryption key is not available, the function returns None.
+    
+    Parameters:
+        plain (str): The plaintext to encrypt.
+    
+    Returns:
+        Optional[str]: The encrypted token as a UTF-8 string, or `None` if encryption could not be performed.
+    """
     if plain is None:
         return None
     f = _get_fernet()
@@ -51,6 +78,15 @@ def encrypt_text(plain: str) -> Optional[str]:
 
 
 def decrypt_text(token: Optional[str]) -> Optional[str]:
+    """
+    Decrypts a Fernet token string to plaintext.
+    
+    Parameters:
+        token (Optional[str]): UTF-8 string containing a Fernet token to decrypt.
+    
+    Returns:
+        Optional[str]: Decrypted plaintext string, or `None` if `token` is empty, the encryption key is unavailable, or decryption fails.
+    """
     if not token:
         return None
     f = _get_fernet()
