@@ -38,6 +38,7 @@ __pycache__/
 .Python
 .venv/
 venv/
+celerybeat-schedule
 celerybeat-schedule.*
 
 # OS / editor noise
