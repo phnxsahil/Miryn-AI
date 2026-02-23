@@ -1,5 +1,8 @@
-﻿from pydantic_settings import BaseSettings
+﻿from pathlib import Path
+from pydantic_settings import BaseSettings
 from typing import Optional
+
+_ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -19,6 +22,7 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-1.5-flash-001"
+    GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
     VERTEX_PROJECT_ID: Optional[str] = None
     VERTEX_LOCATION: str = "us-central1"
     VERTEX_MODEL: str = "google/gemini-2.0-flash-lite-001"
@@ -38,8 +42,14 @@ class Settings(BaseSettings):
     AUDIT_RETENTION_DAYS: int = 90
     AUDIT_STORE_PII: bool = False
 
+    # Encryption
+    ENCRYPTION_KEY: Optional[str] = None
+
+    # Tool sandbox
+    TOOL_SANDBOX_URL: Optional[str] = None
+
     class Config:
-        env_file = ".env"
+        env_file = str(_ENV_FILE)
 
 
 settings = Settings()
