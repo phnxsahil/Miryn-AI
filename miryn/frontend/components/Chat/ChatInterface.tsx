@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "@/lib/api";
-import type { Message, ConversationInsights, ChatResponsePayload } from "@/lib/types";
+import type { Message, ConversationInsights, ChatResponsePayload, ToolRun, Notification } from "@/lib/types";
 import { getErrorMessage } from "@/lib/utils";
 import MessageBubble from "./MessageBubble";
 import InputBox from "./InputBox";
 import InsightsPanel from "./InsightsPanel";
+import ToolPanel from "./ToolPanel";
+import NotificationsPanel from "./NotificationsPanel";
 
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -14,11 +16,46 @@ export default function ChatInterface() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [insights, setInsights] = useState<ConversationInsights | null>(null);
+  const [conflicts, setConflicts] = useState<Array<{ statement: string; conflict_with: string; severity?: number }>>([]);
+  const [pendingTools, setPendingTools] = useState<ToolRun[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     api.loadToken();
+  }, []);
+
+  useEffect(() => {
+    api.listPendingTools().then((tools) => setPendingTools((tools as ToolRun[]) || [])).catch(() => null);
+    api.listNotifications().then((notes) => setNotifications((notes as Notification[]) || [])).catch(() => null);
+  }, []);
+
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("miryn_token") : null;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const url = token ? `${baseUrl}/chat/events/stream?token=${token}` : `${baseUrl}/chat/events/stream`;
+    const source = new EventSource(url, { withCredentials: false } as EventSourceInit);
+
+    source.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === "reflection.ready") {
+          setInsights(payload.payload || null);
+        }
+        if (payload.type === "identity.conflict") {
+          setConflicts(payload.payload || []);
+        }
+        if (payload.type === "notification.new") {
+          const note = payload.payload as Notification;
+          setNotifications((prev) => [note, ...prev]);
+        }
+      } catch {
+        return;
+      }
+    };
+
+    return () => source.close();
   }, []);
 
   const scrollToBottom = useCallback(() => {
@@ -55,6 +92,10 @@ export default function ChatInterface() {
         setInsights(null);
       }
 
+      if (response.conflicts) {
+        setConflicts(response.conflicts);
+      }
+
       appendMessage({
         role: "assistant",
         content: response.response,
@@ -79,11 +120,68 @@ export default function ChatInterface() {
     }
   };
 
+  const generateTool = async (intent: string) => {
+    try {
+      await api.generateTool(intent);
+      const tools = (await api.listPendingTools()) as ToolRun[];
+      setPendingTools(tools || []);
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error, "Failed to generate tool.");
+      setStatus(errorMessage);
+    }
+  };
+
+  const approveTool = async (toolId: string) => {
+    try {
+      const res = (await api.approveTool(toolId)) as { result?: { output?: string; error?: string } };
+      if (res?.result?.output) {
+        appendMessage({
+          role: "system",
+          content: `Tool output: ${res.result.output}`,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      if (res?.result?.error) {
+        appendMessage({
+          role: "system",
+          content: `Tool error: ${res.result.error}`,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      const tools = (await api.listPendingTools()) as ToolRun[];
+      setPendingTools(tools || []);
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error, "Failed to run tool.");
+      setStatus(errorMessage);
+    }
+  };
+
+  const markNotificationRead = async (id: string) => {
+    try {
+      await api.markNotificationRead(id);
+      setNotifications((prev) =>
+        prev.map((note) => (note.id === id ? { ...note, status: "read" } : note))
+      );
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error, "Failed to mark notification.");
+      setStatus(errorMessage);
+    }
+  };
+
+  const notificationCount = notifications.filter((n) => n.status === "new").length;
+
   return (
     <div className="flex flex-col h-screen bg-void">
-      <div className="border-b border-white/10 p-6">
-        <h1 className="text-2xl font-light text-white">Miryn</h1>
-        <p className="text-sm text-secondary">A quiet room for honest reflection.</p>
+      <div className="border-b border-white/10 p-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-light text-white">Miryn</h1>
+          <p className="text-sm text-secondary">A quiet room for honest reflection.</p>
+        </div>
+        {notificationCount > 0 && (
+          <div className="text-xs uppercase tracking-[0.2em] text-amber-200">
+            Notifications <span className="ml-2 rounded-full bg-amber-500/20 px-2 py-1">{notificationCount}</span>
+          </div>
+        )}
       </div>
 
       {status && (
@@ -108,7 +206,9 @@ export default function ChatInterface() {
         <div ref={messagesEndRef} />
       </div>
 
-      <InsightsPanel insights={insights} />
+      <InsightsPanel insights={insights} conflicts={conflicts} />
+      <NotificationsPanel notifications={notifications} onMarkRead={markNotificationRead} />
+      <ToolPanel pending={pendingTools} onGenerate={generateTool} onApprove={approveTool} />
       <InputBox onSend={sendMessage} disabled={loading} />
     </div>
   );
