@@ -9,6 +9,12 @@ const tone = [
   "bg-[radial-gradient(circle_at_left,_rgba(255,255,255,0.06),_transparent_50%)]",
 ];
 
+/**
+ * Render a compact, styled pill element with an uppercase label.
+ *
+ * @param label - Text to display inside the pill
+ * @returns A styled inline span element containing the provided label
+ */
 function Pill({ label }: { label: string }) {
   return (
     <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs tracking-[0.2em] uppercase text-white/80">
@@ -17,6 +23,14 @@ function Pill({ label }: { label: string }) {
   );
 }
 
+/**
+ * Renders a horizontal progress meter whose filled width reflects a numeric value.
+ *
+ * @param value - Progress value expected in the 0–1 range; values outside this range are clamped
+ *                to the nearest boundary
+ * @returns A JSX element of a rounded horizontal bar with its fill width set to `value * 100%`
+ *          (clamped between `0%` and `100%`)
+ */
 function Meter({ value }: { value: number }) {
   const pct = Math.max(0, Math.min(100, Math.round(value * 100)));
   return (
@@ -29,6 +43,13 @@ function Meter({ value }: { value: number }) {
   );
 }
 
+/**
+ * Renders the Identity Dashboard UI and loads the current identity from the API on mount.
+ *
+ * The component fetches the identity, shows a loading state while fetching, displays an error message if loading fails, and when available renders summary stats, traits, values, beliefs, open loops, patterns, emotions, conflicts, and a privacy vault note.
+ *
+ * @returns The React element representing the identity dashboard
+ */
 export default function IdentityDashboard() {
   const [identity, setIdentity] = useState<Identity | null>(null);
   const [error, setError] = useState<string | null>(null);

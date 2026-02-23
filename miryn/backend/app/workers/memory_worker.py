@@ -9,6 +9,14 @@ from app.core.encryption import decrypt_text
 
 @celery_app.task(name="memory.gc")
 def garbage_collect_expired():
+    """
+    Remove messages whose `delete_at` timestamp is less than or equal to the current UTC time.
+    
+    This operation supports both SQL and non-SQL backends and will delete all messages with a non-null `delete_at` due at or before the time of invocation.
+    
+    Returns:
+        dict: `{'deleted': True}` if the deletion operation was executed.
+    """
     now = datetime.utcnow()
     if has_sql():
         with get_sql_session() as session:
@@ -26,6 +34,14 @@ def garbage_collect_expired():
 
 @celery_app.task(name="memory.summarize")
 def nightly_summarize():
+    """
+    Generate and store daily per-user summaries of messages from the last 24 hours.
+    
+    This task collects up to 200 messages per user created within the past 24 hours, decrypts content when necessary, uses an LLMService to produce a concise summary for each user, and inserts the summary into the memory_summaries store with the current UTC timestamp. Works with either SQL or non-SQL backends.
+    
+    Returns:
+        dict: A mapping with the key "summaries" and an integer value for the number of user summaries processed.
+    """
     llm = LLMService()
     cutoff = datetime.utcnow() - timedelta(days=1)
 
@@ -107,6 +123,16 @@ def nightly_summarize():
 
 
 async def _summarize(llm: LLMService, messages: list) -> str:
+    """
+    Produce a short 3–5 bullet summary of the provided messages that highlights goals, concerns, and key events.
+    
+    Parameters:
+    	llm (LLMService): LLM client used to generate the summary.
+    	messages (list): List of message strings to summarize.
+    
+    Returns:
+    	summary (str): Summary text containing 3–5 concise bullets, or an empty string if `messages` is empty.
+    """
     if not messages:
         return ""
     prompt = (

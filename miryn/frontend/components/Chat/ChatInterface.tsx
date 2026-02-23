@@ -10,6 +10,13 @@ import InsightsPanel from "./InsightsPanel";
 import ToolPanel from "./ToolPanel";
 import NotificationsPanel from "./NotificationsPanel";
 
+/**
+ * Full chat UI component that manages conversation state, message flow, tools, insights, and notifications.
+ *
+ * Initializes the auth token on mount, fetches pending tools and notifications, and subscribes to server-sent events to update insights, identity conflicts, and new notifications in real time. Exposes an input for sending messages, displays message history (including assistant/system responses and temporary "Thinking..." state), and provides panels for insights, notifications, and tool generation/approval.
+ *
+ * @returns The rendered chat interface element (React JSX).
+ */
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);

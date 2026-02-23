@@ -25,6 +25,19 @@ async def generate_tool(
     payload: ToolGenerateRequest,
     user_id: str = Depends(get_current_user_id),
 ):
+    """
+    Generate a small, safe Python tool from the provided intent and persist it as a pending tool_run record.
+    
+    Parameters:
+        payload (ToolGenerateRequest): The generation request containing the user's intent and desired tool type. Only "python" is supported.
+        user_id (str): ID of the requesting user (injected dependency).
+    
+    Returns:
+        dict: The created tool_run record including at least `id`, `name`, `description`, `status`, and `code`.
+    
+    Raises:
+        HTTPException: If `payload.tool_type` is not "python" (400) or if creating the tool_run fails (500).
+    """
     if payload.tool_type != "python":
         raise HTTPException(status_code=400, detail="Only python tools are supported in MVP.")
 
@@ -84,6 +97,12 @@ async def generate_tool(
 
 @router.get("/pending")
 def list_pending(user_id: str = Depends(get_current_user_id)):
+    """
+    Return pending tool runs for the current user ordered by creation time descending.
+    
+    Returns:
+        list[dict]: List of tool run records containing keys 'id', 'name', 'description', 'status', 'code', and 'created_at'. Empty list if none.
+    """
     if has_sql():
         with get_sql_session() as session:
             rows = session.execute(
@@ -116,6 +135,23 @@ def approve_tool(
     payload: ToolApproveRequest,
     user_id: str = Depends(get_current_user_id),
 ):
+    """
+    Approve and execute a pending tool for the current user, update the tool_run record with the execution result, and emit an audit log.
+    
+    Parameters:
+        payload (ToolApproveRequest): Request containing `tool_id` of the tool to approve.
+        user_id (str): ID of the current user (injected dependency).
+    
+    Returns:
+        dict: {"status": "ok", "result": result} where `result` is the sandbox execution result object containing at least a `status` key and either `output` or `error`.
+    
+    Raises:
+        HTTPException: 404 if the tool is not found for the user.
+        HTTPException: 400 if the tool's status is not "pending".
+    
+    Side effects:
+        Updates the tool_runs record's `status`, `result`, and `updated_at`, and logs a "tool.approve" event.
+    """
     sandbox = ToolSandbox()
     if has_sql():
         with get_sql_session() as session:

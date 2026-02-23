@@ -9,6 +9,14 @@ type Props = {
   onApprove: (toolId: string) => void;
 };
 
+/**
+ * Renders a tools panel with an input to generate a tool and a list of pending generated tools.
+ *
+ * @param pending - Array of pending tool runs to display as actionable cards
+ * @param onGenerate - Callback invoked with the trimmed intent string when the Generate button is clicked
+ * @param onApprove - Callback invoked with a tool's `id` when its Approve button is clicked
+ * @returns The React element for the tools panel
+ */
 export default function ToolPanel({ pending, onGenerate, onApprove }: Props) {
   const [intent, setIntent] = useState("");
 

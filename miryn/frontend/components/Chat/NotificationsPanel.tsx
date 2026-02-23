@@ -7,6 +7,13 @@ type Props = {
   onMarkRead: (id: string) => void;
 };
 
+/**
+ * Render a compact notifications panel that lists provided notifications and exposes a "Mark read" action for new items.
+ *
+ * @param notifications - Array of notification objects to display; each item should include `id`, `type`, and optional `payload.message` and `status`.
+ * @param onMarkRead - Callback invoked with a notification `id` when the "Mark read" button is clicked for a notification with status `"new"`.
+ * @returns The panel element containing notification entries when `notifications` is non-empty, or `null` when there are no notifications.
+ */
 export default function NotificationsPanel({ notifications, onMarkRead }: Props) {
   if (!notifications.length) {
     return null;

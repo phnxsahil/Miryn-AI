@@ -18,9 +18,31 @@ BLOCKLIST = [
 
 class ToolSandbox:
     def __init__(self, timeout_seconds: int = 10):
+        """
+        Initialize the ToolSandbox.
+        
+        Parameters:
+            timeout_seconds (int): Maximum number of seconds to allow a tool execution before timing out. Defaults to 10.
+        """
         self.timeout_seconds = timeout_seconds
 
     def run_python(self, code: str) -> Dict:
+        """
+        Execute a Python source string inside a sandboxed environment and return a structured result.
+        
+        If a remote sandbox URL is configured the call is delegated to the remote service. Locally, the code is checked against a blocklist and will be rejected if it contains a forbidden token.
+        
+        Parameters:
+            code (str): Python source code to execute.
+        
+        Returns:
+            dict: A result dictionary with one of the following shapes:
+                - {"status": "ok", "output": <combined stdout+stderr>} when execution exits with code 0.
+                - {"status": "error", "output": <combined stdout+stderr>} when execution exits with a non-zero code.
+                - {"status": "blocked", "error": "Blocked token: <token>"} when the code contains a disallowed token.
+                - {"status": "timeout", "error": "Tool execution timed out"} when execution exceeds the configured timeout.
+                - Any dict returned by the remote sandbox service when a remote sandbox URL is configured.
+        """
         if settings.TOOL_SANDBOX_URL:
             return self._run_remote(code)
         for bad in BLOCKLIST:
@@ -45,6 +67,15 @@ class ToolSandbox:
                 return {"status": "timeout", "error": "Tool execution timed out"}
 
     def _run_remote(self, code: str) -> Dict:
+        """
+        Send the provided Python source code to the configured remote sandbox and return the sandbox's response.
+        
+        Parameters:
+            code (str): Python source code to execute in the remote sandbox.
+        
+        Returns:
+            dict: Execution result returned by the sandbox. On success this is the sandbox-provided result dictionary; on failure returns a dictionary with "status": "error" and an "error" message describing the failure.
+        """
         try:
             res = httpx.post(
                 f"{settings.TOOL_SANDBOX_URL.rstrip('/')}/run",
