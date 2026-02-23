@@ -55,7 +55,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     Returns:
         JSONResponse: HTTP response with status code 500 and body {"detail": "Internal server error"}. If the request Origin is in the application's allowed origins, the response includes `Access-Control-Allow-Origin` and `Access-Control-Allow-Credentials` headers.
     """
-    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path, exc_info=exc)
     origin = request.headers.get("origin", "")
     headers = {}
     if origin in allow_origins:
