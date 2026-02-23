@@ -328,7 +328,7 @@ class IdentityEngine:
                         self.open_loops.replace(user_id, identity_id, merged.get("open_loops", []))
                         self.patterns.replace(user_id, identity_id, merged.get("patterns", []))
                         self.emotions.replace(user_id, identity_id, merged.get("emotions", []))
-                        self.conflicts.insert(user_id, identity_id, merged.get("conflicts", []))
+                        self.conflicts.replace(user_id, identity_id, merged.get("conflicts", []))
                     return self._hydrate_identity(identity)
             except IntegrityError:
                 if attempts >= 3:
@@ -378,7 +378,7 @@ class IdentityEngine:
                     self.open_loops.replace(user_id, identity_id, merged.get("open_loops", []))
                     self.patterns.replace(user_id, identity_id, merged.get("patterns", []))
                     self.emotions.replace(user_id, identity_id, merged.get("emotions", []))
-                    self.conflicts.insert(user_id, identity_id, merged.get("conflicts", []))
+                    self.conflicts.replace(user_id, identity_id, merged.get("conflicts", []))
                 return self._hydrate_identity(identity)
             except Exception as exc:
                 message = str(exc).lower()
