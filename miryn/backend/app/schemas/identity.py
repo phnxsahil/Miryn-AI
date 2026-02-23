@@ -1,12 +1,12 @@
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class IdentityBelief(BaseModel):
     topic: str
     belief: str
     confidence: float = 0.5
-    evidence: Dict[str, Any] = {}
+    evidence: Dict[str, Any] = Field(default_factory=dict)
 
 
 class IdentityOpenLoop(BaseModel):
@@ -19,15 +19,15 @@ class IdentityOpenLoop(BaseModel):
 class IdentityPattern(BaseModel):
     pattern_type: str
     description: str
-    signals: Dict[str, Any] = {}
+    signals: Dict[str, Any] = Field(default_factory=dict)
     confidence: float = 0.5
 
 
 class IdentityEmotion(BaseModel):
     primary_emotion: str
     intensity: float = 0.5
-    secondary_emotions: List[str] = []
-    context: Dict[str, Any] = {}
+    secondary_emotions: List[str] = Field(default_factory=list)
+    context: Dict[str, Any] = Field(default_factory=dict)
 
 
 class IdentityConflict(BaseModel):
@@ -43,13 +43,13 @@ class IdentityOut(BaseModel):
     user_id: str
     version: int
     state: str
-    traits: Dict[str, Any] = {}
-    values: Dict[str, Any] = {}
-    beliefs: List[IdentityBelief] = []
-    open_loops: List[IdentityOpenLoop] = []
-    patterns: List[IdentityPattern] = []
-    emotions: List[IdentityEmotion] = []
-    conflicts: List[IdentityConflict] = []
+    traits: Dict[str, Any] = Field(default_factory=dict)
+    values: Dict[str, Any] = Field(default_factory=dict)
+    beliefs: List[IdentityBelief] = Field(default_factory=list)
+    open_loops: List[IdentityOpenLoop] = Field(default_factory=list)
+    patterns: List[IdentityPattern] = Field(default_factory=list)
+    emotions: List[IdentityEmotion] = Field(default_factory=list)
+    conflicts: List[IdentityConflict] = Field(default_factory=list)
 
 
 class IdentityUpdate(BaseModel):
