@@ -152,8 +152,8 @@ export default function IdentityDashboard() {
           <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
             <div className="text-xs uppercase tracking-[0.3em] text-secondary">Beliefs</div>
             <div className="mt-4 space-y-4">
-              {identity.beliefs.length === 0 && <div className="text-secondary">No beliefs yet.</div>}
-              {identity.beliefs.map((belief, idx) => (
+              {(identity.beliefs?.length ?? 0) === 0 && <div className="text-secondary">No beliefs yet.</div>}
+              {(identity.beliefs ?? []).map((belief, idx) => (
                 <div key={`belief-${idx}`} className="space-y-2">
                   <div className="text-sm text-white">{belief.topic}</div>
                   <div className="text-xs text-secondary">{belief.belief}</div>
@@ -166,8 +166,8 @@ export default function IdentityDashboard() {
           <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
             <div className="text-xs uppercase tracking-[0.3em] text-secondary">Open Loops</div>
             <div className="mt-4 space-y-4">
-              {identity.open_loops.length === 0 && <div className="text-secondary">No open loops yet.</div>}
-              {identity.open_loops.map((loop, idx) => (
+              {(identity.open_loops?.length ?? 0) === 0 && <div className="text-secondary">No open loops yet.</div>}
+              {(identity.open_loops ?? []).map((loop, idx) => (
                 <div key={`loop-${idx}`} className="flex items-start justify-between gap-4">
                   <div>
                     <div className="text-sm text-white">{loop.topic}</div>
@@ -184,8 +184,8 @@ export default function IdentityDashboard() {
           <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
             <div className="text-xs uppercase tracking-[0.3em] text-secondary">Patterns</div>
             <div className="mt-4 space-y-3">
-              {identity.patterns.length === 0 && <div className="text-secondary">No patterns yet.</div>}
-              {identity.patterns.map((pattern, idx) => (
+              {(identity.patterns?.length ?? 0) === 0 && <div className="text-secondary">No patterns yet.</div>}
+              {(identity.patterns ?? []).map((pattern, idx) => (
                 <div key={`pattern-${idx}`} className="space-y-1">
                   <div className="text-sm text-white">{pattern.pattern_type}</div>
                   <div className="text-xs text-secondary">{pattern.description}</div>
@@ -198,8 +198,8 @@ export default function IdentityDashboard() {
           <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
             <div className="text-xs uppercase tracking-[0.3em] text-secondary">Emotions</div>
             <div className="mt-4 space-y-3">
-              {identity.emotions.length === 0 && <div className="text-secondary">No emotions logged yet.</div>}
-              {identity.emotions.map((emotion, idx) => (
+              {(identity.emotions?.length ?? 0) === 0 && <div className="text-secondary">No emotions logged yet.</div>}
+              {(identity.emotions ?? []).map((emotion, idx) => (
                 <div key={`emotion-${idx}`} className="space-y-1">
                   <div className="text-sm text-white">{emotion.primary_emotion}</div>
                   <div className="text-xs text-secondary">
@@ -214,8 +214,8 @@ export default function IdentityDashboard() {
           <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
             <div className="text-xs uppercase tracking-[0.3em] text-secondary">Conflicts</div>
             <div className="mt-4 space-y-3">
-              {identity.conflicts.length === 0 && <div className="text-secondary">No conflicts detected.</div>}
-              {identity.conflicts.map((conflict, idx) => (
+              {(identity.conflicts?.length ?? 0) === 0 && <div className="text-secondary">No conflicts detected.</div>}
+              {(identity.conflicts ?? []).map((conflict, idx) => (
                 <div key={`conflict-${idx}`} className="space-y-1">
                   <div className="text-xs text-white">{conflict.statement}</div>
                   <div className="text-xs text-amber-200">vs {conflict.conflict_with}</div>
