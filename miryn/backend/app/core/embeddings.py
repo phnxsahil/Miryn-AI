@@ -10,6 +10,8 @@ class EmbeddingService:
     Embeddings with Gemini-backed vectors, with a deterministic hash fallback.
     """
 
+    _INIT_FAILED = object()  # sentinel for caching failed init
+
     def __init__(self, dim: int = 384):
         """
         Initialize the EmbeddingService with a target embedding dimension and logger, and prepare the internal Gemini client placeholder.
@@ -25,25 +27,28 @@ class EmbeddingService:
     def _ensure_gemini(self):
         """
         Ensure and return a cached Gemini client configured with the API key, or None if unavailable.
-        
+
         Attempts to import and configure the Google Gemini (google.generativeai) client using settings.GEMINI_API_KEY, caches the client on success, and logs a warning on failure.
-        
+
         Returns:
             genai or None: The configured Gemini client module if initialized, otherwise `None`.
         """
+        if self._gemini is self._INIT_FAILED:
+            return None
         if self._gemini is not None:
             return self._gemini
         try:
-            import google.generativeai as genai
+            from google import genai
 
             key = settings.GEMINI_API_KEY
             if not key:
+                self._gemini = self._INIT_FAILED
                 return None
-            genai.configure(api_key=key)
-            self._gemini = genai
+            self._gemini = genai.Client(api_key=key)
             return self._gemini
         except Exception as exc:
             self.logger.warning("Failed to init Gemini embeddings: %s", exc)
+            self._gemini = self._INIT_FAILED
             return None
 
     def _hash_embed(self, text: str) -> List[float]:
@@ -101,15 +106,15 @@ class EmbeddingService:
     def embed(self, text: str) -> List[float]:
         """
         Produce an embedding vector for the input text using Gemini when available, otherwise fall back to a deterministic hash-based embedding.
-        
+
         Parameters:
             text (str): The input text to embed.
-        
+
         Returns:
             List[float]: An embedding vector of length equal to the service's configured dimension.
         """
-        gemini = self._ensure_gemini()
-        if gemini:
+        client = self._ensure_gemini()
+        if client:
             try:
                 model = settings.GEMINI_EMBEDDING_MODEL
                 candidates = [
@@ -121,12 +126,11 @@ class EmbeddingService:
                 last_error = None
                 for m in candidates:
                     try:
-                        res = gemini.embed_content(
+                        res = client.models.embed_content(
                             model=m,
-                            content=text,
-                            task_type="retrieval_document",
+                            contents=text,
                         )
-                        embedding = res.get("embedding") if isinstance(res, dict) else None
+                        embedding = res.embeddings[0].values if res.embeddings else None
                         if embedding:
                             return self._compress(list(embedding))
                     except Exception as exc:
