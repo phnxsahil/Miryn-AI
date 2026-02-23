@@ -98,19 +98,22 @@ class ConversationOrchestrator:
 
         conversation_data = {"user": message, "assistant": response}
         insights: Dict = {}
-        try:
-            insights = await self.reflection.analyze_conversation(
-                user_id=user_id,
-                conversation=conversation_data,
-            )
-        except Exception:
-            self.logger.exception("Reflection analysis failed for user %s", user_id)
 
+        # Queue reflection asynchronously via Celery instead of running inline
+        # to avoid duplicate LLM calls and cost.
         try:
             analyze_reflection.delay(user_id, conversation_data)
             publish_event(user_id, {"type": "reflection.queued"})
         except Exception:
             self.logger.exception("Failed to queue reflection task for user %s", user_id)
+            # Fallback: run reflection synchronously if Celery is unavailable
+            try:
+                insights = await self.reflection.analyze_conversation(
+                    user_id=user_id,
+                    conversation=conversation_data,
+                )
+            except Exception:
+                self.logger.exception("Reflection analysis fallback failed for user %s", user_id)
 
         return {
             "response": response,
