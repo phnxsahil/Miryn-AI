@@ -138,6 +138,8 @@ class EmbeddingService:
                         continue
                 if last_error:
                     self.logger.warning("Gemini embedding failed, fallback to hash: %s", last_error)
+                else:
+                    self.logger.warning("Gemini embedding returned empty results for all candidates, fallback to hash")
             except Exception as exc:
                 self.logger.warning("Gemini embedding error, fallback to hash: %s", exc)
         return self._hash_embed(text)
