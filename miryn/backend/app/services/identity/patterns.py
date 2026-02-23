@@ -34,7 +34,14 @@ class PatternStore:
                     ),
                     {"user_id": user_id, "identity_id": identity_id},
                 )
-                return [dict(row) for row in result.mappings().all()]
+                rows = [dict(row) for row in result.mappings().all()]
+                for row in rows:
+                    if isinstance(row.get("signals"), str):
+                        try:
+                            row["signals"] = json.loads(row["signals"])
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                return rows
 
         if not self.supabase:
             return []
