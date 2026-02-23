@@ -1,9 +1,12 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import logging
 from app.config import settings
 from app.api import auth, chat, identity, onboarding, llm, notifications, tools
 from app.core.rate_limit import RateLimitMiddleware
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Miryn API",
@@ -44,14 +47,15 @@ app.include_router(tools.router)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     """
     Handle uncaught exceptions by returning a 500 JSON response and preserve CORS headers when the request origin is allowed.
-    
+
     Parameters:
         request (Request): The incoming HTTP request; its Origin header is inspected to determine CORS headers.
         exc (Exception): The exception instance that was raised.
-    
+
     Returns:
         JSONResponse: HTTP response with status code 500 and body {"detail": "Internal server error"}. If the request Origin is in the application's allowed origins, the response includes `Access-Control-Allow-Origin` and `Access-Control-Allow-Credentials` headers.
     """
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
     origin = request.headers.get("origin", "")
     headers = {}
     if origin in allow_origins:
