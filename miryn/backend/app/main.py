@@ -1,7 +1,8 @@
-﻿from fastapi import FastAPI
+﻿from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.config import settings
-from app.api import auth, chat, identity, onboarding, llm
+from app.api import auth, chat, identity, onboarding, llm, notifications, tools
 from app.core.rate_limit import RateLimitMiddleware
 
 app = FastAPI(
@@ -20,6 +21,8 @@ allow_origins.extend([
 ])
 allow_origins = list(dict.fromkeys(allow_origins))
 
+app.add_middleware(RateLimitMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
@@ -28,13 +31,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(RateLimitMiddleware)
-
 app.include_router(auth.router)
 app.include_router(chat.router)
 app.include_router(identity.router)
 app.include_router(onboarding.router)
 app.include_router(llm.router)
+app.include_router(notifications.router)
+app.include_router(tools.router)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Ensure CORS headers are present even on unhandled 500 errors."""
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin in allow_origins:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+        headers=headers,
+    )
 
 
 @app.get("/")
