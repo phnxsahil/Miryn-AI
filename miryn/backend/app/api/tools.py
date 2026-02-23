@@ -77,6 +77,8 @@ async def generate_tool(
                 },
             ).mappings().first()
             session.commit()
+        if result is None:
+            raise HTTPException(status_code=500, detail="Failed to create tool run")
         log_event("tool.generate", user_id=user_id, metadata={"tool_id": str(result["id"])})
         return dict(result)
 
