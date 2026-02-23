@@ -5,11 +5,23 @@ from contextlib import contextmanager
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from app.core.database import get_db, has_sql, get_sql_session
+from app.services.identity import (
+    BeliefStore,
+    OpenLoopStore,
+    PatternStore,
+    EmotionStore,
+    ConflictStore,
+)
 
 
 class IdentityEngine:
     def __init__(self):
         self.supabase = get_db() if not has_sql() else None
+        self.beliefs = BeliefStore()
+        self.open_loops = OpenLoopStore()
+        self.patterns = PatternStore()
+        self.emotions = EmotionStore()
+        self.conflicts = ConflictStore()
 
     def get_identity(self, user_id: str, sql_session: Optional[Any] = None) -> Dict:
         if has_sql():
@@ -27,7 +39,7 @@ class IdentityEngine:
                 ).mappings().first()
 
             if result:
-                return self._deserialize_identity(dict(result))
+                return self._hydrate_identity(dict(result))
 
             return self._create_initial_identity(user_id, sql_session=sql_session)
 
@@ -44,7 +56,7 @@ class IdentityEngine:
         )
 
         if response.data:
-            return self._deserialize_identity(response.data[0])
+            return self._hydrate_identity(response.data[0])
 
         return self._create_initial_identity(user_id)
 
@@ -57,6 +69,9 @@ class IdentityEngine:
             "values": {},
             "beliefs": [],
             "open_loops": [],
+            "patterns": [],
+            "emotions": [],
+            "conflicts": [],
         }
         if has_sql():
             with self._session_scope(sql_session) as session:
@@ -78,13 +93,13 @@ class IdentityEngine:
                         "open_loops": json.dumps(identity["open_loops"]),
                     },
                 ).mappings().first()
-                return self._deserialize_identity(dict(result))
+                return self._hydrate_identity(dict(result))
 
         if not self.supabase:
             raise RuntimeError("Supabase client is not configured")
 
         response = self.supabase.table("identities").insert(identity).execute()
-        return self._deserialize_identity(response.data[0])
+        return self._hydrate_identity(response.data[0])
 
     def update_identity(self, user_id: str, updates: Dict, sql_session: Optional[Any] = None) -> Dict:
         current = self.get_identity(user_id, sql_session=sql_session)
@@ -140,11 +155,24 @@ class IdentityEngine:
         _ = self.get_identity(user_id)
         return []
 
+    def add_conflicts(self, user_id: str, conflicts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        if not conflicts:
+            return []
+        identity = self.get_identity(user_id)
+        identity_id = identity.get("id")
+        if not identity_id:
+            return []
+        self.conflicts.insert(user_id, identity_id, conflicts)
+        return conflicts
+
     def _merge_identity(self, current: Dict, updates: Dict) -> Dict:
         traits = {**self._ensure_dict(current.get("traits")), **self._ensure_dict(updates.get("traits"))}
         values = {**self._ensure_dict(current.get("values")), **self._ensure_dict(updates.get("values"))}
         beliefs = list(self._ensure_list(updates.get("beliefs", current.get("beliefs", []))))
         open_loops = list(self._ensure_list(updates.get("open_loops", current.get("open_loops", []))))
+        patterns = list(self._ensure_list(updates.get("patterns", current.get("patterns", []))))
+        emotions = list(self._ensure_list(updates.get("emotions", current.get("emotions", []))))
+        conflicts = list(self._ensure_list(updates.get("conflicts", current.get("conflicts", []))))
 
         return {
             "state": updates.get("state", current.get("state")),
@@ -152,6 +180,9 @@ class IdentityEngine:
             "values": values,
             "beliefs": beliefs,
             "open_loops": open_loops,
+            "patterns": patterns,
+            "emotions": emotions,
+            "conflicts": conflicts,
             "base_version": current.get("version", 0),
         }
 
@@ -193,7 +224,15 @@ class IdentityEngine:
                 with self._session_scope(sql_session) as session:
                     result = session.execute(stmt, payload).mappings().first()
                 if result:
-                    return self._deserialize_identity(dict(result))
+                    identity = dict(result)
+                    identity_id = identity.get("id")
+                    if identity_id:
+                        self.beliefs.replace(user_id, identity_id, merged.get("beliefs", []))
+                        self.open_loops.replace(user_id, identity_id, merged.get("open_loops", []))
+                        self.patterns.replace(user_id, identity_id, merged.get("patterns", []))
+                        self.emotions.replace(user_id, identity_id, merged.get("emotions", []))
+                        self.conflicts.insert(user_id, identity_id, merged.get("conflicts", []))
+                    return self._hydrate_identity(identity)
             except IntegrityError:
                 if attempts >= 3:
                     raise
@@ -221,7 +260,15 @@ class IdentityEngine:
                 response = self.supabase.table("identities").insert(payload).execute()
                 if not response.data:
                     raise RuntimeError("Supabase response missing identity data")
-                return self._deserialize_identity(response.data[0])
+                identity = response.data[0]
+                identity_id = identity.get("id")
+                if identity_id:
+                    self.beliefs.replace(user_id, identity_id, merged.get("beliefs", []))
+                    self.open_loops.replace(user_id, identity_id, merged.get("open_loops", []))
+                    self.patterns.replace(user_id, identity_id, merged.get("patterns", []))
+                    self.emotions.replace(user_id, identity_id, merged.get("emotions", []))
+                    self.conflicts.insert(user_id, identity_id, merged.get("conflicts", []))
+                return self._hydrate_identity(identity)
             except Exception as exc:
                 message = str(exc).lower()
                 if "duplicate" not in message or attempts >= 3:
@@ -260,6 +307,21 @@ class IdentityEngine:
         identity["values"] = self._ensure_dict(identity.get("values"))
         identity["beliefs"] = self._ensure_list(identity.get("beliefs"))
         identity["open_loops"] = self._ensure_list(identity.get("open_loops"))
+        identity["patterns"] = self._ensure_list(identity.get("patterns", []))
+        identity["emotions"] = self._ensure_list(identity.get("emotions", []))
+        identity["conflicts"] = self._ensure_list(identity.get("conflicts", []))
+        return identity
+
+    def _hydrate_identity(self, identity: Dict) -> Dict:
+        identity = self._deserialize_identity(identity)
+        identity_id = identity.get("id")
+        if not identity_id:
+            return identity
+        identity["beliefs"] = self.beliefs.load(identity["user_id"], identity_id)
+        identity["open_loops"] = self.open_loops.load(identity["user_id"], identity_id)
+        identity["patterns"] = self.patterns.load(identity["user_id"], identity_id)
+        identity["emotions"] = self.emotions.load(identity["user_id"], identity_id)
+        identity["conflicts"] = self.conflicts.load(identity["user_id"], identity_id)
         return identity
 
     @contextmanager
