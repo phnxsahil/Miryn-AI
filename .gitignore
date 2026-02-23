@@ -36,12 +36,18 @@ __pycache__/
 *$py.class
 *.so
 .Python
+.venv/
+venv/
+celerybeat-schedule.*
 
 # OS / editor noise
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+
+# MCP / Continue local configs
+.continue/
 
 # Allow env examples
 !.env.example
