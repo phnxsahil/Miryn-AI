@@ -10,4 +10,4 @@ def test_tool_sandbox_blocks_dangerous_tokens():
 def test_tool_sandbox_runs_safe_code():
     sandbox = ToolSandbox()
     result = sandbox.run_python("print('ok')")
-    assert result["status"] in ("ok", "error")
+    assert result["status"] == "ok", f"Expected 'ok' but got {result}"
