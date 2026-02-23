@@ -1,4 +1,5 @@
 from typing import Dict
+import asyncio
 import logging
 from app.services.identity_engine import IdentityEngine
 from app.services.memory_layer import MemoryLayer
@@ -59,7 +60,7 @@ class ConversationOrchestrator:
             )
             if conflicts:
                 self.identity.add_conflicts(user_id, conflicts)
-                publish_event(user_id, {"type": "identity.conflict", "payload": conflicts})
+                await asyncio.to_thread(publish_event, user_id, {"type": "identity.conflict", "payload": conflicts})
         except Exception:
             self.logger.exception("Conflict detection failed for user %s", user_id)
 
@@ -102,8 +103,8 @@ class ConversationOrchestrator:
         # Queue reflection asynchronously via Celery instead of running inline
         # to avoid duplicate LLM calls and cost.
         try:
-            analyze_reflection.delay(user_id, conversation_data)
-            publish_event(user_id, {"type": "reflection.queued"})
+            await asyncio.to_thread(analyze_reflection.delay, user_id, conversation_data)
+            await asyncio.to_thread(publish_event, user_id, {"type": "reflection.queued"})
         except Exception:
             self.logger.exception("Failed to queue reflection task for user %s", user_id)
             # Fallback: run reflection synchronously if Celery is unavailable
