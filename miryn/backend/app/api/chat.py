@@ -1,7 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
+from fastapi.responses import StreamingResponse
+import asyncio
+import json
 from sqlalchemy import text
 from app.core.database import get_db, has_sql, get_sql_session
-from app.core.security import get_current_user_id
+from app.core.security import get_current_user_id, get_user_id_from_token
+from app.core.cache import drain_events
+from app.core.encryption import decrypt_text
 from app.services.orchestrator import ConversationOrchestrator
 from app.schemas.chat import ChatRequest, ChatResponse
 
@@ -93,6 +98,7 @@ async def send_message(
         response=result["response"],
         conversation_id=conversation_id,
         insights=result.get("insights"),
+        conflicts=result.get("conflicts"),
     )
 
 
@@ -114,7 +120,11 @@ def get_chat_history(
                 ),
                 {"conversation_id": conversation_id, "user_id": user_id},
             )
-            return [dict(row) for row in result.mappings().all()]
+            rows = [dict(row) for row in result.mappings().all()]
+            for row in rows:
+                if not row.get("content"):
+                    row["content"] = decrypt_text(row.get("content_encrypted"))
+            return rows
 
     db = get_db()
     response = (
@@ -126,4 +136,35 @@ def get_chat_history(
         .execute()
     )
 
-    return response.data
+    data = response.data or []
+    for row in data:
+        if not row.get("content"):
+            row["content"] = decrypt_text(row.get("content_encrypted"))
+    return data
+
+
+@router.get("/events/stream")
+async def stream_events(request: Request, authorization: str | None = Header(default=None)):
+    token: str | None = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "", 1).strip()
+    else:
+        token = request.query_params.get("token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing authentication token")
+
+    user_id = get_user_id_from_token(token)
+    async def event_stream():
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                events = drain_events(user_id, limit=50)
+                for event in events:
+                    payload = json.dumps(event)
+                    yield f"data: {payload}\n\n"
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            return
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
