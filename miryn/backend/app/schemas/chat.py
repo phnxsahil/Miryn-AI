@@ -13,6 +13,7 @@ class ChatResponse(BaseModel):
     response: str
     conversation_id: str
     insights: Optional[dict] = None
+    conflicts: Optional[list] = None
 
 
 class MessageOut(BaseModel):
