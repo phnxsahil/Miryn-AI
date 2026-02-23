@@ -27,6 +27,24 @@ class ReflectionEngine:
             "insights": insights,
         }
 
+    async def detect_contradictions(self, beliefs: List[Dict], new_statement: str) -> List[Dict]:
+        if not beliefs or not new_statement:
+            return []
+        prompt = (
+            "Given the user's existing beliefs and a new statement, detect contradictions. "
+            "Return a JSON array of objects with: statement, conflict_with, severity (0-1). "
+            "If no conflicts, return an empty array.\n\n"
+            f"Beliefs: {beliefs}\n\nNew statement: {new_statement}"
+        )
+        response = await self.llm.generate(prompt, max_tokens=250)
+        try:
+            parsed = json.loads(response)
+            if isinstance(parsed, list):
+                return parsed
+        except Exception:
+            return []
+        return []
+
     async def _extract_entities(self, conversation: Dict) -> List[str]:
         payload = self._conversation_payload(conversation)
         prompt = (
@@ -83,10 +101,11 @@ class ReflectionEngine:
                         SELECT metadata, created_at FROM messages
                         WHERE user_id = :user_id
                           AND role = 'user'
+                          AND (delete_at IS NULL OR delete_at > :now)
                           AND created_at >= :cutoff
                         """
                     ),
-                    {"user_id": user_id, "cutoff": cutoff},
+                    {"user_id": user_id, "cutoff": cutoff, "now": datetime.utcnow()},
                 )
                 history = [dict(row) for row in result.mappings().all()]
         else:
@@ -96,6 +115,7 @@ class ReflectionEngine:
                 .eq("user_id", user_id)
                 .eq("role", "user")
                 .gte("created_at", cutoff.isoformat())
+                .or_(f"delete_at.is.null,delete_at.gt.{datetime.utcnow().isoformat()}")
                 .execute()
             )
             history = response.data or []
