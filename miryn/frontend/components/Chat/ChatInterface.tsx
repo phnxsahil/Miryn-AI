@@ -62,6 +62,10 @@ export default function ChatInterface() {
       }
     };
 
+    source.onerror = () => {
+      source.close();
+    };
+
     return () => source.close();
   }, []);
 
