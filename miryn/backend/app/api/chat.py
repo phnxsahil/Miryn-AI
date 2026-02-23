@@ -190,7 +190,11 @@ async def stream_events(request: Request, authorization: str | None = Header(def
     if not token:
         raise HTTPException(status_code=401, detail="Missing authentication token")
 
-    user_id = get_user_id_from_token(token)
+    try:
+        user_id = get_user_id_from_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
     async def event_stream():
         """
         Stream server-sent events (SSE) for the authenticated user by yielding JSON-encoded event payloads in SSE format.
@@ -204,7 +208,7 @@ async def stream_events(request: Request, authorization: str | None = Header(def
             while True:
                 if await request.is_disconnected():
                     break
-                events = drain_events(user_id, limit=50)
+                events = await asyncio.to_thread(drain_events, user_id, 50)
                 for event in events:
                     payload = json.dumps(event)
                     yield f"data: {payload}\n\n"
