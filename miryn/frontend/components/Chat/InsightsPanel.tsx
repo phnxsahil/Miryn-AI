@@ -2,17 +2,19 @@
 
 import type { ConversationInsights } from "@/lib/types";
 
-export default function InsightsPanel({ insights }: { insights: ConversationInsights | null }) {
-  if (!insights) {
-    return null;
-  }
-
-  const topics = insights.topics || [];
-  const entities = insights.entities || [];
-  const reflection = insights.insights?.trim();
-  const mood = insights.emotions?.primary_emotion;
-  const intensity = insights.emotions?.intensity;
-  const hasSupplemental = reflection || topics.length > 0 || entities.length > 0 || mood;
+export default function InsightsPanel({
+  insights,
+  conflicts,
+}: {
+  insights: ConversationInsights | null;
+  conflicts?: Array<{ statement: string; conflict_with: string; severity?: number }>;
+}) {
+  const topics = insights?.topics || [];
+  const entities = insights?.entities || [];
+  const reflection = insights?.insights?.trim();
+  const mood = insights?.emotions?.primary_emotion;
+  const intensity = insights?.emotions?.intensity;
+  const hasSupplemental = reflection || topics.length > 0 || entities.length > 0 || mood || (conflicts || []).length > 0;
 
   if (!hasSupplemental) {
     return null;
@@ -32,6 +34,20 @@ export default function InsightsPanel({ insights }: { insights: ConversationInsi
         )}
       </div>
       {reflection && <p className="text-white/80 leading-relaxed">{reflection}</p>}
+
+      {conflicts && conflicts.length > 0 && (
+        <div className="rounded border border-amber-500/30 bg-amber-500/10 p-3 text-amber-100">
+          <div className="text-xs uppercase tracking-[0.2em] text-amber-200">Possible contradictions</div>
+          <ul className="mt-2 space-y-1">
+            {conflicts.map((c, idx) => (
+              <li key={`conflict-${idx}`} className="text-xs leading-relaxed">
+                {c.statement} <span className="text-amber-300">vs</span> {c.conflict_with}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {topics.map((topic, index) => (
           <span
