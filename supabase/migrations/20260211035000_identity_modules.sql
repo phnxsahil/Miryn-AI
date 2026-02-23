@@ -60,7 +60,7 @@ CREATE INDEX IF NOT EXISTS identity_emotions_user_id_idx ON identity_emotions(us
 
 CREATE TABLE IF NOT EXISTS identity_conflicts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  identity_id UUID REFERENCES identities(id) ON DELETE CASCADE,
+  identity_id UUID NOT NULL REFERENCES identities(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   statement TEXT NOT NULL,
   conflict_with TEXT NOT NULL,
