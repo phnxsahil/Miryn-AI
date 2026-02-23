@@ -50,7 +50,10 @@ async def generate_tool(
     )
     response = await llm.generate(prompt, max_tokens=600)
     try:
-        proposal = json.loads(response)
+        parsed = json.loads(response)
+        if not isinstance(parsed, dict):
+            raise ValueError("LLM returned non-object JSON")
+        proposal = parsed
     except Exception:
         proposal = {"name": "generated_tool", "description": payload.intent, "code": response}
 
@@ -116,7 +119,13 @@ def list_pending(user_id: str = Depends(get_current_user_id)):
                 ),
                 {"user_id": user_id},
             )
-            return [dict(row) for row in rows.mappings().all()]
+            results = []
+            for row in rows.mappings().all():
+                d = dict(row)
+                if hasattr(d.get("created_at"), "isoformat"):
+                    d["created_at"] = d["created_at"].isoformat()
+                results.append(d)
+            return results
 
     db = get_db()
     response = (
