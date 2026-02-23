@@ -176,6 +176,8 @@ RETURNS TABLE (
   id uuid,
   content text,
   metadata jsonb,
+  content_encrypted text,
+  metadata_encrypted text,
   importance_score float,
   created_at timestamp,
   similarity float
@@ -191,6 +193,8 @@ BEGIN
     scored.id,
     scored.content,
     scored.metadata,
+    scored.content_encrypted,
+    scored.metadata_encrypted,
     scored.importance_score,
     scored.created_at,
     scored.similarity
@@ -199,6 +203,8 @@ BEGIN
       m.id,
       m.content,
       m.metadata,
+      m.content_encrypted,
+      m.metadata_encrypted,
       m.importance_score,
       m.created_at,
       1 - (m.embedding <=> query_embedding) AS similarity
