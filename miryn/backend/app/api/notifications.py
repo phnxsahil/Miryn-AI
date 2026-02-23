@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from datetime import datetime, timezone
 from sqlalchemy import text
 from app.core.database import get_db, has_sql, get_sql_session
 from app.core.security import get_current_user_id
@@ -73,5 +74,5 @@ def mark_read(notification_id: str, user_id: str = Depends(get_current_user_id))
         return {"status": "ok"}
 
     db = get_db()
-    db.table("notifications").update({"status": "read"}).eq("id", notification_id).eq("user_id", user_id).execute()
+    db.table("notifications").update({"status": "read", "read_at": datetime.now(timezone.utc).isoformat()}).eq("id", notification_id).eq("user_id", user_id).execute()
     return {"status": "ok"}
