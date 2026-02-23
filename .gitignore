@@ -49,6 +49,9 @@ Thumbs.db
 # MCP / Continue local configs
 .continue/
 
+# Supabase local state
+supabase/.temp/
+
 # Allow env examples
 !.env.example
 !**/.env.example
