@@ -32,6 +32,10 @@ def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> str:
     token = credentials.credentials
+    return _decode_token(token)
+
+
+def _decode_token(token: str) -> str:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: str = payload.get("sub")
@@ -48,3 +52,7 @@ def get_current_user_id(
             detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+def get_user_id_from_token(token: str) -> str:
+    return _decode_token(token)
