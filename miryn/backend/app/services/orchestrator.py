@@ -1,9 +1,11 @@
-﻿from typing import Dict
+from typing import Dict
 import logging
 from app.services.identity_engine import IdentityEngine
 from app.services.memory_layer import MemoryLayer
 from app.services.reflection_engine import ReflectionEngine
 from app.services.llm_service import LLMService
+from app.core.cache import publish_event
+from app.workers.reflection_worker import analyze_reflection
 
 
 class ConversationOrchestrator:
@@ -22,6 +24,7 @@ class ConversationOrchestrator:
             query=message,
             limit=5,
             strategy="hybrid",
+            conversation_id=conversation_id,
         )
 
         context = {
@@ -36,6 +39,18 @@ class ConversationOrchestrator:
             content=message,
             conversation_id=conversation_id,
         )
+
+        conflicts = []
+        try:
+            conflicts = await self.reflection.detect_contradictions(
+                identity.get("beliefs", []),
+                message,
+            )
+            if conflicts:
+                self.identity.add_conflicts(user_id, conflicts)
+                publish_event(user_id, {"type": "identity.conflict", "payload": conflicts})
+        except Exception:
+            self.logger.exception("Conflict detection failed for user %s", user_id)
 
         try:
             response = await self.llm.chat(
@@ -80,7 +95,14 @@ class ConversationOrchestrator:
         except Exception:
             self.logger.exception("Reflection analysis failed for user %s", user_id)
 
+        try:
+            analyze_reflection.delay(user_id, conversation_data)
+            publish_event(user_id, {"type": "reflection.queued"})
+        except Exception:
+            self.logger.exception("Failed to queue reflection task for user %s", user_id)
+
         return {
             "response": response,
             "insights": insights,
+            "conflicts": conflicts,
         }
