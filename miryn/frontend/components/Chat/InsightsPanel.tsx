@@ -2,6 +2,15 @@
 
 import type { ConversationInsights } from "@/lib/types";
 
+/**
+ * Render a supplemental insights panel showing reflection text, mood and intensity, possible contradictions, and topic/entity tags when data is available.
+ *
+ * The component reads these fields from `insights` when present: `topics`, `entities`, `insights` (reflection text), and `emotions.primary_emotion` / `emotions.intensity`.
+ *
+ * @param insights - Conversation insights object or `null`. Used to populate reflection, mood/intensity, topics, and entities.
+ * @param conflicts - Optional array of conflict objects each containing `statement`, `conflict_with`, and an optional `severity`; when non-empty, a "Possible contradictions" block is rendered.
+ * @returns The aside element containing supplemental insights, or `null` if no supplemental data is available.
+ */
 export default function InsightsPanel({
   insights,
   conflicts,

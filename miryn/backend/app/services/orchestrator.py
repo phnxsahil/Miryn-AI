@@ -17,6 +17,17 @@ class ConversationOrchestrator:
         self.logger = logging.getLogger(__name__)
 
     async def handle_message(self, user_id: str, message: str, conversation_id: str) -> Dict:
+        """
+        Process an incoming user message through identity, memory, LLM, and reflection pipelines and return the assistant response along with derived insights and any detected identity conflicts.
+        
+        The method will retrieve identity and contextual memories, persist the user message, attempt conflict detection against the user's beliefs (recording and emitting events for any conflicts), generate an assistant response via the LLM (persisting the assistant message), perform reflection analysis to produce insights, and enqueue a background reflection task. If the LLM generation fails, a fallback response is returned and an empty insights dictionary is provided.
+        
+        Returns:
+            result (Dict): A dictionary with keys:
+                - "response" (str): The assistant's reply, or a fallback message if LLM generation failed.
+                - "insights" (Dict): Reflection analysis results for the conversation (empty if analysis failed or LLM failed).
+                - "conflicts" (List): Any identity conflicts detected for the user's message (empty list if none).
+        """
         identity = self.identity.get_identity(user_id)
 
         memories = await self.memory.retrieve_context(

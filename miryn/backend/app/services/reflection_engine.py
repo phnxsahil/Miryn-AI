@@ -13,6 +13,21 @@ class ReflectionEngine:
         self.supabase = get_db() if not has_sql() else None
 
     async def analyze_conversation(self, user_id: str, conversation: Dict) -> Dict:
+        """
+        Orchestrates extraction of entities, emotions, topics, patterns, and a brief insight from a conversation for a given user.
+        
+        Parameters:
+            user_id (str): Identifier of the user whose history may be consulted when detecting patterns.
+            conversation (Dict): Conversation payload containing at least "user" and "assistant" text entries.
+        
+        Returns:
+            Dict: Aggregated analysis with keys:
+                - entities (List[str]): Extracted important entities.
+                - emotions (Dict): Emotion analysis (e.g., primary_emotion, intensity, secondary_emotions).
+                - topics (List[str]): Identified conversation topics.
+                - patterns (Dict): Detected topic co-occurrences and temporal emotional patterns from recent user history.
+                - insights (str): Short empathetic reflection generated from the detected patterns.
+        """
         entities = await self._extract_entities(conversation)
         emotions = await self._extract_emotions(conversation)
         topics = await self._extract_topics(conversation)
@@ -28,6 +43,22 @@ class ReflectionEngine:
         }
 
     async def detect_contradictions(self, beliefs: List[Dict], new_statement: str) -> List[Dict]:
+        """
+        Detect contradictions between a set of existing beliefs and a new statement.
+        
+        Analyzes the provided beliefs and the new statement and returns identified conflicts as structured entries describing the conflicting statement, which existing belief it conflicts with, and a severity score.
+        
+        Parameters:
+            beliefs (List[Dict]): Existing user beliefs; each entry should be a mapping representing a belief.
+            new_statement (str): The new statement to check for contradictions.
+        
+        Returns:
+            List[Dict]: A list of conflict objects. Each object contains:
+                - `statement`: the new or existing statement involved in the conflict,
+                - `conflict_with`: the belief from `beliefs` that conflicts with `statement`,
+                - `severity`: a number between 0 and 1 indicating conflict severity.
+            Returns an empty list if no contradictions are found or inputs are missing/invalid.
+        """
         if not beliefs or not new_statement:
             return []
         prompt = (
@@ -46,6 +77,15 @@ class ReflectionEngine:
         return []
 
     async def _extract_entities(self, conversation: Dict) -> List[str]:
+        """
+        Extracts key entities (people, places, organizations, concepts) mentioned in a conversation.
+        
+        Parameters:
+            conversation (Dict): Conversation data (expected to include 'user' and 'assistant' text).
+        
+        Returns:
+            List[str]: A list of entity strings. Returns an empty list if extraction fails or the model output cannot be parsed as JSON.
+        """
         payload = self._conversation_payload(conversation)
         prompt = (
             "You will be given a JSON payload describing a conversation. "
@@ -91,6 +131,26 @@ class ReflectionEngine:
             return []
 
     async def _detect_patterns(self, user_id: str, current_topics: List[str], current_emotions: Dict) -> Dict:
+        """
+        Detects topic co-occurrences and temporal emotional patterns from a user's recent message history.
+        
+        Parameters:
+            user_id (str): Identifier of the user whose message history will be analyzed.
+            current_topics (List[str]): Current conversation topics to compare against historical topic pairs.
+            current_emotions (Dict): Current conversation emotion summary (used together with historical emotions to derive temporal patterns).
+        
+        Returns:
+            Dict: A dictionary with two keys:
+                - "topic_co_occurrences" (List[Dict]): Detected topic pair patterns from the last 30 days. Each entry contains:
+                    - "topics" (List[str]): The two topics (sorted).
+                    - "frequency" (int): How many times the pair was observed historically.
+                    - "pattern" (str): A short human-readable description of the co-occurrence.
+                - "temporal_emotional_patterns" (List[Dict]): Detected weekday-based emotional patterns. Each entry contains:
+                    - "day" (str): Weekday name (e.g., "Monday").
+                    - "emotion" (str): The most common emotion for that day.
+                    - "frequency" (int): How many times that emotion occurred on that weekday.
+                    - "pattern" (str): A short human-readable description of the temporal emotion pattern.
+        """
         cutoff = datetime.utcnow() - timedelta(days=30)
 
         if has_sql():
