@@ -41,7 +41,15 @@ class EmotionStore:
                     ),
                     {"user_id": user_id, "identity_id": identity_id},
                 )
-                return [dict(row) for row in result.mappings().all()]
+                rows = [dict(row) for row in result.mappings().all()]
+                for row in rows:
+                    for field in ("secondary_emotions", "context"):
+                        if isinstance(row.get(field), str):
+                            try:
+                                row[field] = json.loads(row[field])
+                            except (json.JSONDecodeError, TypeError):
+                                pass
+                return rows
 
         if not self.supabase:
             return []
