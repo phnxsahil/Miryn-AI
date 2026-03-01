@@ -46,6 +46,25 @@ def complete_onboarding(
     presets = _load_presets()
     preset = _select_preset(presets, payload.preset)
 
+    initial_beliefs = []
+    if payload.seed_belief:
+        initial_beliefs.append({
+            "topic": "core_belief",
+            "belief": payload.seed_belief,
+            "confidence": 0.8,
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+
+    updates = {
+        "state": "active",
+        "traits": preset.get("initial_traits", {}),
+        "values": preset.get("initial_values", {}),
+        "beliefs": initial_beliefs,
+        "memory_weights": preset.get("memory_weights", {}),
+        "preset": payload.preset or "companion",
+    }
+
     if has_sql():
         with get_sql_session() as session:
             if responses:
@@ -62,25 +81,10 @@ def complete_onboarding(
 
             updated = identity_engine.update_identity(
                 user_id,
-                {
-                    "state": "active",
-                    "traits": preset.get("initial_traits", {}),
-                    "values": preset.get("initial_values", {}),
-                    "memory_weights": preset.get("memory_weights", {}),
-                    "preset": payload.preset or "companion",
-                },
+                updates,
                 sql_session=session,
             )
-
-        # record_belief must run AFTER the session commits to avoid a deadlock
-        # (it opens its own session internally and would block on the uncommitted row)
-        if payload.seed_belief:
-            identity_engine.record_belief(
-                user_id,
-                topic="core_belief",
-                belief=payload.seed_belief,
-                confidence=0.8,
-            )
+            session.commit()
 
         return {"status": "ok", "identity": updated}
 
@@ -96,23 +100,7 @@ def complete_onboarding(
             resp = db.table("onboarding_responses").insert(inserts).execute()
             inserted_ids = [row.get("id") for row in (resp.data or []) if row.get("id")]
 
-        updated = identity_engine.update_identity(
-            user_id,
-            {
-                "state": "active",
-                "traits": preset.get("initial_traits", {}),
-                "values": preset.get("initial_values", {}),
-                "memory_weights": preset.get("memory_weights", {}),
-                "preset": payload.preset or "companion",
-            },
-        )
-        if payload.seed_belief:
-            identity_engine.record_belief(
-                user_id,
-                topic="core_belief",
-                belief=payload.seed_belief,
-                confidence=0.8,
-            )
+        updated = identity_engine.update_identity(user_id, updates)
     except Exception:
         original_exc = sys.exc_info()
         if inserted_ids:

@@ -1,4 +1,4 @@
-﻿from typing import Optional
+﻿from typing import Optional, Any
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 import asyncio
@@ -252,6 +252,45 @@ class LLMService:
             return
 
         raise ValueError(f"Streaming not supported for provider: {self.provider}")
+
+    @staticmethod
+    def parse_json_response(response: str) -> Any:
+        """
+        Extract and parse a JSON object or array from a string that may contain Markdown code blocks.
+        """
+        if not response:
+            return None
+        
+        cleaned = response.strip()
+        
+        # Remove Markdown code blocks if present
+        if cleaned.startswith("```"):
+            # Find the first { or [
+            first_brace = cleaned.find("{")
+            first_bracket = cleaned.find("[")
+            start = -1
+            if first_brace != -1 and (first_bracket == -1 or first_brace < first_bracket):
+                start = first_brace
+            elif first_bracket != -1:
+                start = first_bracket
+            
+            if start != -1:
+                # Find the last } or ]
+                last_brace = cleaned.rfind("}")
+                last_bracket = cleaned.rfind("]")
+                end = -1
+                if last_brace != -1 and (last_bracket == -1 or last_brace > last_bracket):
+                    end = last_brace
+                elif last_bracket != -1:
+                    end = last_bracket
+                
+                if end != -1:
+                    cleaned = cleaned[start:end+1]
+
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            return None
 
     def _build_system_prompt(self, identity: dict) -> str:
         traits = identity.get("traits", {})

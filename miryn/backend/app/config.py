@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     # Encryption
     ENCRYPTION_KEY: Optional[str] = None
 
+    # Google OAuth
+    GOOGLE_CLIENT_ID: Optional[str] = None
+
     # Tool sandbox
     TOOL_SANDBOX_URL: Optional[str] = None
 

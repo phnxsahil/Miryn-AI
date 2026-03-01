@@ -245,6 +245,34 @@ async def stream_message(
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
+@router.get("/conversations")
+def list_conversations(user_id: str = Depends(get_current_user_id)):
+    if has_sql():
+        with get_sql_session() as session:
+            result = session.execute(
+                text(
+                    """
+                    SELECT id, title, created_at
+                    FROM conversations
+                    WHERE user_id = :user_id
+                    ORDER BY created_at DESC
+                    """
+                ),
+                {"user_id": user_id},
+            )
+            return [dict(row) for row in result.mappings().all()]
+
+    db = get_db()
+    response = (
+        db.table("conversations")
+        .select("id, title, created_at")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return response.data or []
+
+
 @router.get("/history")
 def get_chat_history(
     conversation_id: str,

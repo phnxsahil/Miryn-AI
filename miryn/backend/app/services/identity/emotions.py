@@ -1,5 +1,6 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import json
+from contextlib import contextmanager
 from sqlalchemy import text
 from app.core.database import get_db, has_sql, get_sql_session
 
@@ -13,22 +14,20 @@ class EmotionStore:
         """
         self.supabase = get_db() if not has_sql() else None
 
-    def load(self, user_id: str, identity_id: str) -> List[Dict[str, Any]]:
+    @contextmanager
+    def _session_scope(self, session: Optional[Any]):
+        if session is not None:
+            yield session
+        else:
+            with get_sql_session() as new_session:
+                yield new_session
+
+    def load(self, user_id: str, identity_id: str, sql_session: Optional[Any] = None) -> List[Dict[str, Any]]:
         """
         Load stored emotions for the specified user identity.
-        
-        Fetches emotion records from the configured storage backend and returns them ordered by creation time (oldest first).
-        
-        Returns:
-            A list of dictionaries, each containing:
-                - primary_emotion (str): The main emotion label.
-                - intensity (float): The intensity value for the primary emotion.
-                - secondary_emotions (list): A list of secondary emotion labels.
-                - context (dict): Arbitrary contextual data associated with the record.
-            Returns an empty list if no records are found or if no backend is available.
         """
         if has_sql():
-            with get_sql_session() as session:
+            with self._session_scope(sql_session) as session:
                 result = session.execute(
                     text(
                         """
@@ -64,23 +63,12 @@ class EmotionStore:
         )
         return response.data or []
 
-    def replace(self, user_id: str, identity_id: str, emotions: List[Dict[str, Any]]) -> None:
+    def replace(self, user_id: str, identity_id: str, emotions: List[Dict[str, Any]], sql_session: Optional[Any] = None) -> None:
         """
         Replace all stored emotions for the given user and identity with the provided list.
-        
-        Deletes any existing rows for the (user_id, identity_id) pair and inserts the provided emotions in their place. If `emotions` is empty the existing records are removed and nothing is inserted. If the SQL backend is used, `secondary_emotions` and `context` are JSON-serialized before insertion.
-        
-        Parameters:
-            user_id (str): ID of the user who owns the identity.
-            identity_id (str): ID of the identity whose emotions are being replaced.
-            emotions (List[Dict[str, Any]]): List of emotion objects to store. Each object may include:
-                - "primary_emotion" (str): Primary emotion (defaults to "").
-                - "intensity" (float): Emotion intensity (defaults to 0.5).
-                - "secondary_emotions" (List): List of secondary emotions (defaults to []).
-                - "context" (Dict): Arbitrary context data (defaults to {}).
         """
         if has_sql():
-            with get_sql_session() as session:
+            with self._session_scope(sql_session) as session:
                 session.execute(
                     text(
                         """
@@ -111,7 +99,8 @@ class EmotionStore:
                             "context": json.dumps(emotion.get("context", {})),
                         },
                     )
-                session.commit()
+                if sql_session is None:
+                    session.commit()
             return
 
         if not self.supabase:

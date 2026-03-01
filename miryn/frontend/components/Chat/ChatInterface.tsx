@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import type { Message, ConversationInsights, ToolRun, Notification } from "@/lib/types";
 import { getErrorMessage } from "@/lib/utils";
@@ -20,7 +21,9 @@ import NotificationsPanel from "./NotificationsPanel";
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const idFromUrl = searchParams.get("id");
+  const [conversationId, setConversationId] = useState<string | null>(idFromUrl);
   const [status, setStatus] = useState<string | null>(null);
   const [insights, setInsights] = useState<ConversationInsights | null>(null);
   const [conflicts, setConflicts] = useState<Array<{ statement: string; conflict_with: string; severity?: number }>>([]);
@@ -34,6 +37,28 @@ export default function ChatInterface() {
   useEffect(() => {
     api.loadToken();
   }, []);
+
+  // Handle URL change: load history or reset for new chat
+  useEffect(() => {
+    if (idFromUrl) {
+      setConversationId(idFromUrl);
+      setLoading(true);
+      api.getChatHistory(idFromUrl)
+        .then((history) => {
+          setMessages((history as Message[]) || []);
+          setLoading(false);
+        })
+        .catch((err) => {
+          setStatus(getErrorMessage(err, "Failed to load chat history"));
+          setLoading(false);
+        });
+    } else {
+      setConversationId(null);
+      setMessages([]);
+      setInsights(null);
+      setConflicts([]);
+    }
+  }, [idFromUrl]);
 
   useEffect(() => {
     api.listPendingTools().then((tools) => setPendingTools((tools as ToolRun[]) || [])).catch(() => null);

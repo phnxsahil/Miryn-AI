@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import ConversationList from "@/components/Chat/ConversationList";
 
 export default function AppLayout({
   children,
@@ -70,7 +71,25 @@ export default function AppLayout({
           >
             Memory
           </Link>
+          <Link 
+            className="block py-2 px-3 rounded-xl hover:bg-white/5 hover:text-white transition-colors" 
+            href="/settings"
+            onClick={closeMenu}
+          >
+            Settings
+          </Link>
         </nav>
+
+        {/* Recent Conversations */}
+        <div className="mt-8 overflow-y-auto">
+          <div className="px-3 text-[10px] uppercase tracking-[0.2em] text-secondary mb-4 flex items-center justify-between">
+            <span>Recent Chat</span>
+            <Link href="/chat" onClick={closeMenu} className="hover:text-white transition-colors">
+              <X size={12} className="rotate-45" />
+            </Link>
+          </div>
+          <ConversationList onItemClick={closeMenu} />
+        </div>
       </aside>
 
       {/* Overlay for mobile drawer */}

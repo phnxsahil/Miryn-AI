@@ -79,7 +79,21 @@ export default function OnboardingFlow() {
   };
 
   return (
-    <div className="max-w-4xl px-2">
+    <div className="max-w-4xl px-2 relative">
+      {isSubmitting && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-void/80 backdrop-blur-sm animate-in fade-in duration-500">
+          <div className="text-center space-y-6">
+            <div className="flex justify-center">
+              <div className="w-12 h-12 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-serif font-light text-white">Initializing your Miryn</h2>
+              <p className="text-sm text-secondary animate-pulse">Establishing core patterns and beliefs...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6 md:mb-10">
         <div className="mb-3 flex items-center justify-between text-[10px] md:text-xs uppercase tracking-[0.2em] text-secondary">
           <span>Step {step} of 5</span>

@@ -151,7 +151,24 @@ class ApiClient {
     });
   }
 
+  async deleteAccount() {
+    return this.request("/auth/account", {
+      method: "DELETE",
+    });
+  }
+
+  async logout() {
+    this.setToken(null);
+  }
+
+  // --- CHAT ---
+
+  async listConversations() {
+    return this.request("/chat/conversations") as Promise<any[]>;
+  }
+
   async sendMessage(message: string, conversationId?: string) {
+
     return this.request("/chat/", {
       method: "POST",
       body: JSON.stringify({ message, conversation_id: conversationId }),

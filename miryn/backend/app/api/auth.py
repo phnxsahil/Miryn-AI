@@ -5,12 +5,14 @@ from postgrest import APIError as PostgrestAPIError
 import logging
 import secrets
 from datetime import datetime
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 from app.core.database import get_db, has_sql, get_sql_session
 from app.core.security import get_password_hash, verify_password, create_access_token, get_current_user_id, get_user_id_from_token
 from app.core.cache import redis_client
 from app.core.audit import log_event
 from app.config import settings
-from app.schemas.auth import SignupRequest, LoginRequest, TokenResponse, UserOut, ForgotPasswordRequest, ResetPasswordRequest
+from app.schemas.auth import SignupRequest, LoginRequest, TokenResponse, UserOut, ForgotPasswordRequest, ResetPasswordRequest, GoogleLoginRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -147,6 +149,112 @@ def signup(payload: SignupRequest, request: Request):
 
     created = user.data[0]
     return {"id": str(created.get("id")), "email": created.get("email")}
+
+
+@router.post("/google", response_model=TokenResponse)
+def google_auth(payload: GoogleLoginRequest, request: Request):
+    client_host = _client_host(request)
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            payload.id_token, google_requests.Request(), settings.GOOGLE_CLIENT_ID
+        )
+        email = idinfo["email"]
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google token"
+        ) from exc
+
+    user_id = None
+    is_new = False
+    if has_sql():
+        with get_sql_session() as session:
+            user = session.execute(
+                text("SELECT id, is_deleted FROM users WHERE email = :email LIMIT 1"),
+                {"email": email},
+            ).mappings().first()
+
+            if user:
+                if user.get("is_deleted"):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Account is deleted",
+                    )
+                user_id = str(user["id"])
+            else:
+                # Create new user
+                is_new = True
+                try:
+                    new_user = session.execute(
+                        text(
+                            """
+                            INSERT INTO users (email)
+                            VALUES (:email)
+                            RETURNING id
+                            """
+                        ),
+                        {"email": email},
+                    ).mappings().first()
+                    if new_user:
+                        user_id = str(new_user["id"])
+                        session.commit()
+                except IntegrityError:
+                    # Fallback in case of race condition
+                    is_new = False
+                    user = session.execute(
+                        text("SELECT id FROM users WHERE email = :email LIMIT 1"),
+                        {"email": email},
+                    ).mappings().first()
+                    if user:
+                        user_id = str(user["id"])
+
+    else:
+        db = get_db()
+        response = (
+            db.table("users")
+            .select("id, is_deleted")
+            .eq("email", email)
+            .limit(1)
+            .execute()
+        )
+
+        if response.data:
+            user = response.data[0]
+            if user.get("is_deleted"):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Account is deleted",
+                )
+            user_id = str(user["id"])
+        else:
+            # Create new user
+            is_new = True
+            try:
+                new_user_res = db.table("users").insert({"email": email}).execute()
+                if new_user_res.data:
+                    user_id = str(new_user_res.data[0]["id"])
+            except PostgrestAPIError as exc:
+                if _is_unique_violation(exc):
+                    is_new = False
+                    user_res = db.table("users").select("id").eq("email", email).limit(1).execute()
+                    if user_res.data:
+                        user_id = str(user_res.data[0]["id"])
+                else:
+                    raise
+
+    if not user_id:
+        raise HTTPException(status_code=500, detail="Failed to authenticate user")
+
+    token = create_access_token(subject=user_id)
+    log_event(
+        event_type="auth.google",
+        user_id=user_id,
+        path=str(request.url.path),
+        method=request.method,
+        status_code=200,
+        ip=client_host,
+        user_agent=request.headers.get("user-agent"),
+    )
+    return TokenResponse(access_token=token, is_new=is_new)
 
 
 @router.post("/login", response_model=TokenResponse)
