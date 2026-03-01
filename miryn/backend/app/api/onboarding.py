@@ -72,13 +72,15 @@ def complete_onboarding(
                 sql_session=session,
             )
 
-            if payload.seed_belief:
-                identity_engine.record_belief(
-                    user_id,
-                    topic="core_belief",
-                    belief=payload.seed_belief,
-                    confidence=0.8,
-                )
+        # record_belief must run AFTER the session commits to avoid a deadlock
+        # (it opens its own session internally and would block on the uncommitted row)
+        if payload.seed_belief:
+            identity_engine.record_belief(
+                user_id,
+                topic="core_belief",
+                belief=payload.seed_belief,
+                confidence=0.8,
+            )
 
         return {"status": "ok", "identity": updated}
 
