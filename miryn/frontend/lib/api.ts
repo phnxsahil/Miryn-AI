@@ -124,6 +124,13 @@ class ApiClient {
     });
   }
 
+  async googleLogin(idToken: string) {
+    return this.request("/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ id_token: idToken }),
+    });
+  }
+
   async refreshToken() {
     return this.request("/auth/refresh", {
       method: "POST",
@@ -246,7 +253,7 @@ class ApiClient {
   }
 
   async getMemory(): Promise<MemorySnapshot> {
-    return this.request("/memory") as Promise<MemorySnapshot>;
+    return this.request("/memory/") as Promise<MemorySnapshot>;
   }
 
   async deleteMemory(id: string) {
