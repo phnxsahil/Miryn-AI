@@ -1,0 +1,2007 @@
+﻿// ===== FILE: miryn\backend\app\api\chat.py =====
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
+from fastapi.responses import StreamingResponse
+import asyncio
+import json
+from sqlalchemy import text
+from app.core.database import get_db, has_sql, get_sql_session
+from app.core.security import get_current_user_id, get_user_id_from_token
+from app.core.cache import drain_events
+from app.core.encryption import decrypt_text
+from app.services.orchestrator import ConversationOrchestrator
+from app.schemas.chat import ChatRequest, ChatResponse
+
+router = APIRouter(prefix="/chat", tags=["chat"])
+
+orchestrator = ConversationOrchestrator()
+
+
+def _validate_conversation_owner(conversation_id: str, user_id: str):
+    if not conversation_id:
+        return
+    if has_sql():
+        with get_sql_session() as session:
+            owner = session.execute(
+                text("SELECT user_id FROM conversations WHERE id = :conversation_id LIMIT 1"),
+                {"conversation_id": conversation_id},
+            ).scalar()
+        if not owner:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        if str(owner) != str(user_id):
+            raise HTTPException(status_code=403, detail="Conversation does not belong to this user")
+        return
+
+    db = get_db()
+    response = (
+        db.table("conversations")
+        .select("user_id")
+        .eq("id", conversation_id)
+        .limit(1)
+        .execute()
+    )
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if str(response.data[0].get("user_id")) != str(user_id):
+        raise HTTPException(status_code=403, detail="Conversation does not belong to this user")
+
+
+@router.post("/", response_model=ChatResponse)
+async def send_message(
+    request: ChatRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Handle an incoming chat message, creating a new conversation when no conversation_id is provided, and return the resulting chat response.
+    
+    Parameters:
+        request: ChatRequest containing the message text and an optional conversation_id.
+    
+    Returns:
+        ChatResponse: Contains the assistant `response` text, the `conversation_id` used or created, optional `insights`, and optional `conflicts`.
+    
+    Raises:
+        HTTPException: 404 if a referenced conversation does not exist.
+        HTTPException: 403 if a referenced conversation does not belong to the authenticated user.
+        HTTPException: 500 if creating a new conversation fails.
+    """
+    conversation_id = request.conversation_id
+
+    if conversation_id:
+        _validate_conversation_owner(conversation_id, user_id)
+
+    if has_sql():
+        if not conversation_id:
+            with get_sql_session() as session:
+                result = session.execute(
+                    text(
+                        """
+                        INSERT INTO conversations (user_id, title)
+                        VALUES (:user_id, :title)
+                        RETURNING id
+                        """
+                    ),
+                    {"user_id": user_id, "title": request.message[:50]},
+                ).mappings().first()
+                if not result:
+                    raise HTTPException(status_code=500, detail="Failed to create conversation")
+                conversation_id = str(result["id"])
+                session.commit()
+    else:
+        db = get_db()
+        if not conversation_id:
+            conv_response = (
+                db.table("conversations")
+                .insert({
+                    "user_id": user_id,
+                    "title": request.message[:50],
+                })
+                .execute()
+            )
+            if not conv_response or not conv_response.data:
+                raise HTTPException(status_code=500, detail="Failed to create conversation")
+            conversation_id = conv_response.data[0].get("id")
+            if not conversation_id:
+                raise HTTPException(status_code=500, detail="Invalid conversation response")
+
+    result = await orchestrator.handle_message(
+        user_id=user_id,
+        message=request.message,
+        conversation_id=conversation_id,
+    )
+
+    return ChatResponse(
+        response=result["response"],
+        conversation_id=conversation_id,
+        insights=result.get("insights"),
+        conflicts=result.get("conflicts"),
+    )
+
+
+@router.get("/history")
+def get_chat_history(
+    conversation_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Retrieve the ordered message history for a conversation, with encrypted content decrypted when necessary.
+    
+    Parameters:
+        conversation_id (str): ID of the conversation whose messages to fetch.
+        user_id (str): Authenticated user ID (injected dependency); only messages belonging to this user are returned.
+    
+    Returns:
+        list[dict]: A list of message objects ordered by `created_at`. Each message will include a `content` field; if `content` is missing, it is populated by decrypting `content_encrypted`.
+    """
+    if has_sql():
+        with get_sql_session() as session:
+            result = session.execute(
+                text(
+                    """
+                    SELECT * FROM messages
+                    WHERE conversation_id = :conversation_id
+                      AND user_id = :user_id
+                    ORDER BY created_at
+                    """
+                ),
+                {"conversation_id": conversation_id, "user_id": user_id},
+            )
+            rows = [dict(row) for row in result.mappings().all()]
+            for row in rows:
+                if not row.get("content"):
+                    row["content"] = decrypt_text(row.get("content_encrypted"))
+            return rows
+
+    db = get_db()
+    response = (
+        db.table("messages")
+        .select("*")
+        .eq("conversation_id", conversation_id)
+        .eq("user_id", user_id)
+        .order("created_at")
+        .execute()
+    )
+
+    data = response.data or []
+    for row in data:
+        if not row.get("content"):
+            row["content"] = decrypt_text(row.get("content_encrypted"))
+    return data
+
+
+@router.get("/events/stream")
+async def stream_events(request: Request, authorization: str | None = Header(default=None)):
+    """
+    Stream server-sent events (SSE) of user-specific events authenticated by a token.
+    
+    Parameters:
+        request (Request): FastAPI request object used to detect client disconnection and read query params.
+        authorization (str | None): Optional Authorization header expected as "Bearer <token>"; if absent the function will look for a "token" query parameter.
+    
+    Returns:
+        StreamingResponse: An SSE stream (media type "text/event-stream") that yields JSON-encoded event objects for the authenticated user. Each SSE message is prefixed with "data: " and separated by a blank line.
+    
+    Raises:
+        HTTPException: 401 if no authentication token is provided.
+    """
+    token: str | None = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "", 1).strip()
+    else:
+        token = request.query_params.get("token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing authentication token")
+
+    try:
+        user_id = get_user_id_from_token(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    async def event_stream():
+        """
+        Stream server-sent events (SSE) for the authenticated user by yielding JSON-encoded event payloads in SSE format.
+        
+        The generator continuously polls recent events (up to 50 at a time) and yields each as an SSE data frame (a single string "data: <json>\n\n"). The loop exits when the client disconnects or when the coroutine is cancelled.
+        
+        Returns:
+            str: SSE-formatted data frames containing a JSON-encoded event, e.g. "data: { ... }\n\n".
+        """
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                events = await asyncio.to_thread(drain_events, user_id, 50)
+                for event in events:
+                    payload = json.dumps(event)
+                    yield f"data: {payload}\n\n"
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            return
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+// ===== FILE: miryn\backend\app\api\auth.py =====
+from fastapi import APIRouter, HTTPException, status, Request
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
+from postgrest import APIError as PostgrestAPIError
+from app.core.database import get_db, has_sql, get_sql_session
+from app.core.security import get_password_hash, verify_password, create_access_token
+from app.core.cache import redis_client
+from app.core.audit import log_event
+from app.config import settings
+from app.schemas.auth import SignupRequest, LoginRequest, TokenResponse, UserOut
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+LOGIN_GUARD_SCRIPT = """
+local attempts = redis.call('INCR', KEYS[1])
+if attempts == 1 then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return attempts
+"""
+
+
+def _client_host(request: Request) -> str:
+    if request.client and request.client.host:
+        return request.client.host
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return "unknown"
+
+
+def _login_guard(key: str):
+    try:
+        attempts = redis_client.eval(
+            LOGIN_GUARD_SCRIPT,
+            1,
+            key,
+            settings.LOGIN_ATTEMPT_WINDOW_SECONDS,
+        )
+    except Exception:
+        # Fail open if Redis is unavailable
+        return
+
+    if int(attempts) > settings.LOGIN_ATTEMPT_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts. Try again later.",
+        )
+
+
+def _is_unique_violation(exc: Exception) -> bool:
+    code = getattr(exc, "code", None)
+    if code == "23505":
+        return True
+
+    for attr in ("details", "message", "hint"):
+        val = getattr(exc, attr, None)
+        if isinstance(val, str) and ("23505" in val or "duplicate key" in val.lower()):
+            return True
+
+    args0 = exc.args[0] if getattr(exc, "args", None) else None
+    if isinstance(args0, dict):
+        code = args0.get("code") or args0.get("error") or args0.get("status_code")
+        if str(code) == "23505":
+            return True
+        msg = args0.get("message") or args0.get("details") or ""
+        if isinstance(msg, str) and ("23505" in msg or "duplicate key" in msg.lower()):
+            return True
+
+    if "23505" in str(exc) or "duplicate key" in str(exc).lower():
+        return True
+
+    return False
+
+
+@router.post("/signup", response_model=UserOut)
+def signup(payload: SignupRequest, request: Request):
+    client_host = _client_host(request)
+    if has_sql():
+        with get_sql_session() as session:
+            try:
+                result = session.execute(
+                    text(
+                        """
+                        INSERT INTO users (email, password_hash)
+                        VALUES (:email, :password_hash)
+                        RETURNING id, email
+                        """
+                    ),
+                    {"email": payload.email, "password_hash": get_password_hash(payload.password)},
+                ).mappings().first()
+            except IntegrityError as exc:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered") from exc
+
+            if not result:
+                result = session.execute(
+                    text("SELECT id, email FROM users WHERE email = :email LIMIT 1"),
+                    {"email": payload.email},
+                ).mappings().first()
+
+            if not result:
+                raise HTTPException(status_code=500, detail="Failed to create user")
+
+        log_event(
+            event_type="auth.signup",
+            user_id=str(result["id"]),
+            path=str(request.url.path),
+            method=request.method,
+            status_code=200,
+            ip=client_host,
+            user_agent=request.headers.get("user-agent"),
+        )
+
+        return {"id": str(result["id"]), "email": result["email"]}
+
+    db = get_db()
+    try:
+        user = (
+            db.table("users")
+            .insert({
+                "email": payload.email,
+                "password_hash": get_password_hash(payload.password),
+            })
+            .execute()
+        )
+    except PostgrestAPIError as exc:
+        if _is_unique_violation(exc):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered") from exc
+        raise
+
+    if not getattr(user, "data", None):
+        raise HTTPException(status_code=500, detail="Failed to create user")
+
+    log_event(
+        event_type="auth.signup",
+        user_id=str(user.data[0].get("id")),
+        path=str(request.url.path),
+        method=request.method,
+        status_code=200,
+        ip=client_host,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    created = user.data[0]
+    return {"id": str(created.get("id")), "email": created.get("email")}
+
+
+@router.post("/login", response_model=TokenResponse)
+def login(payload: LoginRequest, request: Request):
+    client_host = _client_host(request)
+    key = f"login:{payload.email}" if payload.email else f"login:{client_host}"
+    _login_guard(key)
+
+    if has_sql():
+        with get_sql_session() as session:
+            user = session.execute(
+                text("SELECT id, email, password_hash FROM users WHERE email = :email LIMIT 1"),
+                {"email": payload.email},
+            ).mappings().first()
+
+        if not user or not user.get("password_hash"):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+        if not verify_password(payload.password, user["password_hash"]):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+        token = create_access_token(subject=str(user["id"]))
+        log_event(
+            event_type="auth.login",
+            user_id=user["id"],
+            path=str(request.url.path),
+            method=request.method,
+            status_code=200,
+            ip=client_host,
+            user_agent=request.headers.get("user-agent"),
+        )
+        return TokenResponse(access_token=token)
+
+    db = get_db()
+
+    response = (
+        db.table("users")
+        .select("id, email, password_hash")
+        .eq("email", payload.email)
+        .limit(1)
+        .execute()
+    )
+
+    if not response.data:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+    user = response.data[0]
+    if not user.get("password_hash") or not verify_password(payload.password, user["password_hash"]):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+    token = create_access_token(subject=str(user["id"]))
+    log_event(
+        event_type="auth.login",
+        user_id=user["id"],
+        path=str(request.url.path),
+        method=request.method,
+        status_code=200,
+        ip=client_host,
+        user_agent=request.headers.get("user-agent"),
+    )
+    return TokenResponse(access_token=token)
+
+
+// ===== FILE: miryn\backend\app\api\identity.py =====
+from fastapi import APIRouter, Depends
+from app.core.security import get_current_user_id
+from app.services.identity_engine import IdentityEngine
+from app.schemas.identity import IdentityOut, IdentityUpdate
+
+router = APIRouter(prefix="/identity", tags=["identity"])
+
+identity_engine = IdentityEngine()
+
+
+@router.get("/", response_model=IdentityOut)
+def get_identity(user_id: str = Depends(get_current_user_id)):
+    return identity_engine.get_identity(user_id)
+
+
+@router.patch("/", response_model=IdentityOut)
+def update_identity(
+    payload: IdentityUpdate,
+    user_id: str = Depends(get_current_user_id),
+):
+    updated = identity_engine.update_identity(user_id, payload.dict(exclude_none=True))
+    return updated
+
+
+// ===== FILE: miryn\backend\app\api\onboarding.py =====
+import logging
+import sys
+from fastapi import APIRouter, Depends
+from sqlalchemy import text
+from app.core.database import get_db, has_sql, get_sql_session
+from app.core.security import get_current_user_id
+from app.services.identity_engine import IdentityEngine
+from app.schemas.onboarding import OnboardingCompleteRequest
+
+router = APIRouter(prefix="/onboarding", tags=["onboarding"])
+
+identity_engine = IdentityEngine()
+logger = logging.getLogger(__name__)
+
+
+@router.post("/complete")
+def complete_onboarding(
+    payload: OnboardingCompleteRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    responses = payload.responses or []
+
+    if has_sql():
+        with get_sql_session() as session:
+            if responses:
+                for r in responses:
+                    session.execute(
+                        text(
+                            """
+                            INSERT INTO onboarding_responses (user_id, question, answer)
+                            VALUES (:user_id, :question, :answer)
+                            """
+                        ),
+                        {"user_id": user_id, "question": r.question, "answer": r.answer},
+                    )
+
+            updated = identity_engine.update_identity(
+                user_id,
+                {
+                    "state": "active",
+                    "traits": payload.traits,
+                    "values": payload.values,
+                },
+                sql_session=session,
+            )
+
+        return {"status": "ok", "identity": updated}
+
+    db = get_db()
+    inserted_ids = []
+
+    try:
+        if responses:
+            inserts = [
+                {"user_id": user_id, "question": r.question, "answer": r.answer}
+                for r in responses
+            ]
+            resp = db.table("onboarding_responses").insert(inserts).execute()
+            inserted_ids = [row.get("id") for row in (resp.data or []) if row.get("id")]
+
+        updated = identity_engine.update_identity(
+            user_id,
+            {
+                "state": "active",
+                "traits": payload.traits,
+                "values": payload.values,
+            },
+        )
+    except Exception:
+        original_exc = sys.exc_info()
+        if inserted_ids:
+            try:
+                db.table("onboarding_responses").delete().in_("id", inserted_ids).execute()
+            except Exception:
+                logger.exception("Failed to rollback onboarding responses for user %s", user_id)
+        if original_exc[1] is not None and original_exc[2] is not None:
+            raise original_exc[1].with_traceback(original_exc[2])
+        raise
+
+    return {"status": "ok", "identity": updated}
+
+
+// ===== FILE: miryn\backend\app\main.py =====
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import logging
+from app.config import settings
+from app.api import auth, chat, identity, onboarding, llm, notifications, tools
+from app.core.rate_limit import RateLimitMiddleware
+
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="Miryn API",
+    description="Context-aware AI companion with persistent memory",
+    version="0.1.0",
+)
+
+allow_origins = []
+if settings.FRONTEND_URL and settings.FRONTEND_URL.strip():
+    allow_origins.append(settings.FRONTEND_URL.strip())
+
+allow_origins.extend([
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+])
+allow_origins = list(dict.fromkeys(allow_origins))
+
+app.add_middleware(RateLimitMiddleware)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth.router)
+app.include_router(chat.router)
+app.include_router(identity.router)
+app.include_router(onboarding.router)
+app.include_router(llm.router)
+app.include_router(notifications.router)
+app.include_router(tools.router)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """
+    Handle uncaught exceptions by returning a 500 JSON response and preserve CORS headers when the request origin is allowed.
+
+    Parameters:
+        request (Request): The incoming HTTP request; its Origin header is inspected to determine CORS headers.
+        exc (Exception): The exception instance that was raised.
+
+    Returns:
+        JSONResponse: HTTP response with status code 500 and body {"detail": "Internal server error"}. If the request Origin is in the application's allowed origins, the response includes `Access-Control-Allow-Origin` and `Access-Control-Allow-Credentials` headers.
+    """
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path, exc_info=exc)
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin in allow_origins:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+        headers=headers,
+    )
+
+
+@app.get("/")
+def root():
+    return {"message": "Miryn API v0.1.0"}
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
+
+
+// ===== FILE: miryn\backend\app\config.py =====
+from pathlib import Path
+from pydantic_settings import BaseSettings
+from typing import Optional
+
+_ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+
+
+class Settings(BaseSettings):
+    # Database (Supabase)
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_ANON_KEY: Optional[str] = None
+    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None
+
+    # Optional direct Postgres (for local dev or tooling)
+    DATABASE_URL: Optional[str] = None
+
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379"
+
+    # LLM
+    OPENAI_API_KEY: Optional[str] = None
+    ANTHROPIC_API_KEY: Optional[str] = None
+    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-1.5-flash-001"
+    GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
+    VERTEX_PROJECT_ID: Optional[str] = None
+    VERTEX_LOCATION: str = "us-central1"
+    VERTEX_MODEL: str = "google/gemini-2.0-flash-lite-001"
+    LLM_PROVIDER: str = "openai"  # openai | anthropic | gemini | vertex
+
+    # App
+    FRONTEND_URL: str = "http://localhost:3000"
+    BACKEND_URL: str = "http://localhost:8000"
+
+    # Security
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 1 week
+    RATE_LIMIT_PER_MINUTE: int = 60
+    LOGIN_ATTEMPT_LIMIT: int = 5
+    LOGIN_ATTEMPT_WINDOW_SECONDS: int = 900
+    AUDIT_RETENTION_DAYS: int = 90
+    AUDIT_STORE_PII: bool = False
+
+    # Encryption
+    ENCRYPTION_KEY: Optional[str] = None
+
+    # Tool sandbox
+    TOOL_SANDBOX_URL: Optional[str] = None
+
+    class Config:
+        env_file = str(_ENV_FILE)
+
+
+settings = Settings()
+
+
+// ===== FILE: miryn\backend\migrations\001_init.sql =====
+-- Enable extensions
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Users
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Identities (versioned user personality)
+CREATE TABLE IF NOT EXISTS identities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    version INT DEFAULT 1,
+    state VARCHAR(50) DEFAULT 'onboarding',
+    traits JSONB DEFAULT '{}',
+    values JSONB DEFAULT '{}',
+    beliefs JSONB DEFAULT '[]',
+    open_loops JSONB DEFAULT '[]',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, version)
+);
+
+  CREATE INDEX IF NOT EXISTS identities_user_id_idx ON identities(user_id);
+
+-- Identity beliefs
+CREATE TABLE IF NOT EXISTS identity_beliefs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  identity_id UUID NOT NULL REFERENCES identities(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  topic VARCHAR(255) NOT NULL,
+  belief TEXT NOT NULL,
+  confidence FLOAT DEFAULT 0.5,
+  evidence JSONB DEFAULT '{}',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS identity_beliefs_identity_id_idx ON identity_beliefs(identity_id);
+CREATE INDEX IF NOT EXISTS identity_beliefs_user_id_idx ON identity_beliefs(user_id);
+
+-- Identity open loops
+CREATE TABLE IF NOT EXISTS identity_open_loops (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  identity_id UUID NOT NULL REFERENCES identities(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  topic VARCHAR(255) NOT NULL,
+  status VARCHAR(50) DEFAULT 'open',
+  importance INT DEFAULT 1,
+  last_mentioned TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS identity_open_loops_identity_id_idx ON identity_open_loops(identity_id);
+CREATE INDEX IF NOT EXISTS identity_open_loops_user_id_idx ON identity_open_loops(user_id);
+
+-- Identity patterns
+CREATE TABLE IF NOT EXISTS identity_patterns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  identity_id UUID NOT NULL REFERENCES identities(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  pattern_type VARCHAR(100) NOT NULL,
+  description TEXT NOT NULL,
+  signals JSONB DEFAULT '{}',
+  confidence FLOAT DEFAULT 0.5,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS identity_patterns_identity_id_idx ON identity_patterns(identity_id);
+CREATE INDEX IF NOT EXISTS identity_patterns_user_id_idx ON identity_patterns(user_id);
+
+-- Identity emotions
+CREATE TABLE IF NOT EXISTS identity_emotions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  identity_id UUID NOT NULL REFERENCES identities(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  primary_emotion VARCHAR(100) NOT NULL,
+  intensity FLOAT DEFAULT 0.5,
+  secondary_emotions JSONB DEFAULT '[]',
+  context JSONB DEFAULT '{}',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS identity_emotions_identity_id_idx ON identity_emotions(identity_id);
+CREATE INDEX IF NOT EXISTS identity_emotions_user_id_idx ON identity_emotions(user_id);
+
+-- Identity conflicts
+CREATE TABLE IF NOT EXISTS identity_conflicts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  identity_id UUID NOT NULL REFERENCES identities(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  statement TEXT NOT NULL,
+  conflict_with TEXT NOT NULL,
+  severity FLOAT DEFAULT 0.5,
+  resolved BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW(),
+  resolved_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS identity_conflicts_identity_id_idx ON identity_conflicts(identity_id);
+CREATE INDEX IF NOT EXISTS identity_conflicts_user_id_idx ON identity_conflicts(user_id);
+
+-- Conversations
+CREATE TABLE IF NOT EXISTS conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS conversations_user_id_idx ON conversations(user_id);
+
+-- Messages
+CREATE TABLE IF NOT EXISTS messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant')),
+    content TEXT,
+    embedding vector(384),
+    metadata JSONB DEFAULT '{}',
+    importance_score FLOAT DEFAULT 0.5,
+    memory_tier VARCHAR(20) NOT NULL DEFAULT 'episodic' CHECK (memory_tier IN ('transient', 'episodic', 'core')),
+    delete_at TIMESTAMP,
+    content_encrypted TEXT,
+    metadata_encrypted TEXT,
+    encryption_version INT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS messages_embedding_idx
+ON messages USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+
+CREATE INDEX IF NOT EXISTS messages_user_id_idx ON messages(user_id);
+CREATE INDEX IF NOT EXISTS messages_user_tier_idx ON messages(user_id, memory_tier);
+CREATE INDEX IF NOT EXISTS messages_delete_at_idx ON messages(delete_at);
+
+-- Backfill columns for existing deployments
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS memory_tier VARCHAR(20) NOT NULL DEFAULT 'episodic' CHECK (memory_tier IN ('transient', 'episodic', 'core'));
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS delete_at TIMESTAMP;
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS content_encrypted TEXT;
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS metadata_encrypted TEXT;
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS encryption_version INT DEFAULT 1;
+
+-- Onboarding responses
+CREATE TABLE IF NOT EXISTS onboarding_responses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  question VARCHAR(500) NOT NULL,
+  answer TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Function for vector similarity search
+CREATE OR REPLACE FUNCTION match_messages(
+  query_embedding vector(384),
+  match_threshold float,
+  match_count int,
+  user_id_filter uuid
+)
+RETURNS TABLE (
+  id uuid,
+  content text,
+  metadata jsonb,
+  content_encrypted text,
+  metadata_encrypted text,
+  importance_score float,
+  created_at timestamp,
+  similarity float
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF query_embedding IS NULL THEN
+    RETURN;
+  END IF;
+  RETURN QUERY
+  SELECT
+    scored.id,
+    scored.content,
+    scored.metadata,
+    scored.content_encrypted,
+    scored.metadata_encrypted,
+    scored.importance_score,
+    scored.created_at,
+    scored.similarity
+  FROM (
+    SELECT
+      m.id,
+      m.content,
+      m.metadata,
+      m.content_encrypted,
+      m.metadata_encrypted,
+      m.importance_score,
+      m.created_at,
+      1 - (m.embedding <=> query_embedding) AS similarity
+    FROM messages m
+    WHERE m.user_id = user_id_filter
+      AND m.memory_tier = 'core'
+      AND (m.delete_at IS NULL OR m.delete_at > NOW())
+      AND m.embedding IS NOT NULL
+  ) AS scored
+  WHERE scored.similarity > match_threshold
+  ORDER BY scored.similarity DESC
+  LIMIT match_count;
+END;
+$$;
+
+-- Audit logs
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    event_type VARCHAR(100) NOT NULL,
+    path VARCHAR(255),
+    method VARCHAR(20),
+    status_code INT,
+    ip VARCHAR(64),
+    user_agent TEXT,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Memory summaries
+CREATE TABLE IF NOT EXISTS memory_summaries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    summary TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Tool runs
+CREATE TABLE IF NOT EXISTS tool_runs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255),
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'pending',
+    request JSONB DEFAULT '{}',
+    code TEXT,
+    result TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS tool_runs_user_id_idx ON tool_runs(user_id);
+
+-- Notifications
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(100) NOT NULL,
+    payload JSONB DEFAULT '{}',
+    status VARCHAR(50) DEFAULT 'new',
+    created_at TIMESTAMP DEFAULT NOW(),
+    read_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS notifications_user_id_idx ON notifications(user_id);
+
+
+// ===== FILE: miryn\backend\app\models\user.py =====
+from sqlalchemy import Column, String
+from app.models.base import Base, UUIDPrimaryKeyMixin, TimestampMixin, SerializableMixin
+
+
+class User(UUIDPrimaryKeyMixin, TimestampMixin, SerializableMixin, Base):
+    __tablename__ = "users"
+
+    email = Column(String(255), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=True)
+
+
+// ===== FILE: miryn\backend\app\models\identity.py =====
+from sqlalchemy import Column, String, ForeignKey, Integer
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+from app.models.base import (
+    Base,
+    UUIDPrimaryKeyMixin,
+    TimestampMixin,
+    CreatedAtMixin,
+    SerializableMixin,
+)
+
+
+class Identity(UUIDPrimaryKeyMixin, TimestampMixin, SerializableMixin, Base):
+    __tablename__ = "identities"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    version = Column(Integer, default=1)
+    state = Column(String(50), default="onboarding")
+    traits = Column(JSONB, default=dict)
+    values = Column(JSONB, default=dict)
+    beliefs = Column(JSONB, default=list)
+    open_loops = Column(JSONB, default=list)
+
+
+class OnboardingResponse(UUIDPrimaryKeyMixin, CreatedAtMixin, SerializableMixin, Base):
+    __tablename__ = "onboarding_responses"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    question = Column(String(500), nullable=False)
+    answer = Column(String)
+
+
+// ===== FILE: miryn\backend\app\models\conversation.py =====
+from sqlalchemy import Column, String, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
+from app.models.base import Base, UUIDPrimaryKeyMixin, TimestampMixin, SerializableMixin
+
+
+class Conversation(UUIDPrimaryKeyMixin, TimestampMixin, SerializableMixin, Base):
+    __tablename__ = "conversations"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(255))
+
+
+// ===== FILE: miryn\backend\app\models\message.py =====
+from sqlalchemy import Column, String, ForeignKey, Text, Float
+from sqlalchemy.dialects.postgresql import UUID
+from pgvector.sqlalchemy import Vector
+from app.models.base import (
+    Base,
+    UUIDPrimaryKeyMixin,
+    CreatedAtMixin,
+    MetadataMixin,
+    SerializableMixin,
+)
+
+
+class Message(UUIDPrimaryKeyMixin, CreatedAtMixin, MetadataMixin, SerializableMixin, Base):
+    __tablename__ = "messages"
+
+    conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    role = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False)
+    embedding = Column(Vector(384))
+    importance_score = Column(Float, default=0.5)
+
+
+// ===== FILE: miryn\frontend\components\Chat\ChatInterface.tsx =====
+"use client";
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import { api } from "@/lib/api";
+import type { Message, ConversationInsights, ChatResponsePayload, ToolRun, Notification } from "@/lib/types";
+import { getErrorMessage } from "@/lib/utils";
+import MessageBubble from "./MessageBubble";
+import InputBox from "./InputBox";
+import InsightsPanel from "./InsightsPanel";
+import ToolPanel from "./ToolPanel";
+import NotificationsPanel from "./NotificationsPanel";
+
+/**
+ * Full chat UI component that manages conversation state, message flow, tools, insights, and notifications.
+ *
+ * Initializes the auth token on mount, fetches pending tools and notifications, and subscribes to server-sent events to update insights, identity conflicts, and new notifications in real time. Exposes an input for sending messages, displays message history (including assistant/system responses and temporary "Thinking..." state), and provides panels for insights, notifications, and tool generation/approval.
+ *
+ * @returns The rendered chat interface element (React JSX).
+ */
+export default function ChatInterface() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [insights, setInsights] = useState<ConversationInsights | null>(null);
+  const [conflicts, setConflicts] = useState<Array<{ statement: string; conflict_with: string; severity?: number }>>([]);
+  const [pendingTools, setPendingTools] = useState<ToolRun[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    api.loadToken();
+  }, []);
+
+  useEffect(() => {
+    api.listPendingTools().then((tools) => setPendingTools((tools as ToolRun[]) || [])).catch(() => null);
+    api.listNotifications().then((notes) => setNotifications((notes as Notification[]) || [])).catch(() => null);
+  }, []);
+
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("miryn_token") : null;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const url = token ? `${baseUrl}/chat/events/stream?token=${token}` : `${baseUrl}/chat/events/stream`;
+    const source = new EventSource(url, { withCredentials: false } as EventSourceInit);
+
+    source.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === "reflection.ready") {
+          setInsights(payload.payload || null);
+        }
+        if (payload.type === "identity.conflict") {
+          setConflicts(payload.payload || []);
+        }
+        if (payload.type === "notification.new") {
+          const note = payload.payload as Notification;
+          setNotifications((prev) => [note, ...prev]);
+        }
+      } catch {
+        return;
+      }
+    };
+
+    source.onerror = () => {
+      source.close();
+    };
+
+    return () => source.close();
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, loading, scrollToBottom]);
+
+  const appendMessage = useCallback((message: Message) => {
+    setMessages((prev) => [...prev, message]);
+  }, []);
+
+  const sendMessage = async (rawMessage: string) => {
+    const trimmed = rawMessage.trim();
+    if (!trimmed || loading) return;
+
+    const timestamp = new Date().toISOString();
+    appendMessage({ role: "user", content: trimmed, timestamp });
+    setLoading(true);
+    setStatus(null);
+
+    try {
+      const response = (await api.sendMessage(trimmed, conversationId || undefined)) as ChatResponsePayload;
+
+      if (!conversationId && response.conversation_id) {
+        setConversationId(response.conversation_id);
+      }
+
+      if (response.insights) {
+        setInsights(response.insights);
+      } else {
+        setInsights(null);
+      }
+
+      if (response.conflicts) {
+        setConflicts(response.conflicts);
+      }
+
+      appendMessage({
+        role: "assistant",
+        content: response.response,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error, "Sorry, something went wrong. Please try again.");
+      appendMessage({
+        role: "system",
+        content: errorMessage,
+        timestamp: new Date().toISOString(),
+      });
+      setStatus(errorMessage);
+
+      if (errorMessage.toLowerCase().includes("session expired")) {
+        setTimeout(() => {
+          window.location.href = "/login?expired=1";
+        }, 800);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateTool = async (intent: string) => {
+    try {
+      await api.generateTool(intent);
+      const tools = (await api.listPendingTools()) as ToolRun[];
+      setPendingTools(tools || []);
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error, "Failed to generate tool.");
+      setStatus(errorMessage);
+    }
+  };
+
+  const approveTool = async (toolId: string) => {
+    try {
+      const res = (await api.approveTool(toolId)) as { result?: { output?: string; error?: string } };
+      if (res?.result?.output) {
+        appendMessage({
+          role: "system",
+          content: `Tool output: ${res.result.output}`,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      if (res?.result?.error) {
+        appendMessage({
+          role: "system",
+          content: `Tool error: ${res.result.error}`,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      const tools = (await api.listPendingTools()) as ToolRun[];
+      setPendingTools(tools || []);
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error, "Failed to run tool.");
+      setStatus(errorMessage);
+    }
+  };
+
+  const markNotificationRead = async (id: string) => {
+    try {
+      await api.markNotificationRead(id);
+      setNotifications((prev) =>
+        prev.map((note) => (note.id === id ? { ...note, status: "read" } : note))
+      );
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error, "Failed to mark notification.");
+      setStatus(errorMessage);
+    }
+  };
+
+  const notificationCount = notifications.filter((n) => n.status === "new").length;
+
+  return (
+    <div className="flex flex-col h-screen bg-void">
+      <div className="border-b border-white/10 p-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-light text-white">Miryn</h1>
+          <p className="text-sm text-secondary">A quiet room for honest reflection.</p>
+        </div>
+        {notificationCount > 0 && (
+          <div className="text-xs uppercase tracking-[0.2em] text-amber-200">
+            Notifications <span className="ml-2 rounded-full bg-amber-500/20 px-2 py-1">{notificationCount}</span>
+          </div>
+        )}
+      </div>
+
+      {status && (
+        <div className="bg-red-500/10 border-y border-red-500/20 text-red-200 text-xs tracking-[0.2em] uppercase px-6 py-2">
+          {status}
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {messages.map((msg, idx) => (
+          <MessageBubble key={`${msg.timestamp}-${idx}`} message={msg} />
+        ))}
+        {loading && (
+          <MessageBubble
+            message={{
+              role: "assistant",
+              content: "Thinking...",
+              timestamp: new Date().toISOString(),
+            }}
+          />
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <InsightsPanel insights={insights} conflicts={conflicts} />
+      <NotificationsPanel notifications={notifications} onMarkRead={markNotificationRead} />
+      <ToolPanel pending={pendingTools} onGenerate={generateTool} onApprove={approveTool} />
+      <InputBox onSend={sendMessage} disabled={loading} />
+    </div>
+  );
+}
+
+
+// ===== FILE: miryn\frontend\components\Chat\InputBox.tsx =====
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+
+export default function InputBox({
+  onSend,
+  disabled,
+}: {
+  onSend: (message: string) => void;
+  disabled?: boolean;
+}) {
+  const [value, setValue] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const canSend = value.trim().length > 0 && !disabled;
+
+  useEffect(() => {
+    if (!textareaRef.current) return;
+    const element = textareaRef.current;
+    element.style.height = "auto";
+    element.style.height = `${Math.min(element.scrollHeight, 200)}px`;
+  }, [value]);
+
+  const handleSend = () => {
+    const trimmed = value.trim();
+    if (!trimmed || disabled) return;
+    onSend(trimmed);
+    setValue("");
+  };
+
+  return (
+    <form
+      className="border-t border-white/10 p-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        handleSend();
+      }}
+    >
+      <div className="flex items-end gap-3">
+        <label className="sr-only" htmlFor="chat-input">
+          Message
+        </label>
+        <textarea
+          ref={textareaRef}
+          id="chat-input"
+          className="flex-1 rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-sm leading-relaxed placeholder:text-white/40 focus:border-white/30 focus:outline-none resize-none"
+          placeholder="Say something..."
+          value={value}
+          rows={1}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              handleSend();
+            }
+          }}
+          disabled={disabled}
+          aria-label="Message"
+        />
+        <button
+          type="submit"
+          className="rounded-full bg-accent text-black px-5 py-2 text-sm disabled:opacity-50"
+          disabled={!canSend}
+          aria-disabled={!canSend}
+        >
+          {disabled ? "â€¦" : "Send"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+
+// ===== FILE: miryn\frontend\components\Chat\MessageBubble.tsx =====
+import type { Message } from "@/lib/types";
+
+export default function MessageBubble({ message }: { message: Message }) {
+  const isUser = message.role === "user";
+  const isSystem = message.role === "system";
+
+  const alignment = isUser ? "justify-end" : "justify-start";
+  const palette = isSystem
+    ? "bg-red-500/10 border-red-500/20 text-red-100"
+    : isUser
+      ? "bg-white/10 border-white/10 text-white"
+      : "bg-white/5 border-white/10 text-white";
+
+  return (
+    <div className={`flex ${alignment}`}>
+      <div className={`max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed border ${palette}`}>
+        {message.content}
+      </div>
+    </div>
+  );
+}
+
+
+// ===== FILE: miryn\frontend\components\Identity\IdentityDashboard.tsx =====
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { api } from "@/lib/api";
+import type { Identity } from "@/lib/types";
+
+const tone = [
+  "bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_55%)]",
+  "bg-[radial-gradient(circle_at_left,_rgba(255,255,255,0.06),_transparent_50%)]",
+];
+
+/**
+ * Render a compact, styled pill element with an uppercase label.
+ *
+ * @param label - Text to display inside the pill
+ * @returns A styled inline span element containing the provided label
+ */
+function Pill({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs tracking-[0.2em] uppercase text-white/80">
+      {label}
+    </span>
+  );
+}
+
+/**
+ * Renders a horizontal progress meter whose filled width reflects a numeric value.
+ *
+ * @param value - Progress value expected in the 0â€“1 range; values outside this range are clamped
+ *                to the nearest boundary
+ * @returns A JSX element of a rounded horizontal bar with its fill width set to `value * 100%`
+ *          (clamped between `0%` and `100%`)
+ */
+function Meter({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(100, Math.round(value * 100)));
+  return (
+    <div className="h-2 w-full rounded-full bg-white/10">
+      <div
+        className="h-2 rounded-full bg-gradient-to-r from-amber-400/80 via-amber-300/70 to-white/60"
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
+/**
+ * Renders the Identity Dashboard UI and loads the current identity from the API on mount.
+ *
+ * The component fetches the identity, shows a loading state while fetching, displays an error message if loading fails, and when available renders summary stats, traits, values, beliefs, open loops, patterns, emotions, conflicts, and a privacy vault note.
+ *
+ * @returns The React element representing the identity dashboard
+ */
+export default function IdentityDashboard() {
+  const [identity, setIdentity] = useState<Identity | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.loadToken();
+    api
+      .getIdentity()
+      .then(setIdentity)
+      .catch((e) => setError(e.message || "Failed to load identity"));
+  }, []);
+
+  const stats = useMemo(() => {
+    if (!identity) return null;
+    return {
+      beliefs: identity.beliefs?.length || 0,
+      loops: identity.open_loops?.length || 0,
+      patterns: identity.patterns?.length || 0,
+      emotions: identity.emotions?.length || 0,
+      conflicts: identity.conflicts?.length || 0,
+    };
+  }, [identity]);
+
+  if (error) {
+    return <div className="text-red-400">{error}</div>;
+  }
+
+  if (!identity) {
+    return <div className="text-secondary">Loading identity...</div>;
+  }
+
+  const traitKeys = Object.keys(identity.traits || {});
+  const valueKeys = Object.keys(identity.values || {});
+
+  return (
+    <div className={`min-h-screen ${tone[0]} ${tone[1]} text-white`}>
+      <div className="mx-auto max-w-6xl px-8 py-10">
+        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div>
+            <div className="text-xs uppercase tracking-[0.35em] text-secondary">
+              Identity Dashboard
+            </div>
+            <h1 className="mt-3 text-4xl font-serif font-light">Miryn Profile</h1>
+            <p className="mt-2 text-sm text-secondary">
+              A living map of who you are becoming. Updated continuously as you speak.
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="rounded-full border border-amber-300/30 bg-amber-500/10 px-4 py-2 text-xs uppercase tracking-[0.2em] text-amber-200">
+              State: {identity.state}
+            </div>
+            <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/70">
+              Version {identity.version}
+            </div>
+          </div>
+        </div>
+
+        <section className="mt-10 grid gap-6 md:grid-cols-4">
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+            <div className="text-xs uppercase tracking-[0.2em] text-secondary">Beliefs</div>
+            <div className="mt-3 text-3xl font-serif">{stats?.beliefs}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+            <div className="text-xs uppercase tracking-[0.2em] text-secondary">Open Loops</div>
+            <div className="mt-3 text-3xl font-serif">{stats?.loops}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+            <div className="text-xs uppercase tracking-[0.2em] text-secondary">Patterns</div>
+            <div className="mt-3 text-3xl font-serif">{stats?.patterns}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+            <div className="text-xs uppercase tracking-[0.2em] text-secondary">Emotions</div>
+            <div className="mt-3 text-3xl font-serif">{stats?.emotions}</div>
+          </div>
+        </section>
+
+        <section className="mt-10 grid gap-8 md:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
+            <div className="text-xs uppercase tracking-[0.3em] text-secondary">Traits</div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {traitKeys.length === 0 && <span className="text-secondary">No traits yet.</span>}
+              {traitKeys.map((key) => (
+                <Pill key={key} label={key} />
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
+            <div className="text-xs uppercase tracking-[0.3em] text-secondary">Values</div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {valueKeys.length === 0 && <span className="text-secondary">No values yet.</span>}
+              {valueKeys.map((key) => (
+                <Pill key={key} label={key} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-10 grid gap-8 md:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
+            <div className="text-xs uppercase tracking-[0.3em] text-secondary">Beliefs</div>
+            <div className="mt-4 space-y-4">
+              {(identity.beliefs?.length ?? 0) === 0 && <div className="text-secondary">No beliefs yet.</div>}
+              {(identity.beliefs ?? []).map((belief, idx) => (
+                <div key={`belief-${idx}`} className="space-y-2">
+                  <div className="text-sm text-white">{belief.topic}</div>
+                  <div className="text-xs text-secondary">{belief.belief}</div>
+                  <Meter value={belief.confidence ?? 0.5} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
+            <div className="text-xs uppercase tracking-[0.3em] text-secondary">Open Loops</div>
+            <div className="mt-4 space-y-4">
+              {(identity.open_loops?.length ?? 0) === 0 && <div className="text-secondary">No open loops yet.</div>}
+              {(identity.open_loops ?? []).map((loop, idx) => (
+                <div key={`loop-${idx}`} className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-sm text-white">{loop.topic}</div>
+                    <div className="text-xs text-secondary">Status: {loop.status || "open"}</div>
+                  </div>
+                  <div className="text-xs text-amber-200">Priority {loop.importance ?? 1}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-10 grid gap-8 md:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
+            <div className="text-xs uppercase tracking-[0.3em] text-secondary">Patterns</div>
+            <div className="mt-4 space-y-3">
+              {(identity.patterns?.length ?? 0) === 0 && <div className="text-secondary">No patterns yet.</div>}
+              {(identity.patterns ?? []).map((pattern, idx) => (
+                <div key={`pattern-${idx}`} className="space-y-1">
+                  <div className="text-sm text-white">{pattern.pattern_type}</div>
+                  <div className="text-xs text-secondary">{pattern.description}</div>
+                  <Meter value={pattern.confidence ?? 0.5} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
+            <div className="text-xs uppercase tracking-[0.3em] text-secondary">Emotions</div>
+            <div className="mt-4 space-y-3">
+              {(identity.emotions?.length ?? 0) === 0 && <div className="text-secondary">No emotions logged yet.</div>}
+              {(identity.emotions ?? []).map((emotion, idx) => (
+                <div key={`emotion-${idx}`} className="space-y-1">
+                  <div className="text-sm text-white">{emotion.primary_emotion}</div>
+                  <div className="text-xs text-secondary">
+                    Secondary: {(emotion.secondary_emotions || []).join(", ") || "â€”"}
+                  </div>
+                  <Meter value={emotion.intensity ?? 0.5} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
+            <div className="text-xs uppercase tracking-[0.3em] text-secondary">Conflicts</div>
+            <div className="mt-4 space-y-3">
+              {(identity.conflicts?.length ?? 0) === 0 && <div className="text-secondary">No conflicts detected.</div>}
+              {(identity.conflicts ?? []).map((conflict, idx) => (
+                <div key={`conflict-${idx}`} className="space-y-1">
+                  <div className="text-xs text-white">{conflict.statement}</div>
+                  <div className="text-xs text-amber-200">vs {conflict.conflict_with}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-10 rounded-2xl border border-white/10 bg-black/40 p-6">
+          <div className="text-xs uppercase tracking-[0.3em] text-secondary">Privacy Vault</div>
+          <p className="mt-3 text-sm text-secondary">
+            Tierâ€‘2 and Tierâ€‘3 memory can be encrypted at rest when enabled on the server.
+            This dashboard reflects your latest identity snapshot, not raw message logs.
+          </p>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+
+// ===== FILE: miryn\frontend\components\Onboarding\OnboardingFlow.tsx =====
+"use client";
+
+import { useState } from "react";
+import { api } from "@/lib/api";
+import { getErrorMessage } from "@/lib/utils";
+
+const questions = [
+  "What do you want Miryn to remember about you?",
+  "What values matter most to you right now?",
+  "How should Miryn support you when you're struggling?",
+  "What topics do you want to revisit regularly?",
+];
+
+export default function OnboardingFlow() {
+  const [answers, setAnswers] = useState<string[]>(Array(questions.length).fill(""));
+  const [status, setStatus] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const updateAnswer = (index: number, value: string) => {
+    setAnswers((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    api.loadToken();
+
+    const responses = questions.map((q, i) => ({
+      question: q,
+      answer: answers[i] || "",
+    }));
+
+    try {
+      setIsSubmitting(true);
+      await api.completeOnboarding({
+        responses,
+        traits: {},
+        values: {},
+      });
+      setStatus("Onboarding complete. You can start chatting.");
+    } catch (e: unknown) {
+      setStatus(getErrorMessage(e, "Failed to complete onboarding."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl">
+      <h1 className="text-3xl font-serif font-light">Onboarding</h1>
+      <p className="text-secondary mt-2">Help Miryn learn how to support you.</p>
+
+      <div className="mt-6 space-y-6">
+        {questions.map((q, i) => (
+          <div key={q} className="space-y-2">
+            <div className="text-sm text-white/80">{q}</div>
+            <textarea
+              className="w-full rounded-md bg-white/5 border border-white/10 px-4 py-3 min-h-[100px]"
+              value={answers[i]}
+              onChange={(e) => updateAnswer(i, e.target.value)}
+            />
+          </div>
+        ))}
+      </div>
+
+      <button
+        className="mt-6 rounded-md bg-accent text-black px-6 py-3 disabled:opacity-60"
+        onClick={handleSubmit}
+        disabled={isSubmitting}
+        aria-busy={isSubmitting}
+      >
+        {isSubmitting ? "Submitting..." : "Complete onboarding"}
+      </button>
+
+      {status && <div className="mt-4 text-sm text-secondary">{status}</div>}
+    </div>
+  );
+}
+
+
+// ===== FILE: miryn\frontend\lib\api.ts =====
+import type { IdentityUpdatePayload, OnboardingPayload } from "@/lib/types";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+class ApiClient {
+  private token: string | null = null;
+
+  constructor() {
+    if (typeof window !== "undefined") {
+      this.loadToken();
+    }
+  }
+
+  setToken(token: string | null) {
+    this.token = token;
+    if (typeof window !== "undefined") {
+      if (token) {
+        localStorage.setItem("miryn_token", token);
+      } else {
+        localStorage.removeItem("miryn_token");
+      }
+    }
+  }
+
+  clearToken() {
+    this.setToken(null);
+  }
+
+  loadToken() {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("miryn_token");
+      if (token) this.token = token;
+    }
+  }
+
+  private async parseError(res: Response): Promise<string> {
+    try {
+      const data = (await res.json()) as unknown;
+      if (typeof data === "string") return data;
+      if (data && typeof data === "object") {
+        const detail = "detail" in data ? (data as any).detail : undefined;
+        const message = "message" in data ? (data as any).message : undefined;
+        
+        if (Array.isArray(detail) && detail.length > 0 && detail[0].msg) {
+          return detail[0].msg;
+        }
+        
+        if (typeof detail === "string") return detail;
+        if (typeof message === "string") return message;
+        return String(detail || message || res.statusText);
+      }
+      return res.statusText;
+    } catch {
+      return res.statusText;
+    }
+  }
+
+  private async request(endpoint: string, options: RequestInit = {}): Promise<unknown> {
+    if (!this.token) {
+      this.loadToken();
+    }
+
+    const headers = new Headers(options.headers);
+    headers.set("Content-Type", "application/json");
+
+    if (this.token) {
+      headers.set("Authorization", `Bearer ${this.token}`);
+    }
+
+    const res = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (!res.ok) {
+      const message = await this.parseError(res);
+      if (res.status === 401) {
+        this.clearToken();
+        throw new Error("Session expired. Please log in again.");
+      }
+      throw new Error(message || "Request failed");
+    }
+
+    if (res.status === 204) {
+      return null;
+    }
+
+    const text = await res.text();
+    if (!text) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
+  }
+
+  async signup(email: string, password: string) {
+    return this.request("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+  }
+
+  async login(email: string, password: string) {
+    return this.request("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+  }
+
+  async sendMessage(message: string, conversationId?: string) {
+    return this.request("/chat/", {
+      method: "POST",
+      body: JSON.stringify({ message, conversation_id: conversationId }),
+    });
+  }
+
+  async getChatHistory(conversationId: string) {
+    const params = new URLSearchParams({ conversation_id: conversationId }).toString();
+    return this.request(`/chat/history?${params}`);
+  }
+
+  async getIdentity() {
+    return this.request("/identity/");
+  }
+
+  async updateIdentity(payload: IdentityUpdatePayload) {
+    return this.request("/identity/", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async completeOnboarding(responses: OnboardingPayload) {
+    return this.request("/onboarding/complete", {
+      method: "POST",
+      body: JSON.stringify(responses),
+    });
+  }
+
+  async generateTool(intent: string) {
+    return this.request("/tools/generate", {
+      method: "POST",
+      body: JSON.stringify({ intent, tool_type: "python" }),
+    });
+  }
+
+  async listPendingTools() {
+    return this.request("/tools/pending");
+  }
+
+  async approveTool(toolId: string) {
+    return this.request("/tools/approve", {
+      method: "POST",
+      body: JSON.stringify({ tool_id: toolId }),
+    });
+  }
+
+  async listNotifications() {
+    return this.request("/notifications/");
+  }
+
+  async markNotificationRead(id: string) {
+    return this.request(`/notifications/read/${id}`, {
+      method: "POST",
+    });
+  }
+}
+
+export const api = new ApiClient();
+
+
+// ===== FILE: miryn\frontend\lib\types.ts =====
+export type Message = {
+  role: "user" | "assistant" | "system";
+  content: string;
+  timestamp: string;
+};
+
+export type EmotionInsight = {
+  primary_emotion?: string;
+  intensity?: number;
+  secondary_emotions?: string[];
+};
+
+export type ConversationInsights = {
+  entities?: string[];
+  emotions?: EmotionInsight;
+  topics?: string[];
+  patterns?: {
+    topic_co_occurrences?: Array<{ topics: string[]; frequency: number; pattern: string }>;
+    temporal_emotional_patterns?: Array<{ day: string; emotion: string; frequency: number; pattern: string }>;
+  };
+  insights?: string;
+};
+
+export type ChatResponsePayload = {
+  response: string;
+  conversation_id: string;
+  insights?: ConversationInsights;
+  conflicts?: Array<{ statement: string; conflict_with: string; severity?: number }>;
+};
+
+export type IdentityBelief = {
+  topic: string;
+  belief: string;
+  confidence?: number;
+  evidence?: Record<string, unknown>;
+};
+
+export type IdentityOpenLoop = {
+  topic: string;
+  status?: string;
+  importance?: number;
+  last_mentioned?: string | null;
+};
+
+export type IdentityPattern = {
+  pattern_type: string;
+  description: string;
+  signals?: Record<string, unknown>;
+  confidence?: number;
+};
+
+export type IdentityEmotion = {
+  primary_emotion: string;
+  intensity?: number;
+  secondary_emotions?: string[];
+  context?: Record<string, unknown>;
+};
+
+export type IdentityConflict = {
+  statement: string;
+  conflict_with: string;
+  severity?: number;
+  resolved?: boolean;
+  resolved_at?: string | null;
+};
+
+export type Identity = {
+  id: string;
+  user_id: string;
+  version: number;
+  state: string;
+  traits: Record<string, unknown>;
+  values: Record<string, unknown>;
+  beliefs: IdentityBelief[];
+  open_loops: IdentityOpenLoop[];
+  patterns: IdentityPattern[];
+  emotions: IdentityEmotion[];
+  conflicts: IdentityConflict[];
+};
+
+export type IdentityUpdatePayload = {
+  state?: string;
+  traits?: Record<string, unknown>;
+  values?: Record<string, unknown>;
+  beliefs?: IdentityBelief[];
+  open_loops?: IdentityOpenLoop[];
+  patterns?: IdentityPattern[];
+  emotions?: IdentityEmotion[];
+  conflicts?: IdentityConflict[];
+};
+
+export type OnboardingAnswer = {
+  question: string;
+  answer: string;
+};
+
+export type OnboardingPayload = {
+  responses: OnboardingAnswer[];
+  traits?: Record<string, unknown>;
+  values?: Record<string, unknown>;
+};
+
+export type ToolRun = {
+  id: string;
+  name?: string;
+  description?: string;
+  status: string;
+  code?: string;
+  result?: string;
+  created_at?: string;
+};
+
+export type Notification = {
+  id: string;
+  type: string;
+  payload: Record<string, unknown>;
+  status: string;
+  created_at?: string;
+  read_at?: string | null;
+};
+
+
+// ===== FILE: miryn\frontend\app\(app)\chat\page.tsx =====
+import ChatInterface from "@/components/Chat/ChatInterface";
+
+// Server component wrapper for the chat experience.
+export default function ChatPage() {
+  return <ChatInterface />;
+}
+
+
+// ===== FILE: miryn\frontend\app\(app)\identity\page.tsx =====
+import IdentityDashboard from "@/components/Identity/IdentityDashboard";
+
+/**
+ * Server component that renders the IdentityDashboard component.
+ *
+ * @returns The JSX element for the identity dashboard page.
+ */
+export default function IdentityPage() {
+  return <IdentityDashboard />;
+}
+
+
+

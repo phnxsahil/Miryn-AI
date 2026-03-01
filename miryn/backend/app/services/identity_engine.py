@@ -105,14 +105,16 @@ class IdentityEngine:
             "patterns": [],
             "emotions": [],
             "conflicts": [],
+            "preset": None,
+            "memory_weights": {},
         }
         if has_sql():
             with self._session_scope(sql_session) as session:
                 result = session.execute(
                     text(
                         """
-                        INSERT INTO identities (user_id, version, state, traits, values, beliefs, open_loops)
-                        VALUES (:user_id, :version, :state, :traits, :values, :beliefs, :open_loops)
+                        INSERT INTO identities (user_id, version, state, traits, values, beliefs, open_loops, preset, memory_weights)
+                        VALUES (:user_id, :version, :state, :traits, :values, :beliefs, :open_loops, :preset, :memory_weights)
                         RETURNING *
                         """
                     ),
@@ -124,6 +126,8 @@ class IdentityEngine:
                         "values": json.dumps(identity["values"]),
                         "beliefs": json.dumps(identity["beliefs"]),
                         "open_loops": json.dumps(identity["open_loops"]),
+                        "preset": identity["preset"],
+                        "memory_weights": json.dumps(identity["memory_weights"]),
                     },
                 ).mappings().first()
                 return self._hydrate_identity(dict(result))
@@ -253,6 +257,7 @@ class IdentityEngine:
         patterns = list(self._ensure_list(updates.get("patterns", current.get("patterns", []))))
         emotions = list(self._ensure_list(updates.get("emotions", current.get("emotions", []))))
         conflicts = list(self._ensure_list(updates.get("conflicts", current.get("conflicts", []))))
+        memory_weights = self._ensure_dict(updates.get("memory_weights", current.get("memory_weights", {})))
 
         return {
             "state": updates.get("state", current.get("state")),
@@ -263,6 +268,8 @@ class IdentityEngine:
             "patterns": patterns,
             "emotions": emotions,
             "conflicts": conflicts,
+            "preset": updates.get("preset", current.get("preset")),
+            "memory_weights": memory_weights,
             "base_version": current.get("version", 0),
         }
 
@@ -291,6 +298,8 @@ class IdentityEngine:
             "values": json.dumps(merged["values"]),
             "beliefs": json.dumps(merged["beliefs"]),
             "open_loops": json.dumps(merged["open_loops"]),
+            "preset": merged.get("preset"),
+            "memory_weights": json.dumps(merged.get("memory_weights", {})),
         }
 
         stmt = text(
@@ -300,7 +309,7 @@ class IdentityEngine:
                 FROM identities
                 WHERE user_id = :user_id
             )
-            INSERT INTO identities (user_id, version, state, traits, values, beliefs, open_loops)
+            INSERT INTO identities (user_id, version, state, traits, values, beliefs, open_loops, preset, memory_weights)
             SELECT
                 :user_id,
                 version_cte.current_version + 1,
@@ -308,7 +317,9 @@ class IdentityEngine:
                 :traits,
                 :values,
                 :beliefs,
-                :open_loops
+                :open_loops,
+                :preset,
+                :memory_weights
             FROM version_cte
             RETURNING *
             """
@@ -319,6 +330,20 @@ class IdentityEngine:
             attempts += 1
             try:
                 with self._session_scope(sql_session) as session:
+                    previous = session.execute(
+                        text(
+                            """
+                            SELECT * FROM identities
+                            WHERE user_id = :user_id
+                            ORDER BY version DESC
+                            LIMIT 1
+                            """
+                        ),
+                        {"user_id": user_id},
+                    ).mappings().first()
+
+                    previous_identity = self._hydrate_identity(dict(previous)) if previous else {}
+
                     result = session.execute(stmt, payload).mappings().first()
                 if result:
                     identity = dict(result)
@@ -329,6 +354,14 @@ class IdentityEngine:
                         self.patterns.replace(user_id, identity_id, merged.get("patterns", []))
                         self.emotions.replace(user_id, identity_id, merged.get("emotions", []))
                         self.conflicts.replace(user_id, identity_id, merged.get("conflicts", []))
+                        self._log_identity_evolution_sql(
+                            session,
+                            user_id=user_id,
+                            identity_id=identity_id,
+                            previous=previous_identity,
+                            current=merged,
+                            trigger_type="update_identity",
+                        )
                     return self._hydrate_identity(identity)
             except IntegrityError:
                 if attempts >= 3:
@@ -336,6 +369,53 @@ class IdentityEngine:
                 continue
 
         raise RuntimeError("Failed to write identity after retries")
+
+    def _log_identity_evolution_sql(
+        self,
+        session: Any,
+        user_id: str,
+        identity_id: str,
+        previous: Dict,
+        current: Dict,
+        trigger_type: str,
+    ) -> None:
+        fields = [
+            "state",
+            "traits",
+            "values",
+            "beliefs",
+            "open_loops",
+            "patterns",
+            "emotions",
+            "conflicts",
+            "preset",
+            "memory_weights",
+        ]
+
+        for field in fields:
+            old_value = previous.get(field)
+            new_value = current.get(field)
+            if old_value == new_value:
+                continue
+            session.execute(
+                text(
+                    """
+                    INSERT INTO identity_evolution_log (
+                        user_id, identity_id, field_changed, old_value, new_value, trigger_type
+                    ) VALUES (
+                        :user_id, :identity_id, :field_changed, :old_value, :new_value, :trigger_type
+                    )
+                    """
+                ),
+                {
+                    "user_id": user_id,
+                    "identity_id": identity_id,
+                    "field_changed": field,
+                    "old_value": json.dumps(old_value, default=str),
+                    "new_value": json.dumps(new_value, default=str),
+                    "trigger_type": trigger_type,
+                },
+            )
 
     def _insert_identity_supabase(self, user_id: str, merged: Dict, updates: Dict) -> Dict:
         """
@@ -366,6 +446,8 @@ class IdentityEngine:
                 "values": merged["values"],
                 "beliefs": merged["beliefs"],
                 "open_loops": merged["open_loops"],
+                "preset": merged.get("preset"),
+                "memory_weights": merged.get("memory_weights", {}),
             }
             try:
                 response = self.supabase.table("identities").insert(payload).execute()
@@ -437,6 +519,7 @@ class IdentityEngine:
         identity["patterns"] = self._ensure_list(identity.get("patterns", []))
         identity["emotions"] = self._ensure_list(identity.get("emotions", []))
         identity["conflicts"] = self._ensure_list(identity.get("conflicts", []))
+        identity["memory_weights"] = self._ensure_dict(identity.get("memory_weights", {}))
         return identity
 
     def _hydrate_identity(self, identity: Dict) -> Dict:

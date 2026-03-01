@@ -7,6 +7,7 @@ from app.services.reflection_engine import ReflectionEngine
 from app.services.llm_service import LLMService
 from app.core.cache import publish_event
 from app.workers.reflection_worker import analyze_reflection
+from app.config import settings
 
 
 class ConversationOrchestrator:
@@ -31,13 +32,22 @@ class ConversationOrchestrator:
         """
         identity = self.identity.get_identity(user_id)
 
-        memories = await self.memory.retrieve_context(
-            user_id=user_id,
-            query=message,
-            limit=5,
-            strategy="hybrid",
-            conversation_id=conversation_id,
-        )
+        memories = []
+        try:
+            memories = await asyncio.wait_for(
+                self.memory.retrieve_context(
+                    user_id=user_id,
+                    query=message,
+                    limit=5,
+                    strategy="hybrid",
+                    conversation_id=conversation_id,
+                ),
+                timeout=settings.CONTEXT_RETRIEVAL_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            self.logger.warning("Context retrieval timed out for user %s", user_id)
+        except Exception:
+            self.logger.exception("Context retrieval failed for user %s", user_id)
 
         context = {
             "identity": identity,
@@ -45,57 +55,114 @@ class ConversationOrchestrator:
             "patterns": {},
         }
 
-        await self.memory.store_conversation(
-            user_id=user_id,
-            role="user",
-            content=message,
-            conversation_id=conversation_id,
+        def _fire_and_forget(coro, label: str):
+            task = asyncio.create_task(coro)
+
+            def _done(t: asyncio.Task):
+                try:
+                    t.result()
+                except Exception:
+                    self.logger.exception("%s task failed for user %s", label, user_id)
+
+            task.add_done_callback(_done)
+
+        _fire_and_forget(
+            self.memory.store_conversation(
+                user_id=user_id,
+                role="user",
+                content=message,
+                conversation_id=conversation_id,
+            ),
+            "store_user_message",
         )
 
         conflicts = []
-        try:
-            conflicts = await self.reflection.detect_contradictions(
-                identity.get("beliefs", []),
-                message,
-            )
-            if conflicts:
-                self.identity.add_conflicts(user_id, conflicts)
-                await asyncio.to_thread(publish_event, user_id, {"type": "identity.conflict", "payload": conflicts})
-        except Exception:
-            self.logger.exception("Conflict detection failed for user %s", user_id)
+        if settings.ENABLE_INLINE_CONFLICT_DETECTION:
+            try:
+                conflicts = await asyncio.wait_for(
+                    self.reflection.detect_contradictions(identity.get("beliefs", []), message),
+                    timeout=settings.CONFLICT_DETECTION_TIMEOUT_SECONDS,
+                )
+                if conflicts:
+                    self.identity.add_conflicts(user_id, conflicts)
+                    await asyncio.to_thread(publish_event, user_id, {"type": "identity.conflict", "payload": conflicts})
+            except asyncio.TimeoutError:
+                self.logger.warning("Conflict detection timed out for user %s", user_id)
+            except Exception:
+                self.logger.exception("Conflict detection failed for user %s", user_id)
+        else:
+            async def _detect_conflicts_bg():
+                try:
+                    detected = await asyncio.wait_for(
+                        self.reflection.detect_contradictions(identity.get("beliefs", []), message),
+                        timeout=settings.CONFLICT_DETECTION_TIMEOUT_SECONDS,
+                    )
+                    if detected:
+                        self.identity.add_conflicts(user_id, detected)
+                        await asyncio.to_thread(
+                            publish_event,
+                            user_id,
+                            {"type": "identity.conflict", "payload": detected},
+                        )
+                except Exception:
+                    self.logger.exception("Background conflict detection failed for user %s", user_id)
+
+            _fire_and_forget(_detect_conflicts_bg(), "conflict_detection")
 
         try:
-            response = await self.llm.chat(
-                context=context,
-                user_message=message,
-                identity=identity,
+            response = await asyncio.wait_for(
+                self.llm.chat(
+                    context=context,
+                    user_message=message,
+                    identity=identity,
+                ),
+                timeout=settings.LLM_TIMEOUT_SECONDS,
             )
-        except Exception:
-            self.logger.exception("LLM chat failed for user %s", user_id)
-            fallback = "I'm having trouble responding right now. Please try again shortly."
-            try:
-                await self.memory.store_conversation(
+        except asyncio.TimeoutError:
+            self.logger.warning("LLM timed out for user %s", user_id)
+            fallback = "I'm taking longer than usual to respond. Please try again in a moment."
+            _fire_and_forget(
+                self.memory.store_conversation(
                     user_id=user_id,
                     role="assistant",
                     content=fallback,
                     conversation_id=conversation_id,
+                ),
+                "store_timeout_fallback",
+            )
+            return {
+                "response": fallback,
+                "insights": {},
+            }
+        except Exception:
+            self.logger.exception("LLM chat failed for user %s", user_id)
+            fallback = "I'm having trouble responding right now. Please try again shortly."
+            try:
+                _fire_and_forget(
+                    self.memory.store_conversation(
+                        user_id=user_id,
+                        role="assistant",
+                        content=fallback,
+                        conversation_id=conversation_id,
+                    ),
+                    "store_llm_error_fallback",
                 )
             except Exception:
-                self.logger.exception("Failed to persist fallback assistant message for user %s", user_id)
+                self.logger.exception("Failed to queue fallback assistant message for user %s", user_id)
             return {
                 "response": fallback,
                 "insights": {},
             }
 
-        try:
-            await self.memory.store_conversation(
+        _fire_and_forget(
+            self.memory.store_conversation(
                 user_id=user_id,
                 role="assistant",
                 content=response,
                 conversation_id=conversation_id,
-            )
-        except Exception:
-            self.logger.exception("Failed to persist assistant message for user %s", user_id)
+            ),
+            "store_assistant_message",
+        )
 
         conversation_data = {"user": message, "assistant": response}
         insights: Dict = {}
@@ -107,14 +174,19 @@ class ConversationOrchestrator:
             await asyncio.to_thread(publish_event, user_id, {"type": "reflection.queued"})
         except Exception:
             self.logger.exception("Failed to queue reflection task for user %s", user_id)
-            # Fallback: run reflection synchronously if Celery is unavailable
-            try:
-                insights = await self.reflection.analyze_conversation(
-                    user_id=user_id,
-                    conversation=conversation_data,
-                )
-            except Exception:
-                self.logger.exception("Reflection analysis fallback failed for user %s", user_id)
+            if settings.ENABLE_REFLECTION_SYNC_FALLBACK:
+                try:
+                    insights = await asyncio.wait_for(
+                        self.reflection.analyze_conversation(
+                            user_id=user_id,
+                            conversation=conversation_data,
+                        ),
+                        timeout=settings.LLM_TIMEOUT_SECONDS,
+                    )
+                except Exception:
+                    self.logger.exception("Reflection analysis fallback failed for user %s", user_id)
+            else:
+                await asyncio.to_thread(publish_event, user_id, {"type": "reflection.skipped"})
 
         return {
             "response": response,

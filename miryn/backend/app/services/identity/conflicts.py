@@ -111,3 +111,77 @@ class ConflictStore:
             )
 
         self.supabase.table("identity_conflicts").insert(payload).execute()
+
+    def replace(self, user_id: str, identity_id: str, conflicts: List[Dict[str, Any]]) -> None:
+        """
+        Replace all conflict records for a specific user identity with the provided list.
+
+        Deletes existing records for the (user_id, identity_id) pair then inserts
+        the supplied conflicts into the active backend (SQL or Supabase).
+
+        Parameters:
+            user_id (str): ID of the user who owns the identity.
+            identity_id (str): ID of the identity the conflicts relate to.
+            conflicts (List[Dict[str, Any]]): Conflict records to store.
+        """
+        if has_sql():
+            with get_sql_session() as session:
+                session.execute(
+                    text(
+                        """
+                        DELETE FROM identity_conflicts
+                        WHERE user_id = :user_id
+                          AND identity_id = :identity_id
+                        """
+                    ),
+                    {"user_id": user_id, "identity_id": identity_id},
+                )
+                for conflict in conflicts:
+                    session.execute(
+                        text(
+                            """
+                            INSERT INTO identity_conflicts (
+                                identity_id, user_id, statement, conflict_with, severity, resolved, resolved_at
+                            ) VALUES (
+                                :identity_id, :user_id, :statement, :conflict_with, :severity, :resolved, :resolved_at
+                            )
+                            """
+                        ),
+                        {
+                            "identity_id": identity_id,
+                            "user_id": user_id,
+                            "statement": conflict.get("statement", ""),
+                            "conflict_with": conflict.get("conflict_with", ""),
+                            "severity": conflict.get("severity", 0.5),
+                            "resolved": conflict.get("resolved", False),
+                            "resolved_at": conflict.get("resolved_at"),
+                        },
+                    )
+                session.commit()
+            return
+
+        if not self.supabase:
+            return
+
+        self.supabase.table("identity_conflicts").delete().eq(
+            "user_id", user_id
+        ).eq("identity_id", identity_id).execute()
+
+        if not conflicts:
+            return
+
+        payload = []
+        for conflict in conflicts:
+            payload.append(
+                {
+                    "identity_id": identity_id,
+                    "user_id": user_id,
+                    "statement": conflict.get("statement", ""),
+                    "conflict_with": conflict.get("conflict_with", ""),
+                    "severity": conflict.get("severity", 0.5),
+                    "resolved": conflict.get("resolved", False),
+                    "resolved_at": conflict.get("resolved_at"),
+                }
+            )
+
+        self.supabase.table("identity_conflicts").insert(payload).execute()

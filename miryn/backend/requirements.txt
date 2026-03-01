@@ -1,41 +1,42 @@
-fastapi==0.128.2
-uvicorn[standard]==0.30.6
-pydantic==2.7.4
-pydantic-settings==2.1.0
-email-validator==2.1.1
+fastapi>=0.128.2
+uvicorn[standard]>=0.30.6
+pydantic>=2.7.4
+pydantic-settings>=2.1.0
+email-validator>=2.1.1
 
 # Database
 supabase>=2.7.4
-asyncpg==0.29.0
-sqlalchemy==2.0.25
-pgvector==0.2.5
-psycopg2-binary==2.9.9
+asyncpg>=0.29.0
+sqlalchemy>=2.0.25
+pgvector>=0.2.5
+psycopg2-binary>=2.9.9
 
 # Redis
-redis==4.6.0
+redis>=4.6.0
 
 # LLM
 openai>=1.51.0
 anthropic>=0.18.1
 google-genai>=1.0.0
-google-cloud-aiplatform==1.68.0
+google-generativeai>=0.8.0
+google-cloud-aiplatform>=1.68.0
 
 # Embeddings (slim mode)
-numpy==1.26.4
+numpy>=1.26.4
 
 # Background jobs
-celery[redis]==5.3.4
+celery[redis]>=5.3.4
 
 # Auth
 PyJWT[crypto]>=2.10.1
-passlib[bcrypt]==1.7.4
-bcrypt==3.2.2
-python-multipart==0.0.19
+passlib[bcrypt]>=1.7.4
+bcrypt>=3.2.2
+python-multipart>=0.0.19
 
 # Utils
-python-dotenv==1.0.0
+python-dotenv>=1.0.0
 cryptography>=44.0.1
 
 # Tests
-pytest==7.4.4
+pytest>=7.4.4
 httpx>=0.27.0,<0.28

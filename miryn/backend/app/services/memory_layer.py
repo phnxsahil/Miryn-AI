@@ -65,7 +65,7 @@ class MemoryLayer:
         Raises:
             Exception: Re-raises any exception encountered while persisting the message after logging it.
         """
-        embedding = self.embedder.embed(content)
+        embedding = await asyncio.to_thread(self.embedder.embed, content)
         meta = metadata or {}
         tier = self._decide_tier(meta, content)
         try:
@@ -117,7 +117,7 @@ class MemoryLayer:
             except Exception:
                 pass
 
-        query_embedding = self.embedder.embed(query)
+        query_embedding = await asyncio.to_thread(self.embedder.embed, query)
 
         transient_results = self._transient_search(user_id, conversation_id, limit=10)
         semantic_results = self._semantic_search(user_id, query_embedding, limit=15)

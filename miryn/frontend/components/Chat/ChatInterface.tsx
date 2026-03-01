@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "@/lib/api";
-import type { Message, ConversationInsights, ChatResponsePayload, ToolRun, Notification } from "@/lib/types";
+import type { Message, ConversationInsights, ToolRun, Notification } from "@/lib/types";
 import { getErrorMessage } from "@/lib/utils";
 import MessageBubble from "./MessageBubble";
 import InputBox from "./InputBox";
@@ -28,6 +28,8 @@ export default function ChatInterface() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const streamingIndexRef = useRef<number | null>(null);
+  const [streaming, setStreaming] = useState(false);
 
   useEffect(() => {
     api.loadToken();
@@ -88,36 +90,66 @@ export default function ChatInterface() {
     const timestamp = new Date().toISOString();
     appendMessage({ role: "user", content: trimmed, timestamp });
     setLoading(true);
+    setStreaming(true);
     setStatus(null);
 
+    let completed = false;
+
     try {
-      const response = (await api.sendMessage(trimmed, conversationId || undefined)) as ChatResponsePayload;
-
-      if (!conversationId && response.conversation_id) {
-        setConversationId(response.conversation_id);
-      }
-
-      if (response.insights) {
-        setInsights(response.insights);
-      } else {
-        setInsights(null);
-      }
-
-      if (response.conflicts) {
-        setConflicts(response.conflicts);
-      }
-
-      appendMessage({
-        role: "assistant",
-        content: response.response,
-        timestamp: new Date().toISOString(),
+      const assistantTimestamp = new Date().toISOString();
+      setMessages((prev) => {
+        const next = [
+          ...prev,
+          {
+            role: "assistant" as const,
+            content: "",
+            timestamp: assistantTimestamp,
+          },
+        ];
+        streamingIndexRef.current = next.length - 1;
+        return next;
       });
+
+      for await (const event of api.streamMessage(trimmed, conversationId || undefined)) {
+        if (event.chunk) {
+          setMessages((prev) => {
+            const next = [...prev];
+            const idx = streamingIndexRef.current;
+            if (idx !== null && next[idx]) {
+              next[idx] = { ...next[idx], content: `${next[idx].content}${event.chunk}` };
+            }
+            return next;
+          });
+        }
+        if (event.done && event.conversation_id) {
+          if (!conversationId) {
+            setConversationId(event.conversation_id);
+          }
+          completed = true;
+          setLoading(false);
+          setStreaming(false);
+          streamingIndexRef.current = null;
+          break;
+        }
+      }
+      if (!completed) {
+        throw new Error("Stream ended unexpectedly");
+      }
     } catch (error: unknown) {
       const errorMessage = getErrorMessage(error, "Sorry, something went wrong. Please try again.");
-      appendMessage({
-        role: "system",
-        content: errorMessage,
-        timestamp: new Date().toISOString(),
+      setMessages((prev) => {
+        const next = [...prev];
+        const idx = streamingIndexRef.current;
+        if (idx !== null && next[idx]) {
+          next[idx] = { ...next[idx], role: "system", content: errorMessage };
+          return next;
+        }
+        next.push({
+          role: "system",
+          content: errorMessage,
+          timestamp: new Date().toISOString(),
+        });
+        return next;
       });
       setStatus(errorMessage);
 
@@ -126,8 +158,9 @@ export default function ChatInterface() {
           window.location.href = "/login?expired=1";
         }, 800);
       }
-    } finally {
       setLoading(false);
+      setStreaming(false);
+      streamingIndexRef.current = null;
     }
   };
 
@@ -203,17 +236,12 @@ export default function ChatInterface() {
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.map((msg, idx) => (
-          <MessageBubble key={`${msg.timestamp}-${idx}`} message={msg} />
-        ))}
-        {loading && (
           <MessageBubble
-            message={{
-              role: "assistant",
-              content: "Thinking...",
-              timestamp: new Date().toISOString(),
-            }}
+            key={`${msg.timestamp}-${idx}`}
+            message={msg}
+            isStreaming={streaming && idx === streamingIndexRef.current}
           />
-        )}
+        ))}
         <div ref={messagesEndRef} />
       </div>
 

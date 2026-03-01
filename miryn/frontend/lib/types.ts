@@ -89,6 +89,31 @@ export type IdentityUpdatePayload = {
   conflicts?: IdentityConflict[];
 };
 
+export type EvolutionLogEntry = {
+  id: string;
+  user_id: string;
+  identity_id: string;
+  field_changed: string;
+  old_value: Record<string, unknown> | string | number | boolean | null;
+  new_value: Record<string, unknown> | string | number | boolean | null;
+  trigger_type: string | null;
+  created_at: string;
+};
+
+export type MemoryItem = {
+  id: string;
+  content: string | null;
+  memory_tier: string | null;
+  importance_score: number | null;
+  created_at: string;
+};
+
+export type MemorySnapshot = {
+  facts: MemoryItem[];
+  emotions: MemoryItem[];
+  recent: MemoryItem[];
+};
+
 export type OnboardingAnswer = {
   question: string;
   answer: string;
@@ -98,6 +123,9 @@ export type OnboardingPayload = {
   responses: OnboardingAnswer[];
   traits?: Record<string, unknown>;
   values?: Record<string, unknown>;
+  preset?: string;
+  goals?: string[];
+  seed_belief?: string | null;
 };
 
 export type ToolRun = {

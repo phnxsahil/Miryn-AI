@@ -19,6 +19,10 @@ class Identity(UUIDPrimaryKeyMixin, TimestampMixin, SerializableMixin, Base):
     values = Column(JSONB, default=dict)
     beliefs = Column(JSONB, default=list)
     open_loops = Column(JSONB, default=list)
+    memory_weights = Column(
+        JSONB,
+        default=lambda: {"beliefs": 0.33, "emotions": 0.33, "facts": 0.17, "goals": 0.17},
+    )
 
 
 class OnboardingResponse(UUIDPrimaryKeyMixin, CreatedAtMixin, SerializableMixin, Base):

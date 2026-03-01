@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "D:\Sahil-projects\Miry-AI\miryn\backend\_stream_smoke.py", line 21, in <module>
+    print("[\u2717] Backend never came up on port 8000")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\python\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2717' in position 1: character maps to <undefined>

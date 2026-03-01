@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
 from app.config import settings
-from app.api import auth, chat, identity, onboarding, llm, notifications, tools
+from app.api import auth, chat, identity, onboarding, llm, notifications, tools, memory
 from app.core.rate_limit import RateLimitMiddleware
 
 logger = logging.getLogger(__name__)
@@ -41,6 +41,7 @@ app.include_router(onboarding.router)
 app.include_router(llm.router)
 app.include_router(notifications.router)
 app.include_router(tools.router)
+app.include_router(memory.router)
 
 
 @app.exception_handler(Exception)

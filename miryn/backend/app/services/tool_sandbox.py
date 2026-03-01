@@ -1,5 +1,8 @@
+import os
 import tempfile
 import subprocess
+import uuid
+from pathlib import Path
 from typing import Dict
 import httpx
 from app.config import settings
@@ -49,22 +52,26 @@ class ToolSandbox:
             if bad in code:
                 return {"status": "blocked", "error": f"Blocked token: {bad}"}
 
-        with tempfile.TemporaryDirectory() as tmp:
-            path = f"{tmp}/tool.py"
-            with open(path, "w", encoding="utf-8") as handle:
-                handle.write(code)
-
+        tmp_root = Path(os.getenv("TOOL_SANDBOX_TMP_DIR") or tempfile.gettempdir())
+        tmp_root.mkdir(parents=True, exist_ok=True)
+        path = tmp_root / f"tool_{uuid.uuid4().hex}.py"
+        try:
+            path.write_text(code, encoding="utf-8")
+            result = subprocess.run(
+                ["python", str(path)],
+                capture_output=True,
+                text=True,
+                timeout=self.timeout_seconds,
+            )
+            output = (result.stdout or "") + (result.stderr or "")
+            return {"status": "ok" if result.returncode == 0 else "error", "output": output}
+        except subprocess.TimeoutExpired:
+            return {"status": "timeout", "error": "Tool execution timed out"}
+        finally:
             try:
-                result = subprocess.run(
-                    ["python", path],
-                    capture_output=True,
-                    text=True,
-                    timeout=self.timeout_seconds,
-                )
-                output = (result.stdout or "") + (result.stderr or "")
-                return {"status": "ok" if result.returncode == 0 else "error", "output": output}
-            except subprocess.TimeoutExpired:
-                return {"status": "timeout", "error": "Tool execution timed out"}
+                path.unlink(missing_ok=True)
+            except Exception:
+                pass
 
     def _run_remote(self, code: str) -> Dict:
         """

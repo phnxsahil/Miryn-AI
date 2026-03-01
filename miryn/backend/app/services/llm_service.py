@@ -4,6 +4,8 @@ from anthropic import AsyncAnthropic
 import asyncio
 import os
 import logging
+import json
+from pathlib import Path
 from app.config import settings
 
 
@@ -53,107 +55,76 @@ class LLMService:
         system_prompt: Optional[str] = None,
         max_tokens: int = 1000,
     ) -> str:
-        if self.provider == "openai":
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
-
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                max_tokens=max_tokens,
-                temperature=0.7,
-            )
-            choices = getattr(response, "choices", None) or []
-            if not choices:
-                raise RuntimeError("OpenAI response did not return any choices")
-            content = getattr(choices[0].message, "content", None)
-            if not content:
-                raise RuntimeError("OpenAI response was empty")
-            return content
-
-        if self.provider == "anthropic":
-            response = await self.client.messages.create(
-                model=self.model,
-                max_tokens=max_tokens,
-                system=system_prompt or "",
-                messages=[{"role": "user", "content": prompt}],
-            )
-            content_blocks = getattr(response, "content", None) or []
-            if not content_blocks:
-                raise RuntimeError("Anthropic response did not include content blocks")
-            primary = content_blocks[0]
-            text = getattr(primary, "text", None)
-            if text is None:
-                raise RuntimeError("Anthropic response was empty")
-            return text
-
-        if self.provider == "gemini":
-            # Gemini SDK is sync; run in thread
-            def _run():
-                text = prompt
+        async def _generate_inner() -> str:
+            if self.provider == "openai":
+                messages = []
                 if system_prompt:
-                    text = f"{system_prompt}\n\n{prompt}"
+                    messages.append({"role": "system", "content": system_prompt})
+                messages.append({"role": "user", "content": prompt})
 
-                candidates = [
-                    self.model,
-                    "gemini-1.5-flash-001",
-                    "gemini-1.5-flash-8b",
-                    "gemini-1.5-flash",
-                    "gemini-1.5-pro",
-                    "gemini-1.0-pro",
-                ]
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=0.7,
+                )
+                choices = getattr(response, "choices", None) or []
+                if not choices:
+                    raise RuntimeError("OpenAI response did not return any choices")
+                content = getattr(choices[0].message, "content", None)
+                if not content:
+                    raise RuntimeError("OpenAI response was empty")
+                return content
 
-                last_error = None
-                for m in candidates:
-                    try:
-                        model = self.client.GenerativeModel(m)
-                        res = model.generate_content(text)
-                        return getattr(res, "text", "") or ""
-                    except Exception as e:
-                        last_error = e
-                        continue
+            if self.provider == "anthropic":
+                response = await self.client.messages.create(
+                    model=self.model,
+                    max_tokens=max_tokens,
+                    system=system_prompt or "",
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                content_blocks = getattr(response, "content", None) or []
+                if not content_blocks:
+                    raise RuntimeError("Anthropic response did not include content blocks")
+                primary = content_blocks[0]
+                text = getattr(primary, "text", None)
+                if text is None:
+                    raise RuntimeError("Anthropic response was empty")
+                return text
 
-                # Final fallback: discover available models and try first that supports generateContent
-                try:
-                    available = self.client.list_models()
-                    for mdl in available:
-                        methods = getattr(mdl, "supported_generation_methods", []) or []
-                        if "generateContent" in methods:
-                            try:
-                                model = self.client.GenerativeModel(mdl.name)
-                                res = model.generate_content(text)
-                                return getattr(res, "text", "") or ""
-                            except Exception as e:
-                                last_error = e
-                                continue
-                except Exception as e:
-                    last_error = e
+            if self.provider == "gemini":
+                # Gemini SDK is sync; run in thread.
+                # Keep this fast and predictable: avoid multi-model retries on the request path.
+                def _run():
+                    text = prompt
+                    if system_prompt:
+                        text = f"{system_prompt}\n\n{prompt}"
+                    model = self.client.GenerativeModel(self.model)
+                    res = model.generate_content(text)
+                    return getattr(res, "text", "") or ""
 
-                if last_error:
-                    raise last_error
-                return ""
+                return await asyncio.to_thread(_run)
 
-            return await asyncio.to_thread(_run)
+            if self.provider == "vertex":
+                def _run_vertex():
+                    model_name = self.model
+                    if model_name.startswith("google/"):
+                        model_name = model_name.replace("google/", "", 1)
+                    model = self.client(model_name)
+                    text = prompt
+                    if system_prompt:
+                        text = f"{system_prompt}\n\n{prompt}"
+                    res = model.generate_content(text)
+                    return getattr(res, "text", "") or ""
 
-        if self.provider == "vertex":
-            def _run_vertex():
-                model_name = self.model
-                # Vertex SDK expects model garden ID (e.g. gemini-2.0-flash-lite-001)
-                # or full resource name. Strip "google/" if provided.
-                if model_name.startswith("google/"):
-                    model_name = model_name.replace("google/", "", 1)
-                model = self.client(model_name)
-                text = prompt
-                if system_prompt:
-                    text = f"{system_prompt}\n\n{prompt}"
-                res = model.generate_content(text)
-                return getattr(res, "text", "") or ""
+                return await asyncio.to_thread(_run_vertex)
 
-            return await asyncio.to_thread(_run_vertex)
+            raise ValueError(f"Unsupported LLM provider: {self.provider}")
 
-        raise ValueError(f"Unsupported LLM provider: {self.provider}")
+        try:
+            return await asyncio.wait_for(_generate_inner(), timeout=settings.LLM_TIMEOUT_SECONDS)
+        except asyncio.TimeoutError as exc:
+            raise TimeoutError(f"LLM request timed out after {settings.LLM_TIMEOUT_SECONDS}s") from exc
 
     async def chat(self, context: dict, user_message: str, identity: dict) -> str:
         system_prompt = self._build_system_prompt(identity)
@@ -169,6 +140,12 @@ class LLMService:
         - You notice patterns in the user's behavior
         - You are honest, empathetic, and reflective
         - You ask thoughtful follow-up questions
+
+        Formatting requirements:
+        - Use short paragraphs with blank lines (avoid a wall of text).
+        - Use bullet points or numbered steps when helpful.
+        - Add 2-4 clear section headings (plain text is fine).
+        - If the user asks for medical/health advice, include a brief safety note and suggest professional help when appropriate.
         """
 
         return await self.generate(
@@ -177,18 +154,97 @@ class LLMService:
             max_tokens=500,
         )
 
+    async def stream_chat(self, context: dict, user_message: str, identity: dict):
+        system_prompt = self._build_system_prompt(identity)
+        context_text = self._format_context(context)
+
+        full_prompt = f"""
+        {context_text}
+
+        Current message: {user_message}
+
+        Respond as Miryn, keeping in mind:
+        - You remember past conversations (shown above)
+        - You notice patterns in the user's behavior
+        - You are honest, empathetic, and reflective
+        - You ask thoughtful follow-up questions
+
+        Formatting requirements:
+        - Use short paragraphs with blank lines (avoid a wall of text).
+        - Use bullet points or numbered steps when helpful.
+        - Add 2-4 clear section headings (plain text is fine).
+        - If the user asks for medical/health advice, include a brief safety note and suggest professional help when appropriate.
+        """
+
+        if self.provider == "openai":
+            async with self.client.chat.completions.stream(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": full_prompt},
+                ],
+                max_tokens=500,
+            ) as stream:
+                async for chunk in stream:
+                    if chunk.choices[0].delta.content:
+                        yield chunk.choices[0].delta.content
+            return
+
+        if self.provider == "anthropic":
+            async with self.client.messages.stream(
+                model=self.model,
+                system=system_prompt,
+                messages=[{"role": "user", "content": full_prompt}],
+                max_tokens=500,
+            ) as stream:
+                async for text in stream.text_stream:
+                    yield text
+            return
+
+        if self.provider in {"gemini", "vertex"}:
+            full = await self.generate(
+                full_prompt,
+                system_prompt=system_prompt,
+                max_tokens=500,
+            )
+            if full:
+                yield full
+            return
+
+        raise ValueError(f"Streaming not supported for provider: {self.provider}")
+
     def _build_system_prompt(self, identity: dict) -> str:
         traits = identity.get("traits", {})
         values = identity.get("values", {})
         open_loops = identity.get("open_loops", [])
+        preset_id = identity.get("preset", "companion")
+
+        preset_modifier = ""
+        behaviors = {}
+        try:
+            presets_path = Path(__file__).resolve().parent.parent / "config" / "presets.json"
+            with open(presets_path, "r", encoding="utf-8") as handle:
+                presets = json.load(handle)
+            preset = next((p for p in presets if p.get("id") == preset_id), None)
+            if preset:
+                preset_modifier = preset.get("system_prompt_modifier", "")
+                behaviors = preset.get("conversation_behaviors", {}) or {}
+        except Exception:
+            pass
 
         prompt = f"""
         You are Miryn, an AI companion with deep memory and reflective capabilities.
 
-        You are talking to a user with these characteristics:
+        USER PROFILE:
         - Personality traits: {traits}
         - Core values: {values}
-        - Ongoing topics to track: {[loop.get('topic') for loop in open_loops]}
+        - Open threads to follow up on: {[loop.get('topic') for loop in open_loops[:5]]}
+
+        YOUR BEHAVIORAL STYLE:
+        {preset_modifier}
+
+        CONVERSATION BEHAVIORS:
+        {behaviors}
 
         Your purpose is to:
         1. Remember everything the user shares

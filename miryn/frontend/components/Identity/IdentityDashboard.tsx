@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import type { Identity } from "@/lib/types";
+import type { EvolutionLogEntry, Identity } from "@/lib/types";
 
 const tone = [
   "bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_55%)]",
@@ -52,6 +52,7 @@ function Meter({ value }: { value: number }) {
  */
 export default function IdentityDashboard() {
   const [identity, setIdentity] = useState<Identity | null>(null);
+  const [evolution, setEvolution] = useState<EvolutionLogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,6 +61,10 @@ export default function IdentityDashboard() {
       .getIdentity()
       .then(setIdentity)
       .catch((e) => setError(e.message || "Failed to load identity"));
+    api
+      .getEvolution()
+      .then((data) => setEvolution(data || []))
+      .catch(() => setEvolution([]));
   }, []);
 
   const stats = useMemo(() => {
@@ -231,6 +236,45 @@ export default function IdentityDashboard() {
             Tier‑2 and Tier‑3 memory can be encrypted at rest when enabled on the server.
             This dashboard reflects your latest identity snapshot, not raw message logs.
           </p>
+        </section>
+
+        <section className="mt-10">
+          <div className="text-xs uppercase tracking-[0.3em] text-secondary">Evolution Timeline</div>
+          <div className="mt-4 space-y-4">
+            {evolution.length === 0 && (
+              <div className="rounded-2xl border border-white/10 bg-black/40 p-6 text-secondary">
+                Nothing recorded yet - start a conversation
+              </div>
+            )}
+            {evolution.map((entry) => {
+              const date = new Date(entry.created_at).toLocaleDateString();
+              const oldValue = entry.old_value ? JSON.stringify(entry.old_value) : null;
+              const newValue = entry.new_value ? JSON.stringify(entry.new_value) : null;
+              return (
+                <div key={entry.id} className="rounded-2xl border border-white/10 bg-black/40 p-6">
+                  <div className="text-sm text-white">
+                    On {date}, Miryn noticed your {entry.field_changed} shifted
+                  </div>
+                  {(oldValue || newValue) && (
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      {oldValue && (
+                        <div className="rounded-xl border border-white/10 bg-black/30 p-3 text-xs text-secondary">
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-secondary">Old</div>
+                          <div className="mt-2 text-white/70">{oldValue}</div>
+                        </div>
+                      )}
+                      {newValue && (
+                        <div className="rounded-xl border border-white/10 bg-black/30 p-3 text-xs text-secondary">
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-secondary">New</div>
+                          <div className="mt-2 text-white/70">{newValue}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </section>
       </div>
     </div>
