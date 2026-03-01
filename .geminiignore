@@ -1,0 +1,21 @@
+# Ignore pytest cache files causing EPERM errors
+**/pytest-cache-files-*
+**/tooltmp/**
+
+# Standard ignores
+**/__pycache__
+**/.venv
+**/venv
+**/node_modules
+**/.next
+**/.git
+
+# Environment variable files — never expose secrets
+.env
+.env.local
+.env.*.local
+.env.*
+**/.env
+**/.env.local
+**/.env.*.local
+**/.env.*
