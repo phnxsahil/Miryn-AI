@@ -15,7 +15,7 @@ from app.services.identity import (
 
 
 class IdentityEngine:
-    def __init__(self):
+    def __init__(self, reflection=None):
         """
         Initialize the IdentityEngine by configuring the backend client and creating component stores.
         
@@ -27,6 +27,7 @@ class IdentityEngine:
         self.patterns = PatternStore()
         self.emotions = EmotionStore()
         self.conflicts = ConflictStore()
+        self.reflection = reflection
 
     def get_identity(self, user_id: str, sql_session: Optional[Any] = None) -> Dict:
         """
@@ -199,7 +200,7 @@ class IdentityEngine:
 
         return self.update_identity(user_id, {"open_loops": open_loops})
 
-    def detect_conflicts(self, user_id: str, new_statement: str) -> List[Dict]:
+    async def detect_conflicts(self, user_id: str, new_statement: str) -> List[Dict]:
         """
         Detects potential conflicts between a user's stored identity and a new statement.
         
@@ -210,8 +211,11 @@ class IdentityEngine:
         Returns:
             List[Dict]: A list of conflict objects where each dict describes a detected conflict. Returns an empty list if no conflicts are found.
         """
-        _ = self.get_identity(user_id)
-        return []
+        if not self.reflection:
+            return []
+        identity = self.get_identity(user_id)
+        beliefs = identity.get("beliefs", [])
+        return await self.reflection.detect_contradictions(beliefs, new_statement)
 
     def add_conflicts(self, user_id: str, conflicts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -417,6 +421,50 @@ class IdentityEngine:
                 },
             )
 
+    def _log_identity_evolution_supabase(
+        self,
+        user_id: str,
+        identity_id: str,
+        previous: Dict,
+        current: Dict,
+        trigger_type: str,
+    ) -> None:
+        if not self.supabase:
+            return
+
+        fields = [
+            "state",
+            "traits",
+            "values",
+            "beliefs",
+            "open_loops",
+            "patterns",
+            "emotions",
+            "conflicts",
+            "preset",
+            "memory_weights",
+        ]
+
+        logs = []
+        for field in fields:
+            old_value = previous.get(field)
+            new_value = current.get(field)
+            if old_value == new_value:
+                continue
+            logs.append(
+                {
+                    "user_id": user_id,
+                    "identity_id": identity_id,
+                    "field_changed": field,
+                    "old_value": json.dumps(old_value, default=str),
+                    "new_value": json.dumps(new_value, default=str),
+                    "trigger_type": trigger_type,
+                }
+            )
+
+        if logs:
+            self.supabase.table("identity_evolution_log").insert(logs).execute()
+
     def _insert_identity_supabase(self, user_id: str, merged: Dict, updates: Dict) -> Dict:
         """
         Insert a new identity version into Supabase, update related stores, and return the hydrated identity.
@@ -438,6 +486,18 @@ class IdentityEngine:
         while attempts < 3:
             attempts += 1
             version = merged.get("base_version", 0) + 1
+            
+            # Get previous identity for evolution log
+            previous_response = (
+                self.supabase.table("identities")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("version", desc=True)
+                .limit(1)
+                .execute()
+            )
+            previous_identity = self._hydrate_identity(previous_response.data[0]) if previous_response.data else {}
+
             payload = {
                 "user_id": user_id,
                 "version": version,
@@ -461,6 +521,14 @@ class IdentityEngine:
                     self.patterns.replace(user_id, identity_id, merged.get("patterns", []))
                     self.emotions.replace(user_id, identity_id, merged.get("emotions", []))
                     self.conflicts.replace(user_id, identity_id, merged.get("conflicts", []))
+                    
+                    self._log_identity_evolution_supabase(
+                        user_id=user_id,
+                        identity_id=identity_id,
+                        previous=previous_identity,
+                        current=merged,
+                        trigger_type="update_identity",
+                    )
                 return self._hydrate_identity(identity)
             except Exception as exc:
                 message = str(exc).lower()
@@ -512,6 +580,10 @@ class IdentityEngine:
                 - `conflicts`: list
         """
         identity = dict(identity)
+        if identity.get("id") is not None:
+            identity["id"] = str(identity["id"])
+        if identity.get("user_id") is not None:
+            identity["user_id"] = str(identity["user_id"])
         identity["traits"] = self._ensure_dict(identity.get("traits"))
         identity["values"] = self._ensure_dict(identity.get("values"))
         identity["beliefs"] = self._ensure_list(identity.get("beliefs"))
