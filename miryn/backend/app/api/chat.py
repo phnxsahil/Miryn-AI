@@ -121,6 +121,7 @@ async def send_message(
 
 @router.post("/stream")
 async def stream_message(
+    http_request: Request,
     request: ChatRequest,
     user_id: str = Depends(get_current_user_id),
 ):
@@ -189,8 +190,11 @@ async def stream_message(
             content=request.message,
             conversation_id=conversation_id,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning(
+            "Failed to store user message before streaming (user_id=%s, conversation_id=%s): %s",
+            user_id, conversation_id, exc, exc_info=True,
+        )
 
     async def event_stream():
         response_parts: list[str] = []
@@ -200,14 +204,20 @@ async def stream_message(
                 user_message=request.message,
                 identity=identity,
             ):
-                if await request.is_disconnected():
+                if await http_request.is_disconnected():
+                    logger.info("Client disconnected from chat stream")
                     return
                 response_parts.append(chunk)
                 payload = json.dumps({"chunk": chunk})
                 yield f"data: {payload}\n\n"
         except Exception as exc:
-            logger.exception("Chat stream failed")
-            payload = json.dumps({"error": "Something went wrong"})
+            logger.exception("Chat stream failed during generation")
+            error_msg = str(exc)
+            if "timeout" in error_msg.lower():
+                error_msg = "Miryn took too long to respond. Please try again."
+            else:
+                error_msg = "An internal error occurred. Please try again later."
+            payload = json.dumps({"error": error_msg})
             yield f"data: {payload}\n\n"
             return
 
@@ -221,13 +231,13 @@ async def stream_message(
                     conversation_id=conversation_id,
                 )
             except Exception:
-                pass
+                logger.exception("Failed to store assistant response in stream")
 
             conversation_data = {"user": request.message, "assistant": full_response}
             try:
                 analyze_reflection.delay(user_id, conversation_data)
             except Exception:
-                pass
+                logger.warning("Failed to queue reflection from stream")
 
         done_payload = json.dumps({"done": True, "conversation_id": conversation_id})
         yield f"data: {done_payload}\n\n"
