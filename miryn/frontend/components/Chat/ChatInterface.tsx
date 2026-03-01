@@ -111,6 +111,9 @@ export default function ChatInterface() {
       });
 
       for await (const event of api.streamMessage(trimmed, conversationId || undefined)) {
+        if (event.error) {
+          throw new Error(event.error);
+        }
         if (event.chunk) {
           setMessages((prev) => {
             const next = [...prev];
@@ -133,7 +136,7 @@ export default function ChatInterface() {
         }
       }
       if (!completed) {
-        throw new Error("Stream ended unexpectedly");
+        throw new Error("The connection was lost before Miryn could finish reflecting.");
       }
     } catch (error: unknown) {
       const errorMessage = getErrorMessage(error, "Sorry, something went wrong. Please try again.");
@@ -215,8 +218,8 @@ export default function ChatInterface() {
   const notificationCount = notifications.filter((n) => n.status === "new").length;
 
   return (
-    <div className="flex flex-col h-screen bg-void">
-      <div className="border-b border-white/10 p-6 flex items-center justify-between">
+    <div className="flex flex-col h-[100dvh] md:h-screen bg-void max-h-screen overflow-hidden">
+      <div className="hidden md:flex border-b border-white/10 p-6 items-center justify-between shrink-0">
         <div>
           <h1 className="text-2xl font-light text-white">Miryn</h1>
           <p className="text-sm text-secondary">A quiet room for honest reflection.</p>
@@ -229,12 +232,12 @@ export default function ChatInterface() {
       </div>
 
       {status && (
-        <div className="bg-red-500/10 border-y border-red-500/20 text-red-200 text-xs tracking-[0.2em] uppercase px-6 py-2">
+        <div className="bg-red-500/10 border-y border-red-500/20 text-red-200 text-[10px] md:text-xs tracking-[0.2em] uppercase px-4 md:px-6 py-2 shrink-0">
           {status}
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
         {messages.map((msg, idx) => (
           <MessageBubble
             key={`${msg.timestamp}-${idx}`}
@@ -245,10 +248,12 @@ export default function ChatInterface() {
         <div ref={messagesEndRef} />
       </div>
 
-      <InsightsPanel insights={insights} conflicts={conflicts} />
-      <NotificationsPanel notifications={notifications} onMarkRead={markNotificationRead} />
-      <ToolPanel pending={pendingTools} onGenerate={generateTool} onApprove={approveTool} />
-      <InputBox onSend={sendMessage} disabled={loading} />
+      <div className="shrink-0">
+        <InsightsPanel insights={insights} conflicts={conflicts} />
+        <NotificationsPanel notifications={notifications} onMarkRead={markNotificationRead} />
+        <ToolPanel pending={pendingTools} onGenerate={generateTool} onApprove={approveTool} />
+        <InputBox onSend={sendMessage} disabled={loading} />
+      </div>
     </div>
   );
 }
