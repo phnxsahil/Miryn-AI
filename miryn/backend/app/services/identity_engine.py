@@ -333,6 +333,8 @@ class IdentityEngine:
         while attempts < 3:
             attempts += 1
             try:
+                result_row = None
+                previous_identity = {}
                 with self._session_scope(sql_session) as session:
                     previous = session.execute(
                         text(
@@ -346,11 +348,26 @@ class IdentityEngine:
                         {"user_id": user_id},
                     ).mappings().first()
 
-                    previous_identity = self._hydrate_identity(dict(previous)) if previous else {}
+                    # Use _deserialize_identity (no DB calls) to avoid opening
+                    # nested sessions inside this session which exhausts the pool.
+                    previous_identity = self._deserialize_identity(dict(previous)) if previous else {}
 
-                    result = session.execute(stmt, payload).mappings().first()
-                if result:
-                    identity = dict(result)
+                    result_row = session.execute(stmt, payload).mappings().first()
+
+                    if result_row:
+                        self._log_identity_evolution_sql(
+                            session,
+                            user_id=user_id,
+                            identity_id=str(result_row["id"]),
+                            previous=previous_identity,
+                            current=merged,
+                            trigger_type="update_identity",
+                        )
+
+                # Sub-store writes happen AFTER the session commits to avoid
+                # nested-session pool exhaustion on Neon.
+                if result_row:
+                    identity = dict(result_row)
                     identity_id = identity.get("id")
                     if identity_id:
                         self.beliefs.replace(user_id, identity_id, merged.get("beliefs", []))
@@ -358,14 +375,6 @@ class IdentityEngine:
                         self.patterns.replace(user_id, identity_id, merged.get("patterns", []))
                         self.emotions.replace(user_id, identity_id, merged.get("emotions", []))
                         self.conflicts.replace(user_id, identity_id, merged.get("conflicts", []))
-                        self._log_identity_evolution_sql(
-                            session,
-                            user_id=user_id,
-                            identity_id=identity_id,
-                            previous=previous_identity,
-                            current=merged,
-                            trigger_type="update_identity",
-                        )
                     return self._hydrate_identity(identity)
             except IntegrityError:
                 if attempts >= 3:
