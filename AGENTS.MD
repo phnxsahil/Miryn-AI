@@ -42,6 +42,12 @@
 - miryn/backend/app/core/security.py
 - miryn/backend/migrations/001_init.sql
 
+## Frontend UI Standards
+- All UI components must be mobile-responsive by default.
+- Use `h-[100dvh]` for full-height application containers.
+- Use responsive grids (e.g., `grid-cols-1 md:grid-cols-2`) for layouts.
+- Ensure buttons and inputs are touch-friendly (min `py-2.5`).
+
 ## After every backend change, check that
 - The endpoint is registered in main.py if it's a new router
 - The schema exists in app/schemas/ for any new request/response shape
