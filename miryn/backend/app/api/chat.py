@@ -3,14 +3,16 @@ from fastapi.responses import StreamingResponse
 import asyncio
 import json
 import logging
+from datetime import datetime, timezone
 from sqlalchemy import text
+from app.config import settings
 from app.core.database import get_db, has_sql, get_sql_session
 from app.core.security import get_current_user_id, get_user_id_from_token
-from app.core.cache import drain_events
+from app.core.cache import drain_events, redis_client
 from app.core.encryption import decrypt_text
 from app.services.orchestrator import ConversationOrchestrator
 from app.workers.reflection_worker import analyze_reflection
-from app.schemas.chat import ChatRequest, ChatResponse
+from app.schemas.chat import ChatRequest, ChatResponse, TitleUpdate
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -71,6 +73,21 @@ async def send_message(
     if conversation_id:
         _validate_conversation_owner(conversation_id, user_id)
 
+    # Rate limiting
+    day_key = f"msg_day:{user_id}:{datetime.now(timezone.utc).strftime('%Y%m%d')}"
+    hour_key = f"msg_hour:{user_id}:{datetime.now(timezone.utc).strftime('%Y%m%d%H')}"
+    day_count = int(redis_client.incr(day_key))
+    if day_count == 1:
+        redis_client.expire(day_key, 86400)
+    hour_count = int(redis_client.incr(hour_key))
+    if hour_count == 1:
+        redis_client.expire(hour_key, 3600)
+
+    if day_count > settings.MAX_MESSAGES_PER_DAY:
+        raise HTTPException(status_code=429, detail="Daily message limit reached. Resets at midnight.")
+    if hour_count > settings.MAX_MESSAGES_PER_HOUR:
+        raise HTTPException(status_code=429, detail="Hourly message limit reached. Try again soon.")
+
     if has_sql():
         if not conversation_id:
             with get_sql_session() as session:
@@ -111,6 +128,18 @@ async def send_message(
         conversation_id=conversation_id,
     )
 
+    # Update updated_at
+    if has_sql():
+        with get_sql_session() as session:
+            session.execute(
+                text("UPDATE conversations SET updated_at = NOW() WHERE id = :id"),
+                {"id": conversation_id}
+            )
+            session.commit()
+    else:
+        db = get_db()
+        db.table("conversations").update({"updated_at": "now()"}).eq("id", conversation_id).execute()
+
     return ChatResponse(
         response=result["response"],
         conversation_id=conversation_id,
@@ -129,6 +158,21 @@ async def stream_message(
 
     if conversation_id:
         _validate_conversation_owner(conversation_id, user_id)
+
+    # Rate limiting
+    day_key = f"msg_day:{user_id}:{datetime.now(timezone.utc).strftime('%Y%m%d')}"
+    hour_key = f"msg_hour:{user_id}:{datetime.now(timezone.utc).strftime('%Y%m%d%H')}"
+    day_count = int(redis_client.incr(day_key))
+    if day_count == 1:
+        redis_client.expire(day_key, 86400)
+    hour_count = int(redis_client.incr(hour_key))
+    if hour_count == 1:
+        redis_client.expire(hour_key, 3600)
+
+    if day_count > settings.MAX_MESSAGES_PER_DAY:
+        raise HTTPException(status_code=429, detail="Daily message limit reached. Resets at midnight.")
+    if hour_count > settings.MAX_MESSAGES_PER_HOUR:
+        raise HTTPException(status_code=429, detail="Hourly message limit reached. Try again soon.")
 
     if has_sql():
         if not conversation_id:
@@ -242,6 +286,18 @@ async def stream_message(
         done_payload = json.dumps({"done": True, "conversation_id": conversation_id})
         yield f"data: {done_payload}\n\n"
 
+    # Update updated_at
+    if has_sql():
+        with get_sql_session() as session:
+            session.execute(
+                text("UPDATE conversations SET updated_at = NOW() WHERE id = :id"),
+                {"id": conversation_id}
+            )
+            session.commit()
+    else:
+        db = get_db()
+        db.table("conversations").update({"updated_at": "now()"}).eq("id", conversation_id).execute()
+
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
@@ -252,10 +308,11 @@ def list_conversations(user_id: str = Depends(get_current_user_id)):
             result = session.execute(
                 text(
                     """
-                    SELECT id, title, created_at
-                    FROM conversations
-                    WHERE user_id = :user_id
-                    ORDER BY created_at DESC
+                    SELECT c.id, c.title, c.created_at, c.updated_at,
+                           (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id) as message_count
+                    FROM conversations c
+                    WHERE c.user_id = :user_id
+                    ORDER BY c.updated_at DESC
                     """
                 ),
                 {"user_id": user_id},
@@ -265,12 +322,61 @@ def list_conversations(user_id: str = Depends(get_current_user_id)):
     db = get_db()
     response = (
         db.table("conversations")
-        .select("id, title, created_at")
+        .select("id, title, created_at, updated_at")
         .eq("user_id", user_id)
-        .order("created_at", desc=True)
+        .order("updated_at", desc=True)
         .execute()
     )
-    return response.data or []
+    conversations = response.data or []
+    for conv in conversations:
+        msg_count = db.table("messages").select("id", count="exact").eq("conversation_id", conv["id"]).execute()
+        conv["message_count"] = msg_count.count if msg_count else 0
+    return conversations
+
+
+@router.patch("/conversations/{conversation_id}/title")
+async def update_title(
+    conversation_id: str,
+    payload: TitleUpdate,
+    user_id: str = Depends(get_current_user_id),
+):
+    _validate_conversation_owner(conversation_id, user_id)
+    
+    new_title = payload.title
+    
+    # Auto-generate title if null/empty
+    if not new_title:
+        # Get first message
+        if has_sql():
+            with get_sql_session() as session:
+                first_msg = session.execute(
+                    text("SELECT content FROM messages WHERE conversation_id = :cid ORDER BY created_at LIMIT 1"),
+                    {"cid": conversation_id}
+                ).scalar()
+        else:
+            db = get_db()
+            res = db.table("messages").select("content").eq("conversation_id", conversation_id).order("created_at").limit(1).execute()
+            first_msg = res.data[0]["content"] if res.data else None
+            
+        if first_msg:
+            prompt = f"Generate a very short, 3-5 word title for a conversation that starts with: \"{first_msg[:200]}\". Return only the title text."
+            new_title = await orchestrator.llm.generate(prompt)
+            new_title = new_title.strip().strip('"')
+        else:
+            new_title = "New Conversation"
+
+    if has_sql():
+        with get_sql_session() as session:
+            session.execute(
+                text("UPDATE conversations SET title = :title, updated_at = NOW() WHERE id = :id"),
+                {"title": new_title, "id": conversation_id}
+            )
+            session.commit()
+    else:
+        db = get_db()
+        db.table("conversations").update({"title": new_title, "updated_at": "now()"}).eq("id", conversation_id).execute()
+        
+    return {"status": "success", "title": new_title}
 
 
 @router.get("/history")
