@@ -13,9 +13,9 @@ from app.config import settings
 class ConversationOrchestrator:
     def __init__(self):
         self.llm = LLMService()
-        self.identity = IdentityEngine()
         self.memory = MemoryLayer()
         self.reflection = ReflectionEngine(self.llm)
+        self.identity = IdentityEngine(reflection=self.reflection)
         self.logger = logging.getLogger(__name__)
 
     async def handle_message(self, user_id: str, message: str, conversation_id: str) -> Dict:
@@ -80,7 +80,7 @@ class ConversationOrchestrator:
         if settings.ENABLE_INLINE_CONFLICT_DETECTION:
             try:
                 conflicts = await asyncio.wait_for(
-                    self.reflection.detect_contradictions(identity.get("beliefs", []), message),
+                    self.identity.detect_conflicts(user_id, message),
                     timeout=settings.CONFLICT_DETECTION_TIMEOUT_SECONDS,
                 )
                 if conflicts:
@@ -94,7 +94,7 @@ class ConversationOrchestrator:
             async def _detect_conflicts_bg():
                 try:
                     detected = await asyncio.wait_for(
-                        self.reflection.detect_contradictions(identity.get("beliefs", []), message),
+                        self.identity.detect_conflicts(user_id, message),
                         timeout=settings.CONFLICT_DETECTION_TIMEOUT_SECONDS,
                     )
                     if detected:

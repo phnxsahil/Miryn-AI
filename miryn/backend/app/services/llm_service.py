@@ -1,4 +1,4 @@
-﻿from typing import Optional
+﻿from typing import Optional, Any
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 import asyncio
@@ -25,15 +25,12 @@ class LLMService:
             self.client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
             self.model = "claude-3-5-sonnet-20241022"
         elif self.provider == "gemini":
-            import google.generativeai as genai
+            from google import genai
 
             key = settings.GEMINI_API_KEY or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-            if key:
-                os.environ["GOOGLE_API_KEY"] = key
-            else:
+            if not key:
                 raise ValueError("A Gemini API key is required when LLM_PROVIDER=gemini")
-            genai.configure(api_key=key)
-            self.client = genai
+            self.client = genai.Client(api_key=key)
             self.model = settings.GEMINI_MODEL
         elif self.provider == "vertex":
             from vertexai import init as vertex_init
@@ -93,17 +90,24 @@ class LLMService:
                 return text
 
             if self.provider == "gemini":
-                # Gemini SDK is sync; run in thread.
-                # Keep this fast and predictable: avoid multi-model retries on the request path.
-                def _run():
-                    text = prompt
-                    if system_prompt:
-                        text = f"{system_prompt}\n\n{prompt}"
-                    model = self.client.GenerativeModel(self.model)
-                    res = model.generate_content(text)
-                    return getattr(res, "text", "") or ""
+                from google.genai import types as genai_types
 
-                return await asyncio.to_thread(_run)
+                contents = prompt
+                if system_prompt:
+                    contents = f"{system_prompt}\n\n{prompt}"
+                response = await self.client.aio.models.generate_content(
+                    model=self.model,
+                    contents=contents,
+                    config=genai_types.GenerateContentConfig(
+                        max_output_tokens=max_tokens,
+                        temperature=0.7,
+                    ),
+                )
+                try:
+                    return response.text or ""
+                except Exception as exc:
+                    self.logger.warning("Gemini generate_content response.text raised (safety filter or empty): %s", exc)
+                    return ""
 
             if self.provider == "vertex":
                 def _run_vertex():
@@ -201,7 +205,43 @@ class LLMService:
                     yield text
             return
 
-        if self.provider in {"gemini", "vertex"}:
+        if self.provider == "gemini":
+            from google.genai import types as genai_types
+
+            contents = full_prompt
+            if system_prompt:
+                contents = f"{system_prompt}\n\n{full_prompt}"
+            
+            try:
+                # Some versions of the SDK require awaiting the call to get the async iterable,
+                # while others allow async for directly. We'll try to get the iterable correctly.
+                stream_response = self.client.aio.models.generate_content_stream(
+                    model=self.model,
+                    contents=contents,
+                    config=genai_types.GenerateContentConfig(max_output_tokens=500, temperature=0.7),
+                )
+                
+                # If it's a coroutine, we need to await it to get the async iterator
+                if asyncio.iscoroutine(stream_response):
+                    stream_response = await stream_response
+
+                async for chunk in stream_response:
+                    text = None
+                    try:
+                        text = chunk.text
+                    except Exception:
+                        # Safety filter or other non-text chunk
+                        self.logger.warning("Gemini chunk had no text: %s", chunk)
+                        continue
+                        
+                    if text:
+                        yield text
+            except Exception as e:
+                self.logger.exception("Gemini streaming failed")
+                raise
+            return
+
+        if self.provider == "vertex":
             full = await self.generate(
                 full_prompt,
                 system_prompt=system_prompt,
@@ -212,6 +252,45 @@ class LLMService:
             return
 
         raise ValueError(f"Streaming not supported for provider: {self.provider}")
+
+    @staticmethod
+    def parse_json_response(response: str) -> Any:
+        """
+        Extract and parse a JSON object or array from a string that may contain Markdown code blocks.
+        """
+        if not response:
+            return None
+        
+        cleaned = response.strip()
+        
+        # Remove Markdown code blocks if present
+        if cleaned.startswith("```"):
+            # Find the first { or [
+            first_brace = cleaned.find("{")
+            first_bracket = cleaned.find("[")
+            start = -1
+            if first_brace != -1 and (first_bracket == -1 or first_brace < first_bracket):
+                start = first_brace
+            elif first_bracket != -1:
+                start = first_bracket
+            
+            if start != -1:
+                # Find the last } or ]
+                last_brace = cleaned.rfind("}")
+                last_bracket = cleaned.rfind("]")
+                end = -1
+                if last_brace != -1 and (last_bracket == -1 or last_brace > last_bracket):
+                    end = last_brace
+                elif last_bracket != -1:
+                    end = last_bracket
+                
+                if end != -1:
+                    cleaned = cleaned[start:end+1]
+
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            return None
 
     def _build_system_prompt(self, identity: dict) -> str:
         traits = identity.get("traits", {})

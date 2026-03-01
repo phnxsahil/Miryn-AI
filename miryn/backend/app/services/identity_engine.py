@@ -15,11 +15,9 @@ from app.services.identity import (
 
 
 class IdentityEngine:
-    def __init__(self):
+    def __init__(self, reflection=None):
         """
         Initialize the IdentityEngine by configuring the backend client and creating component stores.
-        
-        Sets `self.supabase` to a Supabase client when SQL is not configured; otherwise leaves it as `None`. Instantiates stores for beliefs, open loops, patterns, emotions, and conflicts as attributes on the engine.
         """
         self.supabase = get_db() if not has_sql() else None
         self.beliefs = BeliefStore()
@@ -27,20 +25,11 @@ class IdentityEngine:
         self.patterns = PatternStore()
         self.emotions = EmotionStore()
         self.conflicts = ConflictStore()
+        self.reflection = reflection
 
     def get_identity(self, user_id: str, sql_session: Optional[Any] = None) -> Dict:
         """
         Retrieve the latest hydrated identity for the given user, creating and returning an initial identity if none exists.
-        
-        Parameters:
-            user_id (str): The user's unique identifier.
-            sql_session (Optional[Any]): Optional SQLAlchemy session to use for the lookup; if not provided a session will be created when SQL is enabled.
-        
-        Returns:
-            Dict: The hydrated identity object for the user (includes traits, values, beliefs, open_loops, patterns, emotions, and conflicts).
-        
-        Raises:
-            RuntimeError: If SQL is not configured and the Supabase client is not available.
         """
         if has_sql():
             with self._session_scope(sql_session) as session:
@@ -57,7 +46,7 @@ class IdentityEngine:
                 ).mappings().first()
 
             if result:
-                return self._hydrate_identity(dict(result))
+                return self._hydrate_identity(dict(result), sql_session=sql_session)
 
             return self._create_initial_identity(user_id, sql_session=sql_session)
 
@@ -81,18 +70,6 @@ class IdentityEngine:
     def _create_initial_identity(self, user_id: str, sql_session: Optional[Any] = None) -> Dict:
         """
         Create and persist an initial identity for the given user and return the hydrated identity.
-        
-        If an SQL backend is configured the identity is inserted into the identities table; otherwise the identity is inserted via Supabase. The created identity starts at version 1 with state "onboarding" and empty traits, values, beliefs, open_loops, patterns, emotions, and conflicts.
-        
-        Parameters:
-            user_id (str): The user's identifier.
-            sql_session (Optional[Any]): An optional SQLAlchemy session to use for the insert; if omitted, a session will be created.
-        
-        Returns:
-            Dict: The persisted identity dictionary with related components loaded (hydrated).
-        
-        Raises:
-            RuntimeError: If no SQL backend is available and the Supabase client is not configured.
         """
         identity = {
             "user_id": user_id,
@@ -130,7 +107,7 @@ class IdentityEngine:
                         "memory_weights": json.dumps(identity["memory_weights"]),
                     },
                 ).mappings().first()
-                return self._hydrate_identity(dict(result))
+                return self._hydrate_identity(dict(result), sql_session=session)
 
         if not self.supabase:
             raise RuntimeError("Supabase client is not configured")
@@ -141,14 +118,6 @@ class IdentityEngine:
     def update_identity(self, user_id: str, updates: Dict, sql_session: Optional[Any] = None) -> Dict:
         """
         Merge provided identity updates into the user's current identity and persist the new version.
-        
-        Parameters:
-            user_id (str): The user's unique identifier.
-            updates (Dict): Partial identity fields to merge into the current identity (may contain traits, values, beliefs, open_loops, patterns, emotions, conflicts, and/or state).
-            sql_session (Optional[Any]): Optional SQLAlchemy session to use for SQL persistence; if omitted a session will be created when needed.
-        
-        Returns:
-            Dict: The newly persisted, hydrated identity including merged fields and related store data.
         """
         current = self.get_identity(user_id, sql_session=sql_session)
         merged = self._merge_identity(current, updates)
@@ -199,32 +168,19 @@ class IdentityEngine:
 
         return self.update_identity(user_id, {"open_loops": open_loops})
 
-    def detect_conflicts(self, user_id: str, new_statement: str) -> List[Dict]:
+    async def detect_conflicts(self, user_id: str, new_statement: str) -> List[Dict]:
         """
         Detects potential conflicts between a user's stored identity and a new statement.
-        
-        Parameters:
-            user_id (str): Identifier of the user whose identity will be compared.
-            new_statement (str): Statement to evaluate for potential conflicts with the user's identity.
-        
-        Returns:
-            List[Dict]: A list of conflict objects where each dict describes a detected conflict. Returns an empty list if no conflicts are found.
         """
-        _ = self.get_identity(user_id)
-        return []
+        if not self.reflection:
+            return []
+        identity = self.get_identity(user_id)
+        beliefs = identity.get("beliefs", [])
+        return await self.reflection.detect_contradictions(beliefs, new_statement)
 
     def add_conflicts(self, user_id: str, conflicts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Insert the provided conflict entries for the specified user's current identity.
-        
-        If `conflicts` is empty or the user has no persisted identity, no action is taken and an empty list is returned.
-        
-        Parameters:
-            user_id (str): The user's identifier.
-            conflicts (List[Dict[str, Any]]): A list of conflict records to add; each record is a dict of conflict fields.
-        
-        Returns:
-            List[Dict[str, Any]]: The same `conflicts` list after persistence, or an empty list if nothing was added.
         """
         if not conflicts:
             return []
@@ -236,20 +192,6 @@ class IdentityEngine:
         return conflicts
 
     def _merge_identity(self, current: Dict, updates: Dict) -> Dict:
-        """
-        Merge an existing identity with incoming updates, producing the next identity payload.
-        
-        Parameters:
-            current (Dict): The existing identity object; its `version` is used as `base_version`.
-            updates (Dict): Partial identity fields to apply; keys may include `state`, `traits`, `values`, `beliefs`, `open_loops`, `patterns`, `emotions`, and `conflicts`.
-        
-        Returns:
-            Dict: A merged identity containing:
-                - `state`: updated state if provided, otherwise from `current`
-                - `traits` and `values`: dictionaries with `updates` taking precedence
-                - `beliefs`, `open_loops`, `patterns`, `emotions`, `conflicts`: lists sourced from `updates` if present, otherwise from `current`
-                - `base_version`: the numeric version from `current` (defaults to 0 if missing)
-        """
         traits = {**self._ensure_dict(current.get("traits")), **self._ensure_dict(updates.get("traits"))}
         values = {**self._ensure_dict(current.get("values")), **self._ensure_dict(updates.get("values"))}
         beliefs = list(self._ensure_list(updates.get("beliefs", current.get("beliefs", []))))
@@ -276,20 +218,6 @@ class IdentityEngine:
     def _insert_identity_sql(self, user_id: str, merged: Dict, sql_session: Optional[Any] = None) -> Dict:
         """
         Insert a new identity row for a user into the SQL identities table and update related stores.
-        
-        Attempts to insert a new identity with version = current_max_version + 1, persists associated component stores (beliefs, open_loops, patterns, emotions, conflicts) when the insert succeeds, and returns the hydrated identity.
-        
-        Parameters:
-            user_id (str): The user identifier to associate with the new identity.
-            merged (Dict): Merged identity payload containing at least keys "state", "traits", "values", "beliefs", and "open_loops". Optional keys: "patterns", "emotions", "conflicts".
-            sql_session (Optional[Any]): Optional SQLAlchemy session to use for the operation; if omitted, a session will be created.
-        
-        Returns:
-            Dict: The hydrated identity record as stored in the database.
-        
-        Raises:
-            sqlalchemy.exc.IntegrityError: If a database integrity constraint prevents insertion and persists after retries.
-            RuntimeError: If the insertion fails after retrying multiple times.
         """
         payload = {
             "user_id": user_id,
@@ -329,6 +257,8 @@ class IdentityEngine:
         while attempts < 3:
             attempts += 1
             try:
+                result_row = None
+                previous_identity = {}
                 with self._session_scope(sql_session) as session:
                     previous = session.execute(
                         text(
@@ -342,27 +272,34 @@ class IdentityEngine:
                         {"user_id": user_id},
                     ).mappings().first()
 
-                    previous_identity = self._hydrate_identity(dict(previous)) if previous else {}
+                    # Use _deserialize_identity (no DB calls) to avoid opening
+                    # nested sessions inside this session which exhausts the pool.
+                    previous_identity = self._deserialize_identity(dict(previous)) if previous else {}
 
-                    result = session.execute(stmt, payload).mappings().first()
-                if result:
-                    identity = dict(result)
-                    identity_id = identity.get("id")
-                    if identity_id:
-                        self.beliefs.replace(user_id, identity_id, merged.get("beliefs", []))
-                        self.open_loops.replace(user_id, identity_id, merged.get("open_loops", []))
-                        self.patterns.replace(user_id, identity_id, merged.get("patterns", []))
-                        self.emotions.replace(user_id, identity_id, merged.get("emotions", []))
-                        self.conflicts.replace(user_id, identity_id, merged.get("conflicts", []))
+                    result_row = session.execute(stmt, payload).mappings().first()
+
+                    if result_row:
                         self._log_identity_evolution_sql(
                             session,
                             user_id=user_id,
-                            identity_id=identity_id,
+                            identity_id=str(result_row["id"]),
                             previous=previous_identity,
                             current=merged,
                             trigger_type="update_identity",
                         )
-                    return self._hydrate_identity(identity)
+
+                # Sub-store writes happen AFTER the session commits to avoid
+                # nested-session pool exhaustion on Neon.
+                if result_row:
+                    identity = dict(result_row)
+                    identity_id = identity.get("id")
+                    if identity_id:
+                        self.beliefs.replace(user_id, identity_id, merged.get("beliefs", []), sql_session=sql_session)
+                        self.open_loops.replace(user_id, identity_id, merged.get("open_loops", []), sql_session=sql_session)
+                        self.patterns.replace(user_id, identity_id, merged.get("patterns", []), sql_session=sql_session)
+                        self.emotions.replace(user_id, identity_id, merged.get("emotions", []), sql_session=sql_session)
+                        self.conflicts.replace(user_id, identity_id, merged.get("conflicts", []), sql_session=sql_session)
+                    return self._hydrate_identity(identity, sql_session=sql_session)
             except IntegrityError:
                 if attempts >= 3:
                     raise
@@ -417,20 +354,53 @@ class IdentityEngine:
                 },
             )
 
+    def _log_identity_evolution_supabase(
+        self,
+        user_id: str,
+        identity_id: str,
+        previous: Dict,
+        current: Dict,
+        trigger_type: str,
+    ) -> None:
+        if not self.supabase:
+            return
+
+        fields = [
+            "state",
+            "traits",
+            "values",
+            "beliefs",
+            "open_loops",
+            "patterns",
+            "emotions",
+            "conflicts",
+            "preset",
+            "memory_weights",
+        ]
+
+        logs = []
+        for field in fields:
+            old_value = previous.get(field)
+            new_value = current.get(field)
+            if old_value == new_value:
+                continue
+            logs.append(
+                {
+                    "user_id": user_id,
+                    "identity_id": identity_id,
+                    "field_changed": field,
+                    "old_value": json.dumps(old_value, default=str),
+                    "new_value": json.dumps(new_value, default=str),
+                    "trigger_type": trigger_type,
+                }
+            )
+
+        if logs:
+            self.supabase.table("identity_evolution_log").insert(logs).execute()
+
     def _insert_identity_supabase(self, user_id: str, merged: Dict, updates: Dict) -> Dict:
         """
         Insert a new identity version into Supabase, update related stores, and return the hydrated identity.
-        
-        Parameters:
-            user_id (str): The user's unique identifier to associate with the new identity.
-            merged (Dict): The merged identity payload containing keys such as `base_version`, `state`, `traits`, `values`, `beliefs`, `open_loops`, `patterns`, `emotions`, and `conflicts`. `base_version` is used to compute the new identity version.
-            updates (Dict): The original updates passed by the caller; used to recompute a merged payload if an insert collision occurs and a retry is attempted.
-        
-        Returns:
-            Dict: The hydrated identity record returned from Supabase with related components loaded.
-        
-        Raises:
-            RuntimeError: If the Supabase client is not configured or if insertion fails after retrying.
         """
         attempts = 0
         if not self.supabase:
@@ -438,6 +408,18 @@ class IdentityEngine:
         while attempts < 3:
             attempts += 1
             version = merged.get("base_version", 0) + 1
+            
+            # Get previous identity for evolution log
+            previous_response = (
+                self.supabase.table("identities")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("version", desc=True)
+                .limit(1)
+                .execute()
+            )
+            previous_identity = self._hydrate_identity(previous_response.data[0]) if previous_response.data else {}
+
             payload = {
                 "user_id": user_id,
                 "version": version,
@@ -461,6 +443,14 @@ class IdentityEngine:
                     self.patterns.replace(user_id, identity_id, merged.get("patterns", []))
                     self.emotions.replace(user_id, identity_id, merged.get("emotions", []))
                     self.conflicts.replace(user_id, identity_id, merged.get("conflicts", []))
+                    
+                    self._log_identity_evolution_supabase(
+                        user_id=user_id,
+                        identity_id=identity_id,
+                        previous=previous_identity,
+                        current=merged,
+                        trigger_type="update_identity",
+                    )
                 return self._hydrate_identity(identity)
             except Exception as exc:
                 message = str(exc).lower()
@@ -495,23 +485,11 @@ class IdentityEngine:
         return []
 
     def _deserialize_identity(self, identity: Dict) -> Dict:
-        """
-        Normalize an identity record's container fields to consistent dict and list types.
-        
-        Parameters:
-            identity (Dict): Raw identity mapping that may contain traits, values, beliefs, open_loops, patterns, emotions, and conflicts in varying formats.
-        
-        Returns:
-            Dict: A shallow copy of the input with the following guaranteed types:
-                - `traits`: dict
-                - `values`: dict
-                - `beliefs`: list
-                - `open_loops`: list
-                - `patterns`: list
-                - `emotions`: list
-                - `conflicts`: list
-        """
         identity = dict(identity)
+        if identity.get("id") is not None:
+            identity["id"] = str(identity["id"])
+        if identity.get("user_id") is not None:
+            identity["user_id"] = str(identity["user_id"])
         identity["traits"] = self._ensure_dict(identity.get("traits"))
         identity["values"] = self._ensure_dict(identity.get("values"))
         identity["beliefs"] = self._ensure_list(identity.get("beliefs"))
@@ -522,25 +500,16 @@ class IdentityEngine:
         identity["memory_weights"] = self._ensure_dict(identity.get("memory_weights", {}))
         return identity
 
-    def _hydrate_identity(self, identity: Dict) -> Dict:
-        """
-        Normalize an identity payload and populate its related components from their stores when an identity id is present.
-        
-        Parameters:
-            identity (Dict): Identity data (row or payload) to deserialize and hydrate; may be a raw DB/Supabase record or an already-deserialized dict.
-        
-        Returns:
-            Dict: The deserialized identity with fields `beliefs`, `open_loops`, `patterns`, `emotions`, and `conflicts` replaced by the corresponding lists loaded from their stores when `id` is present. If `id` is missing, returns the deserialized identity unchanged.
-        """
+    def _hydrate_identity(self, identity: Dict, sql_session: Optional[Any] = None) -> Dict:
         identity = self._deserialize_identity(identity)
         identity_id = identity.get("id")
         if not identity_id:
             return identity
-        identity["beliefs"] = self.beliefs.load(identity["user_id"], identity_id)
-        identity["open_loops"] = self.open_loops.load(identity["user_id"], identity_id)
-        identity["patterns"] = self.patterns.load(identity["user_id"], identity_id)
-        identity["emotions"] = self.emotions.load(identity["user_id"], identity_id)
-        identity["conflicts"] = self.conflicts.load(identity["user_id"], identity_id)
+        identity["beliefs"] = self.beliefs.load(identity["user_id"], identity_id, sql_session=sql_session)
+        identity["open_loops"] = self.open_loops.load(identity["user_id"], identity_id, sql_session=sql_session)
+        identity["patterns"] = self.patterns.load(identity["user_id"], identity_id, sql_session=sql_session)
+        identity["emotions"] = self.emotions.load(identity["user_id"], identity_id, sql_session=sql_session)
+        identity["conflicts"] = self.conflicts.load(identity["user_id"], identity_id, sql_session=sql_session)
         return identity
 
     @contextmanager

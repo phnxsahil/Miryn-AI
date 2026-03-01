@@ -45,19 +45,6 @@ class ReflectionEngine:
     async def detect_contradictions(self, beliefs: List[Dict], new_statement: str) -> List[Dict]:
         """
         Detect contradictions between a set of existing beliefs and a new statement.
-        
-        Analyzes the provided beliefs and the new statement and returns identified conflicts as structured entries describing the conflicting statement, which existing belief it conflicts with, and a severity score.
-        
-        Parameters:
-            beliefs (List[Dict]): Existing user beliefs; each entry should be a mapping representing a belief.
-            new_statement (str): The new statement to check for contradictions.
-        
-        Returns:
-            List[Dict]: A list of conflict objects. Each object contains:
-                - `statement`: the new or existing statement involved in the conflict,
-                - `conflict_with`: the belief from `beliefs` that conflicts with `statement`,
-                - `severity`: a number between 0 and 1 indicating conflict severity.
-            Returns an empty list if no contradictions are found or inputs are missing/invalid.
         """
         if not beliefs or not new_statement:
             return []
@@ -68,23 +55,12 @@ class ReflectionEngine:
             f"Beliefs: {beliefs}\n\nNew statement: {new_statement}"
         )
         response = await self.llm.generate(prompt, max_tokens=250)
-        try:
-            parsed = json.loads(response)
-            if isinstance(parsed, list):
-                return parsed
-        except Exception:
-            return []
-        return []
+        parsed = self.llm.parse_json_response(response)
+        return parsed if isinstance(parsed, list) else []
 
     async def _extract_entities(self, conversation: Dict) -> List[str]:
         """
         Extracts key entities (people, places, organizations, concepts) mentioned in a conversation.
-        
-        Parameters:
-            conversation (Dict): Conversation data (expected to include 'user' and 'assistant' text).
-        
-        Returns:
-            List[str]: A list of entity strings. Returns an empty list if extraction fails or the model output cannot be parsed as JSON.
         """
         payload = self._conversation_payload(conversation)
         prompt = (
@@ -95,10 +71,8 @@ class ReflectionEngine:
         )
 
         response = await self.llm.generate(prompt, max_tokens=200)
-        try:
-            return json.loads(response)
-        except Exception:
-            return []
+        parsed = self.llm.parse_json_response(response)
+        return parsed if isinstance(parsed, list) else []
 
     async def _extract_emotions(self, conversation: Dict) -> Dict:
         payload = self._conversation_payload(conversation)
@@ -110,10 +84,8 @@ class ReflectionEngine:
         )
 
         response = await self.llm.generate(prompt, max_tokens=150)
-        try:
-            return json.loads(response)
-        except Exception:
-            return {"primary_emotion": "neutral", "intensity": 0.5, "secondary_emotions": []}
+        parsed = self.llm.parse_json_response(response)
+        return parsed if isinstance(parsed, dict) else {"primary_emotion": "neutral", "intensity": 0.5, "secondary_emotions": []}
 
     async def _extract_topics(self, conversation: Dict) -> List[str]:
         payload = self._conversation_payload(conversation)
@@ -125,10 +97,8 @@ class ReflectionEngine:
         )
 
         response = await self.llm.generate(prompt, max_tokens=150)
-        try:
-            return json.loads(response)
-        except Exception:
-            return []
+        parsed = self.llm.parse_json_response(response)
+        return parsed if isinstance(parsed, list) else []
 
     async def _detect_patterns(self, user_id: str, current_topics: List[str], current_emotions: Dict) -> Dict:
         """

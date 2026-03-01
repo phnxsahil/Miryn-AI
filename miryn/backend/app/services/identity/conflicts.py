@@ -1,4 +1,5 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+from contextlib import contextmanager
 from sqlalchemy import text
 from app.core.database import get_db, has_sql, get_sql_session
 
@@ -12,15 +13,20 @@ class ConflictStore:
         """
         self.supabase = get_db() if not has_sql() else None
 
-    def load(self, user_id: str, identity_id: str) -> List[Dict[str, Any]]:
+    @contextmanager
+    def _session_scope(self, session: Optional[Any]):
+        if session is not None:
+            yield session
+        else:
+            with get_sql_session() as new_session:
+                yield new_session
+
+    def load(self, user_id: str, identity_id: str, sql_session: Optional[Any] = None) -> List[Dict[str, Any]]:
         """
         Retrieve conflict records for a specific user identity, ordered by creation time (newest first).
-        
-        Returns:
-            A list of dictionaries with keys "statement", "conflict_with", "severity", "resolved", and "resolved_at". Returns an empty list if no records exist or if no storage backend is available.
         """
         if has_sql():
-            with get_sql_session() as session:
+            with self._session_scope(sql_session) as session:
                 result = session.execute(
                     text(
                         """
@@ -48,27 +54,15 @@ class ConflictStore:
         )
         return response.data or []
 
-    def insert(self, user_id: str, identity_id: str, conflicts: List[Dict[str, Any]]) -> None:
+    def insert(self, user_id: str, identity_id: str, conflicts: List[Dict[str, Any]], sql_session: Optional[Any] = None) -> None:
         """
         Insert one or more identity conflict records into the configured storage backend.
-        
-        This writes the provided conflict entries for the given user and identity to the active data store (SQL if available, otherwise Supabase). Each entry in `conflicts` is inserted as a separate row.
-        
-        Parameters:
-            user_id (str): ID of the user who owns the identity.
-            identity_id (str): ID of the identity the conflicts relate to.
-            conflicts (List[Dict[str, Any]]): List of conflict records. Each record may contain:
-                - "statement" (str): The conflicting statement. Defaults to "".
-                - "conflict_with" (str): The value or statement this conflicts with. Defaults to "".
-                - "severity" (float): Severity score for the conflict. Defaults to 0.5.
-                - "resolved" (bool): Whether the conflict is resolved. Defaults to False.
-                - "resolved_at" (optional): Timestamp when the conflict was resolved, if any.
         """
         if not conflicts:
             return
 
         if has_sql():
-            with get_sql_session() as session:
+            with self._session_scope(sql_session) as session:
                 for conflict in conflicts:
                     session.execute(
                         text(
@@ -90,7 +84,8 @@ class ConflictStore:
                             "resolved_at": conflict.get("resolved_at"),
                         },
                     )
-                session.commit()
+                if sql_session is None:
+                    session.commit()
             return
 
         if not self.supabase:
@@ -112,20 +107,12 @@ class ConflictStore:
 
         self.supabase.table("identity_conflicts").insert(payload).execute()
 
-    def replace(self, user_id: str, identity_id: str, conflicts: List[Dict[str, Any]]) -> None:
+    def replace(self, user_id: str, identity_id: str, conflicts: List[Dict[str, Any]], sql_session: Optional[Any] = None) -> None:
         """
         Replace all conflict records for a specific user identity with the provided list.
-
-        Deletes existing records for the (user_id, identity_id) pair then inserts
-        the supplied conflicts into the active backend (SQL or Supabase).
-
-        Parameters:
-            user_id (str): ID of the user who owns the identity.
-            identity_id (str): ID of the identity the conflicts relate to.
-            conflicts (List[Dict[str, Any]]): Conflict records to store.
         """
         if has_sql():
-            with get_sql_session() as session:
+            with self._session_scope(sql_session) as session:
                 session.execute(
                     text(
                         """
@@ -157,7 +144,8 @@ class ConflictStore:
                             "resolved_at": conflict.get("resolved_at"),
                         },
                     )
-                session.commit()
+                if sql_session is None:
+                    session.commit()
             return
 
         if not self.supabase:

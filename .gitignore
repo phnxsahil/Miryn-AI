@@ -18,6 +18,9 @@ secrets/
 *.p12
 *.cer
 
+# Google OAuth client secrets
+client_secret_*.json
+
 # Vertex / cloud config exports
 .env.vertex
 usage_log.json

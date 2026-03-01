@@ -11,12 +11,14 @@
     "verify": "npm run lint && npm run check:bom"
   },
   "dependencies": {
+    "@react-oauth/google": "^0.13.4",
     "framer-motion": "11.0.22",
+    "lucide-react": "^0.575.0",
     "next": "14.2.35",
+    "next-auth": "4.24.12",
     "nodemailer": "7.0.7",
     "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "next-auth": "4.24.12"
+    "react-dom": "18.2.0"
   },
   "devDependencies": {
     "@types/node": "20.11.5",

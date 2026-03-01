@@ -2,7 +2,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
+from sqlalchemy import text
 from app.config import settings
+from app.core.database import get_sql_session
+from app.core.cache import redis_client
 from app.api import auth, chat, identity, onboarding, llm, notifications, tools, memory
 from app.core.rate_limit import RateLimitMiddleware
 
@@ -75,5 +78,18 @@ def root():
 
 
 @app.get("/health")
-def health_check():
-    return {"status": "healthy"}
+async def health_check():
+    checks = {}
+    try:
+        with get_sql_session() as s:
+            s.execute(text("SELECT 1"))
+        checks["db"] = "ok"
+    except Exception as e:
+        checks["db"] = f"error: {str(e)[:50]}"
+    try:
+        redis_client.ping()
+        checks["redis"] = "ok"
+    except Exception as e:
+        checks["redis"] = f"error: {str(e)[:50]}"
+    status = "healthy" if all(v == "ok" for v in checks.values()) else "degraded"
+    return {"status": status, "checks": checks, "version": "0.1.0"}

@@ -79,9 +79,23 @@ export default function OnboardingFlow() {
   };
 
   return (
-    <div className="max-w-4xl">
-      <div className="mb-6">
-        <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-secondary">
+    <div className="max-w-4xl px-2 relative">
+      {isSubmitting && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-void/80 backdrop-blur-sm animate-in fade-in duration-500">
+          <div className="text-center space-y-6">
+            <div className="flex justify-center">
+              <div className="w-12 h-12 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-serif font-light text-white">Initializing your Miryn</h2>
+              <p className="text-sm text-secondary animate-pulse">Establishing core patterns and beliefs...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mb-6 md:mb-10">
+        <div className="mb-3 flex items-center justify-between text-[10px] md:text-xs uppercase tracking-[0.2em] text-secondary">
           <span>Step {step} of 5</span>
           <span>{progress}%</span>
         </div>
@@ -91,26 +105,26 @@ export default function OnboardingFlow() {
       </div>
 
       {step === 1 && (
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div>
-            <h1 className="text-3xl font-serif font-light">Let's get to know you</h1>
-            <p className="text-secondary mt-2">A quick foundation to personalize Miryn.</p>
+            <h1 className="text-2xl md:text-4xl font-serif font-light">Let's get to know you</h1>
+            <p className="text-secondary mt-2 text-sm md:text-base">A quick foundation to personalize Miryn.</p>
           </div>
-          <div className="space-y-2">
-            <label className="text-xs uppercase tracking-[0.2em] text-secondary">What's your name?</label>
+          <div className="space-y-3">
+            <label className="text-[10px] md:text-xs uppercase tracking-[0.2em] text-secondary">What's your name?</label>
             <input
-              className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-white"
+              className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 md:py-4 text-white focus:border-accent/50 focus:outline-none transition-colors"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="How should Miryn address you?"
             />
           </div>
-          <div className="space-y-2">
-            <label className="text-xs uppercase tracking-[0.2em] text-secondary">
+          <div className="space-y-3">
+            <label className="text-[10px] md:text-xs uppercase tracking-[0.2em] text-secondary">
               In one sentence, what do you use AI for?
             </label>
             <input
-              className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-white"
+              className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 md:py-4 text-white focus:border-accent/50 focus:outline-none transition-colors"
               value={context}
               onChange={(e) => setContext(e.target.value)}
               placeholder="Thinking, support, creative work..."
@@ -120,10 +134,10 @@ export default function OnboardingFlow() {
       )}
 
       {step === 2 && (
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div>
-            <h1 className="text-3xl font-serif font-light">How should Miryn show up for you?</h1>
-            <p className="text-secondary mt-2">Pick the tone that feels most natural.</p>
+            <h1 className="text-2xl md:text-4xl font-serif font-light">How should Miryn show up?</h1>
+            <p className="text-secondary mt-2 text-sm md:text-base">Pick the tone that feels most natural.</p>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {presets.map((preset) => (
@@ -137,8 +151,8 @@ export default function OnboardingFlow() {
                 }`}
               >
                 <div className="text-sm font-medium text-white">{preset.display_name}</div>
-                <div className="mt-1 text-xs text-secondary">{preset.tagline}</div>
-                <div className="mt-3 rounded-lg bg-white/5 p-3 text-xs text-white/60 italic">
+                <div className="mt-1 text-[10px] md:text-xs text-secondary leading-relaxed">{preset.tagline}</div>
+                <div className="mt-4 rounded-xl bg-white/5 p-3 text-[10px] md:text-xs text-white/60 italic leading-relaxed">
                   "{preset.example_response}"
                 </div>
               </button>
@@ -148,17 +162,17 @@ export default function OnboardingFlow() {
       )}
 
       {step === 3 && (
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div>
-            <h1 className="text-3xl font-serif font-light">What do you most want from Miryn?</h1>
-            <p className="text-secondary mt-2">Pick any that resonate.</p>
+            <h1 className="text-2xl md:text-4xl font-serif font-light">What do you want most?</h1>
+            <p className="text-secondary mt-2 text-sm md:text-base">Pick any that resonate.</p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 md:gap-3">
             {goalOptions.map((goal) => (
               <button
                 key={goal}
                 onClick={() => toggleGoal(goal)}
-                className={`rounded-full border px-4 py-2 text-sm transition-all ${
+                className={`rounded-full border px-4 py-2 text-xs md:text-sm transition-all ${
                   goals.includes(goal)
                     ? "border-accent bg-accent/10 text-white"
                     : "border-white/10 bg-white/5 text-secondary hover:border-white/20"
@@ -172,13 +186,13 @@ export default function OnboardingFlow() {
       )}
 
       {step === 4 && (
-        <div className="space-y-8">
+        <div className="space-y-10 md:space-y-12">
           <div>
-            <h1 className="text-3xl font-serif font-light">How do you like to be spoken to?</h1>
-            <p className="text-secondary mt-2">Adjust the tone and depth.</p>
+            <h1 className="text-2xl md:text-4xl font-serif font-light">Your preferred style?</h1>
+            <p className="text-secondary mt-2 text-sm md:text-base">Adjust the tone and depth.</p>
           </div>
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm text-secondary">
+          <div className="space-y-4">
+            <div className="flex justify-between text-[10px] md:text-xs uppercase tracking-widest text-secondary">
               <span>Direct</span>
               <span>Gentle</span>
             </div>
@@ -188,11 +202,11 @@ export default function OnboardingFlow() {
               max={100}
               value={directGentle}
               onChange={(e) => setDirectGentle(Number(e.target.value))}
-              className="w-full accent-accent"
+              className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-accent"
             />
           </div>
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm text-secondary">
+          <div className="space-y-4">
+            <div className="flex justify-between text-[10px] md:text-xs uppercase tracking-widest text-secondary">
               <span>Brief</span>
               <span>Expansive</span>
             </div>
@@ -202,28 +216,28 @@ export default function OnboardingFlow() {
               max={100}
               value={briefExpansive}
               onChange={(e) => setBriefExpansive(Number(e.target.value))}
-              className="w-full accent-accent"
+              className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-accent"
             />
           </div>
         </div>
       )}
 
       {step === 5 && (
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div>
-            <h1 className="text-3xl font-serif font-light">Tell Miryn one thing you believe strongly.</h1>
-            <p className="text-secondary mt-2">
+            <h1 className="text-2xl md:text-4xl font-serif font-light">A core belief?</h1>
+            <p className="text-secondary mt-2 text-sm md:text-base leading-relaxed">
               Optional -- but the more you give, the faster Miryn understands you.
             </p>
           </div>
           <textarea
-            className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 min-h-[140px] text-white"
+            className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-4 min-h-[160px] text-white focus:border-accent/50 focus:outline-none transition-colors leading-relaxed"
             value={seedBelief}
             onChange={(e) => setSeedBelief(e.target.value)}
             placeholder="I believe that..."
           />
           <button
-            className="text-xs uppercase tracking-[0.2em] text-secondary"
+            className="text-[10px] md:text-xs uppercase tracking-[0.2em] text-secondary hover:text-white transition-colors"
             onClick={() => handleSubmit(true)}
             disabled={isSubmitting}
           >
@@ -232,10 +246,10 @@ export default function OnboardingFlow() {
         </div>
       )}
 
-      <div className="mt-10 flex items-center justify-between">
+      <div className="mt-12 md:mt-16 flex items-center justify-between">
         {step > 1 ? (
           <button
-            className="rounded-2xl border border-white/10 px-5 py-2 text-sm text-secondary disabled:opacity-40"
+            className="rounded-2xl border border-white/10 px-6 py-2.5 text-sm text-secondary hover:text-white hover:bg-white/5 transition-all disabled:opacity-40"
             onClick={() => setStep((prev) => Math.max(1, prev - 1))}
             disabled={isSubmitting}
           >
@@ -245,7 +259,7 @@ export default function OnboardingFlow() {
           <div />
         )}
         <button
-          className="rounded-2xl bg-accent text-black px-6 py-2 text-sm disabled:opacity-60"
+          className="rounded-2xl bg-accent text-black px-8 py-2.5 text-sm font-medium hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60"
           onClick={() => (step === 5 ? handleSubmit(false) : setStep((prev) => Math.min(5, prev + 1)))}
           disabled={isSubmitting}
           aria-busy={isSubmitting}
@@ -254,7 +268,7 @@ export default function OnboardingFlow() {
         </button>
       </div>
 
-      {status && <div className="mt-4 text-sm text-secondary">{status}</div>}
+      {status && <div className="mt-6 text-xs md:text-sm text-amber-200/70 text-center uppercase tracking-widest">{status}</div>}
     </div>
   );
 }

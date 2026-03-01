@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
+import { GoogleLogin } from "@react-oauth/google";
 import { api } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
 
@@ -9,6 +10,21 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    if (!credentialResponse.credential) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const res: any = await api.googleLogin(credentialResponse.credential);
+      api.setToken(res.access_token);
+      window.location.href = res.is_new ? "/onboarding" : "/chat";
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Google sign-in failed"));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +97,17 @@ export default function LoginPage() {
         <button className="w-full rounded-md bg-accent text-black py-3" disabled={loading}>
           {loading ? "Signing in..." : "Sign in"}
         </button>
+
+        <div className="flex flex-col items-center pt-2">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setError("Google sign-in failed")}
+            theme="filled_black"
+            shape="rectangular"
+            width="100%"
+          />
+        </div>
+
         {demoEnabled && (
           <button
             type="button"

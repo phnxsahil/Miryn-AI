@@ -1,5 +1,6 @@
 ﻿import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
+import GoogleAuthProvider from "@/components/GoogleAuthProvider";
 import "../styles/globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -27,7 +28,11 @@ export default function RootLayout({
   const fontClass = `${cormorant.variable} ${dmSans.variable}`;
   return (
     <html lang="en" className={fontClass} suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        <GoogleAuthProvider>
+          {children}
+        </GoogleAuthProvider>
+      </body>
     </html>
   );
 }

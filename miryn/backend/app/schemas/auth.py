@@ -44,6 +44,7 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    is_new: bool = False
 
 
 class UserOut(BaseModel):
@@ -67,3 +68,7 @@ class ResetPasswordRequest(BaseModel):
         if len(v.encode("utf-8")) > 72:
             raise ValueError("Password must be 72 bytes or fewer")
         return v
+
+
+class GoogleLoginRequest(BaseModel):
+    id_token: str

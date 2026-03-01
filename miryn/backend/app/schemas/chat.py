@@ -28,3 +28,7 @@ class MessageOut(BaseModel):
 class ChatHistoryResponse(BaseModel):
     conversation_id: str
     messages: List[MessageOut]
+
+
+class TitleUpdate(BaseModel):
+    title: str

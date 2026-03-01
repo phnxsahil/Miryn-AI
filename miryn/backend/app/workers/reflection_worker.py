@@ -12,39 +12,42 @@ from app.workers.celery_app import celery_app
 def analyze_reflection(user_id: str, conversation: dict):
     """
     Run reflection analysis for a user's conversation and publish a readiness event.
-    
-    Performs a reflection analysis of `conversation` for `user_id`, publishes a "reflection.ready" event containing the analysis result for the user, and returns the analysis.
-    
-    Parameters:
-        user_id (str): Identifier for the user whose conversation is analyzed.
-        conversation (dict): Conversation data to analyze (structured messages/context).
-    
-    Returns:
-        dict: Reflection analysis result payload.
     """
     llm = LLMService()
     engine = ReflectionEngine(llm)
     identity_engine = IdentityEngine()
     result = asyncio.run(engine.analyze_conversation(user_id=user_id, conversation=conversation))
 
+    updates = {}
+    
+    # 1. Write emotions
     emotions = result.get("emotions") or {}
     if emotions.get("primary_emotion"):
-        identity_engine.update_identity(user_id, {"emotions": [emotions]})
+        updates["emotions"] = [emotions]
 
+    # 2. Write patterns
     patterns = result.get("patterns") or {}
-    for item in patterns.get("topic_co_occurrences", []):
-        topics = item.get("topics") or []
-        if topics:
-            identity_engine.track_open_loop(user_id, topics[0], importance=item.get("frequency", 1))
+    if patterns.get("topic_co_occurrences"):
+        updates["patterns"] = [
+            {
+                "pattern_type": "topic_co_occurrence",
+                "description": p.get("pattern", "<unknown>"),
+                "confidence": min(p.get("frequency", 1) / 10, 1.0)
+            }
+            for p in patterns["topic_co_occurrences"]
+            if p.get("pattern")
+        ]
 
-    temporal_patterns = patterns.get("temporal_emotional_patterns", [])
-    if temporal_patterns:
-        current_patterns = identity_engine.get_identity(user_id).get("patterns", [])
-        for item in temporal_patterns:
-            updated_patterns = list(current_patterns)
-            updated_patterns.append(item)
-            identity_engine.update_identity(user_id, {"patterns": updated_patterns})
-            current_patterns = updated_patterns
+    # 3. Apply basic updates (emotions and patterns)
+    if updates:
+        identity_engine.update_identity(user_id, updates)
+
+    # 4. Write open loops from all topics (importance and resolved state extracted per-topic)
+    # We use a separate loop for track_open_loop because it handles its own merging logic
+    # Note: In a future optimization, we could batch these into one update_identity call.
+    for topic in result.get("topics", []):
+        importance = topic.get("importance", 1) if isinstance(topic, dict) else 1
+        identity_engine.track_open_loop(user_id, topic, importance=importance)
 
     publish_event(user_id, {"type": "reflection.ready", "payload": result})
     return result

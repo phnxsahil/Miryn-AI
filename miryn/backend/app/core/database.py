@@ -18,7 +18,17 @@ class Database:
         self.engine = None
         self.SessionLocal = None
         if settings.DATABASE_URL:
-            self.engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
+            self.engine = create_engine(
+                settings.DATABASE_URL,
+                pool_pre_ping=True,
+                pool_size=5,
+                max_overflow=10,
+                pool_timeout=30,
+                connect_args={
+                    "connect_timeout": 10,
+                    "options": "-c statement_timeout=30000 -c lock_timeout=10000",
+                },
+            )
             self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 
 

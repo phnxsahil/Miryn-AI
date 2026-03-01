@@ -4,6 +4,14 @@ export type Message = {
   timestamp: string;
 };
 
+export type Conversation = {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+};
+
 export type EmotionInsight = {
   primary_emotion?: string;
   intensity?: number;

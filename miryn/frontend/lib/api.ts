@@ -1,4 +1,4 @@
-import type { EvolutionLogEntry, IdentityUpdatePayload, MemorySnapshot, OnboardingPayload } from "@/lib/types";
+import type { Conversation, EvolutionLogEntry, IdentityUpdatePayload, MemorySnapshot, OnboardingPayload } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -124,6 +124,13 @@ class ApiClient {
     });
   }
 
+  async googleLogin(idToken: string) {
+    return this.request("/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ id_token: idToken }),
+    });
+  }
+
   async refreshToken() {
     return this.request("/auth/refresh", {
       method: "POST",
@@ -144,7 +151,31 @@ class ApiClient {
     });
   }
 
+  async deleteAccount() {
+    return this.request("/auth/account", {
+      method: "DELETE",
+    });
+  }
+
+  async logout() {
+    this.setToken(null);
+  }
+
+  // --- CHAT ---
+
+  async listConversations() {
+    return this.request("/chat/conversations") as Promise<Conversation[]>;
+  }
+
+  async updateConversationTitle(id: string, title: string) {
+    return this.request(`/chat/conversations/${id}/title`, {
+      method: "PATCH",
+      body: JSON.stringify({ title }),
+    });
+  }
+
   async sendMessage(message: string, conversationId?: string) {
+
     return this.request("/chat/", {
       method: "POST",
       body: JSON.stringify({ message, conversation_id: conversationId }),
@@ -246,7 +277,7 @@ class ApiClient {
   }
 
   async getMemory(): Promise<MemorySnapshot> {
-    return this.request("/memory") as Promise<MemorySnapshot>;
+    return this.request("/memory/") as Promise<MemorySnapshot>;
   }
 
   async deleteMemory(id: string) {

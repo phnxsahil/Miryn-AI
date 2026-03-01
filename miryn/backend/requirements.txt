@@ -17,8 +17,7 @@ redis>=4.6.0
 # LLM
 openai>=1.51.0
 anthropic>=0.18.1
-google-genai>=1.0.0
-google-generativeai>=0.8.0
+google-genai>=1.65.0
 google-cloud-aiplatform>=1.68.0
 
 # Embeddings (slim mode)

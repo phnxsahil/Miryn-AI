@@ -53,9 +53,14 @@ class Settings(BaseSettings):
     LOGIN_ATTEMPT_WINDOW_SECONDS: int = 900
     AUDIT_RETENTION_DAYS: int = 90
     AUDIT_STORE_PII: bool = False
+    MAX_MESSAGES_PER_DAY: int = 50
+    MAX_MESSAGES_PER_HOUR: int = 20
 
     # Encryption
     ENCRYPTION_KEY: Optional[str] = None
+
+    # Google OAuth
+    GOOGLE_CLIENT_ID: Optional[str] = None
 
     # Tool sandbox
     TOOL_SANDBOX_URL: Optional[str] = None
