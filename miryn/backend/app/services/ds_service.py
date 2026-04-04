@@ -29,7 +29,6 @@ class DSService:
             logger.info("spaCy model loaded successfully.")
         except Exception as e:
             logger.warning("spaCy load failed: %s", e)
-            self._nlp = False
         return self._nlp
 
     def _load_emotion_model(self):
@@ -45,7 +44,6 @@ class DSService:
             logger.info("Emotion model loaded successfully.")
         except Exception as e:
             logger.warning("Emotion model load failed: %s", e)
-            self._emotion_classifier = False
         return self._emotion_classifier
 
     def _load_sentence_model(self):
@@ -57,7 +55,6 @@ class DSService:
             logger.info("Sentence transformer loaded successfully.")
         except Exception as e:
             logger.warning("Sentence transformer load failed: %s", e)
-            self._sentence_model = False
         return self._sentence_model
 
     def extract_entities(self, text: str) -> List[Dict]:
@@ -90,7 +87,11 @@ class DSService:
         if not classifier:
             return {"primary_emotion": "neutral", "intensity": 0.5, "secondary_emotions": []}
         try:
-            results = classifier(text[:512])[0]
+            results = classifier(text[:512], top_k=None)
+            if isinstance(results, dict):
+                results = [results]
+            elif results and isinstance(results[0], list):
+                results = results[0]
             sorted_emotions = sorted(results, key=lambda x: x["score"], reverse=True)
             primary = sorted_emotions[0]
             secondary = [e["label"] for e in sorted_emotions[1:3] if e["score"] > 0.1]
