@@ -63,7 +63,6 @@ class TestLoadSpacyFailureSentinel:
             call_count += 1
             raise OSError("model not found")
 
-        import types
         fake_spacy = types.ModuleType("spacy")
         fake_spacy.load = _bad_load
         monkeypatch.setitem(sys.modules, "spacy", fake_spacy)
