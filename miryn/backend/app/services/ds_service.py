@@ -17,23 +17,31 @@ class DSService:
 
     def __init__(self):
         self._nlp = None
+        self._nlp_failed = False
         self._emotion_classifier = None
+        self._emotion_failed = False
         self._sentence_model = None
+        self._sentence_failed = False
 
     def _load_spacy(self):
         if self._nlp is not None:
             return self._nlp
+        if self._nlp_failed:
+            return None
         try:
             import spacy
             self._nlp = spacy.load("en_core_web_sm")
             logger.info("spaCy model loaded successfully.")
         except Exception as e:
             logger.warning("spaCy load failed: %s", e)
+            self._nlp_failed = True
         return self._nlp
 
     def _load_emotion_model(self):
         if self._emotion_classifier is not None:
             return self._emotion_classifier
+        if self._emotion_failed:
+            return None
         try:
             from transformers import pipeline
             self._emotion_classifier = pipeline(
@@ -44,17 +52,21 @@ class DSService:
             logger.info("Emotion model loaded successfully.")
         except Exception as e:
             logger.warning("Emotion model load failed: %s", e)
+            self._emotion_failed = True
         return self._emotion_classifier
 
     def _load_sentence_model(self):
         if self._sentence_model is not None:
             return self._sentence_model
+        if self._sentence_failed:
+            return None
         try:
             from sentence_transformers import SentenceTransformer
             self._sentence_model = SentenceTransformer("all-MiniLM-L6-v2")
             logger.info("Sentence transformer loaded successfully.")
         except Exception as e:
             logger.warning("Sentence transformer load failed: %s", e)
+            self._sentence_failed = True
         return self._sentence_model
 
     def extract_entities(self, text: str) -> List[Dict]:
