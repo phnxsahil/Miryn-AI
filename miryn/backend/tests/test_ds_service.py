@@ -9,6 +9,12 @@ import pytest
 from app.services.ds_service import DSService
 
 
+class _FloatArray(list):
+    """Minimal numpy-array substitute: supports .tolist()."""
+    def tolist(self):
+        return list(self)
+
+
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
@@ -198,13 +204,11 @@ class TestDetectEmotions:
 
 class TestEmbed:
     def _make_sentence_model(self):
-        import numpy as np
-
         class _FakeModel:
             def encode(self, texts, normalize_embeddings=True, batch_size=32):
                 if isinstance(texts, str):
-                    return np.array([0.1, 0.2, 0.3])
-                return np.array([[0.1, 0.2, 0.3] for _ in texts])
+                    return _FloatArray([0.1, 0.2, 0.3])
+                return [_FloatArray([0.1, 0.2, 0.3]) for _ in texts]
 
         return _FakeModel()
 
