@@ -56,13 +56,13 @@ async def send_message(
 ):
     """
     Handle an incoming chat message, creating a new conversation when no conversation_id is provided, and return the resulting chat response.
-    
+
     Parameters:
         request: ChatRequest containing the message text and an optional conversation_id.
-    
+
     Returns:
-        ChatResponse: Contains the assistant `response` text, the `conversation_id` used or created, optional `insights`, and optional `conflicts`.
-    
+        ChatResponse: Contains the assistant response text, the conversation_id used or created, optional insights, optional conflicts, detected entities, and detected emotions.
+
     Raises:
         HTTPException: 404 if a referenced conversation does not exist.
         HTTPException: 403 if a referenced conversation does not belong to the authenticated user.
@@ -145,6 +145,8 @@ async def send_message(
         conversation_id=conversation_id,
         insights=result.get("insights"),
         conflicts=result.get("conflicts"),
+        entities=result.get("entities"),
+        emotions=result.get("emotions"),
     )
 
 
@@ -341,12 +343,10 @@ async def update_title(
     user_id: str = Depends(get_current_user_id),
 ):
     _validate_conversation_owner(conversation_id, user_id)
-    
+
     new_title = payload.title
-    
-    # Auto-generate title if null/empty
+
     if not new_title:
-        # Get first message
         if has_sql():
             with get_sql_session() as session:
                 first_msg = session.execute(
@@ -357,7 +357,7 @@ async def update_title(
             db = get_db()
             res = db.table("messages").select("content").eq("conversation_id", conversation_id).order("created_at").limit(1).execute()
             first_msg = res.data[0]["content"] if res.data else None
-            
+
         if first_msg:
             prompt = f"Generate a very short, 3-5 word title for a conversation that starts with: \"{first_msg[:200]}\". Return only the title text."
             new_title = await orchestrator.llm.generate(prompt)
@@ -375,7 +375,7 @@ async def update_title(
     else:
         db = get_db()
         db.table("conversations").update({"title": new_title, "updated_at": "now()"}).eq("id", conversation_id).execute()
-        
+
     return {"status": "success", "title": new_title}
 
 
@@ -386,13 +386,13 @@ def get_chat_history(
 ):
     """
     Retrieve the ordered message history for a conversation, with encrypted content decrypted when necessary.
-    
+
     Parameters:
         conversation_id (str): ID of the conversation whose messages to fetch.
         user_id (str): Authenticated user ID (injected dependency); only messages belonging to this user are returned.
-    
+
     Returns:
-        list[dict]: A list of message objects ordered by `created_at`. Each message will include a `content` field; if `content` is missing, it is populated by decrypting `content_encrypted`.
+        list[dict]: A list of message objects ordered by created_at. Each message will include a content field; if content is missing, it is populated by decrypting content_encrypted.
     """
     if has_sql():
         with get_sql_session() as session:
@@ -433,17 +433,17 @@ def get_chat_history(
 @router.get("/events/stream")
 async def stream_events(request: Request, authorization: str | None = Header(default=None)):
     """
-    Stream server-sent events (SSE) of user-specific events authenticated by a token.
-    
+    Stream server-sent events for the authenticated user.
+
     Parameters:
-        request (Request): FastAPI request object used to detect client disconnection and read query params.
-        authorization (str | None): Optional Authorization header expected as "Bearer <token>"; if absent the function will look for a "token" query parameter.
-    
+        request (Request): FastAPI request object used to detect client disconnection.
+        authorization (str | None): Optional Authorization header as Bearer token.
+
     Returns:
-        StreamingResponse: An SSE stream (media type "text/event-stream") that yields JSON-encoded event objects for the authenticated user. Each SSE message is prefixed with "data: " and separated by a blank line.
-    
+        StreamingResponse: An SSE stream yielding JSON-encoded event objects.
+
     Raises:
-        HTTPException: 401 if no authentication token is provided.
+        HTTPException: 401 if no authentication token is provided or token is invalid.
     """
     token: str | None = None
     if authorization and authorization.startswith("Bearer "):
@@ -459,14 +459,6 @@ async def stream_events(request: Request, authorization: str | None = Header(def
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
     async def event_stream():
-        """
-        Stream server-sent events (SSE) for the authenticated user by yielding JSON-encoded event payloads in SSE format.
-        
-        The generator continuously polls recent events (up to 50 at a time) and yields each as an SSE data frame (a single string "data: <json>\n\n"). The loop exits when the client disconnects or when the coroutine is cancelled.
-        
-        Returns:
-            str: SSE-formatted data frames containing a JSON-encoded event, e.g. "data: { ... }\n\n".
-        """
         try:
             while True:
                 if await request.is_disconnected():

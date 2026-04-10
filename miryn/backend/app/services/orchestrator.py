@@ -8,6 +8,7 @@ from app.services.llm_service import LLMService
 from app.core.cache import publish_event
 from app.workers.reflection_worker import analyze_reflection
 from app.config import settings
+from app.services.ds_service import ds_service
 
 
 class ConversationOrchestrator:
@@ -21,14 +22,16 @@ class ConversationOrchestrator:
     async def handle_message(self, user_id: str, message: str, conversation_id: str) -> Dict:
         """
         Process an incoming user message through identity, memory, LLM, and reflection pipelines and return the assistant response along with derived insights and any detected identity conflicts.
-        
+
         The method will retrieve identity and contextual memories, persist the user message, attempt conflict detection against the user's beliefs (recording and emitting events for any conflicts), generate an assistant response via the LLM (persisting the assistant message), perform reflection analysis to produce insights, and enqueue a background reflection task. If the LLM generation fails, a fallback response is returned and an empty insights dictionary is provided.
-        
+
         Returns:
             result (Dict): A dictionary with keys:
                 - "response" (str): The assistant's reply, or a fallback message if LLM generation failed.
                 - "insights" (Dict): Reflection analysis results for the conversation (empty if analysis failed or LLM failed).
                 - "conflicts" (List): Any identity conflicts detected for the user's message (empty list if none).
+                - "entities" (List): Named entities extracted from the user message.
+                - "emotions" (Dict): Emotions detected in the user message.
         """
         identity = self.identity.get_identity(user_id)
 
@@ -133,6 +136,8 @@ class ConversationOrchestrator:
             return {
                 "response": fallback,
                 "insights": {},
+                "entities": [],
+                "emotions": {},
             }
         except Exception:
             self.logger.exception("LLM chat failed for user %s", user_id)
@@ -152,6 +157,8 @@ class ConversationOrchestrator:
             return {
                 "response": fallback,
                 "insights": {},
+                "entities": [],
+                "emotions": {},
             }
 
         _fire_and_forget(
@@ -165,6 +172,11 @@ class ConversationOrchestrator:
         )
 
         conversation_data = {"user": message, "assistant": response}
+
+        # DS Service — extract entities and emotions from user message
+        entities = ds_service.extract_entities(message)
+        emotions = ds_service.detect_emotions(message)
+
         insights: Dict = {}
 
         # Queue reflection asynchronously via Celery instead of running inline
@@ -192,4 +204,6 @@ class ConversationOrchestrator:
             "response": response,
             "insights": insights,
             "conflicts": conflicts,
+            "entities": entities,
+            "emotions": emotions,
         }
