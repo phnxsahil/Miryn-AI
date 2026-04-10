@@ -17,23 +17,33 @@ class DSService:
 
     def __init__(self):
         self._nlp = None
+        self._nlp_failed = False
         self._emotion_classifier = None
+        self._emotion_failed = False
         self._sentence_model = None
+        self._sentence_failed = False
 
     def _load_spacy(self):
+        """Load and cache the spaCy NLP model, returning None if unavailable."""
         if self._nlp is not None:
             return self._nlp
+        if self._nlp_failed:
+            return None
         try:
             import spacy
             self._nlp = spacy.load("en_core_web_sm")
             logger.info("spaCy model loaded successfully.")
         except Exception as e:
             logger.warning("spaCy load failed: %s", e)
+            self._nlp_failed = True
         return self._nlp
 
     def _load_emotion_model(self):
+        """Load and cache the HuggingFace emotion classifier, returning None if unavailable."""
         if self._emotion_classifier is not None:
             return self._emotion_classifier
+        if self._emotion_failed:
+            return None
         try:
             from transformers import pipeline
             self._emotion_classifier = pipeline(
@@ -44,17 +54,22 @@ class DSService:
             logger.info("Emotion model loaded successfully.")
         except Exception as e:
             logger.warning("Emotion model load failed: %s", e)
+            self._emotion_failed = True
         return self._emotion_classifier
 
     def _load_sentence_model(self):
+        """Load and cache the sentence transformer model, returning None if unavailable."""
         if self._sentence_model is not None:
             return self._sentence_model
+        if self._sentence_failed:
+            return None
         try:
             from sentence_transformers import SentenceTransformer
             self._sentence_model = SentenceTransformer("all-MiniLM-L6-v2")
             logger.info("Sentence transformer loaded successfully.")
         except Exception as e:
             logger.warning("Sentence transformer load failed: %s", e)
+            self._sentence_failed = True
         return self._sentence_model
 
     def extract_entities(self, text: str) -> List[Dict]:
@@ -87,8 +102,10 @@ class DSService:
         if not classifier:
             return {"primary_emotion": "neutral", "intensity": 0.5, "secondary_emotions": []}
         try:
-            results = classifier(text[:512])
-            if results and isinstance(results[0], list):
+            results = classifier(text[:512], top_k=None)
+            if isinstance(results, dict):
+                results = [results]
+            elif results and isinstance(results[0], list):
                 results = results[0]
             sorted_emotions = sorted(results, key=lambda x: x["score"], reverse=True)
             primary = sorted_emotions[0]
