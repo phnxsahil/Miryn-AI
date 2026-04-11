@@ -23,13 +23,11 @@ class ConversationOrchestrator:
         """
         Process an incoming user message through identity, memory, LLM, and reflection pipelines and return the assistant response along with derived insights and any detected identity conflicts.
 
-        The method will retrieve identity and contextual memories, persist the user message, attempt conflict detection against the user's beliefs (recording and emitting events for any conflicts), generate an assistant response via the LLM (persisting the assistant message), perform reflection analysis to produce insights, and enqueue a background reflection task. If the LLM generation fails, a fallback response is returned and an empty insights dictionary is provided.
-
         Returns:
             result (Dict): A dictionary with keys:
                 - "response" (str): The assistant's reply, or a fallback message if LLM generation failed.
-                - "insights" (Dict): Reflection analysis results for the conversation (empty if analysis failed or LLM failed).
-                - "conflicts" (List): Any identity conflicts detected for the user's message (empty list if none).
+                - "insights" (Dict): Reflection analysis results for the conversation.
+                - "conflicts" (List): Any identity conflicts detected for the user's message.
                 - "entities" (List): Named entities extracted from the user message.
                 - "emotions" (Dict): Emotions detected in the user message.
         """
@@ -175,9 +173,11 @@ class ConversationOrchestrator:
 
         conversation_data = {"user": message, "assistant": response}
 
-        # DS Service — run off event loop to avoid blocking
-        entities = await asyncio.to_thread(ds_service.extract_entities, message)
-        emotions = await asyncio.to_thread(ds_service.detect_emotions, message)
+        # DS Service — run concurrently off the event loop
+        entities, emotions = await asyncio.gather(
+            asyncio.to_thread(ds_service.extract_entities, message),
+            asyncio.to_thread(ds_service.detect_emotions, message),
+        )
 
         insights: Dict = {}
 
