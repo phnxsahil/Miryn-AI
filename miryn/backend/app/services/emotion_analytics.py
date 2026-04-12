@@ -1,5 +1,6 @@
 """
 Emotion Analytics Service - Divyadeep Kaur
+Analyzes stored emotion metadata to compute mood scores, trends, and volatility.
 """
 import json
 import logging
@@ -7,14 +8,18 @@ import statistics
 import math
 from datetime import datetime, timedelta
 from collections import Counter
+from sqlalchemy import text
 
-from app.core.security import decrypt_text
-from app.db.database import get_db_connection
+from app.core.database import get_db, has_sql, get_sql_session
+from app.core.encryption import decrypt_text
 
 logger = logging.getLogger(__name__)
 
 
 class EmotionAnalytics:
+
+    def __init__(self):
+        self.supabase = get_db() if not has_sql() else None
 
     def analyze(self, user_id: str, days: int = 30) -> dict:
         records = self._fetch_records(user_id, days)
@@ -38,17 +43,32 @@ class EmotionAnalytics:
     def _fetch_records(self, user_id: str, days: int) -> list:
         records = []
         cutoff = datetime.utcnow() - timedelta(days=days)
+
         try:
-            with get_db_connection() as conn:
-                rows = conn.execute(
-                    """
-                    SELECT metadata_encrypted, metadata, created_at
-                    FROM messages
-                    WHERE user_id = ? AND created_at >= ?
-                    ORDER BY created_at ASC
-                    """,
-                    (user_id, cutoff.isoformat()),
-                ).fetchall()
+            if has_sql():
+                with get_sql_session() as session:
+                    result = session.execute(
+                        text(
+                            """
+                            SELECT metadata_encrypted, metadata, created_at
+                            FROM messages
+                            WHERE user_id = :user_id AND created_at >= :cutoff
+                            ORDER BY created_at ASC
+                            """
+                        ),
+                        {"user_id": user_id, "cutoff": cutoff},
+                    )
+                    rows = [dict(r) for r in result.mappings().all()]
+            else:
+                response = (
+                    self.supabase.table("messages")
+                    .select("metadata_encrypted, metadata, created_at")
+                    .eq("user_id", user_id)
+                    .gte("created_at", cutoff.isoformat())
+                    .order("created_at")
+                    .execute()
+                )
+                rows = response.data or []
         except Exception as e:
             logger.warning("Failed to fetch emotions for user %s: %s", user_id, e)
             return records
@@ -69,7 +89,14 @@ class EmotionAnalytics:
                         pass
 
                 if not meta:
-                    meta = r.get("metadata") or {}
+                    raw = r.get("metadata") or {}
+                    if isinstance(raw, str):
+                        try:
+                            meta = json.loads(raw)
+                        except Exception:
+                            meta = {}
+                    else:
+                        meta = raw
 
                 emotions = meta.get("emotions", {})
                 if emotions and emotions.get("primary_emotion"):
