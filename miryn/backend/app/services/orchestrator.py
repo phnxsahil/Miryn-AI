@@ -68,6 +68,17 @@ class ConversationOrchestrator:
 
             task.add_done_callback(_done)
 
+        # Store user message early so it is never lost even on LLM failure
+        _fire_and_forget(
+            self.memory.store_conversation(
+                user_id=user_id,
+                role="user",
+                content=message,
+                conversation_id=conversation_id,
+            ),
+            "store_user_message_early",
+        )
+
         conflicts = []
         if settings.ENABLE_INLINE_CONFLICT_DETECTION:
             try:
@@ -152,13 +163,17 @@ class ConversationOrchestrator:
                 "emotions": {},
             }
 
-        # DS Service - run concurrently off the event loop
-        entities, emotions = await asyncio.gather(
-            asyncio.to_thread(ds_service.extract_entities, message),
-            asyncio.to_thread(ds_service.detect_emotions, message),
-        )
+        # DS Service - run concurrently off the event loop with error handling
+        try:
+            entities, emotions = await asyncio.gather(
+                asyncio.to_thread(ds_service.extract_entities, message),
+                asyncio.to_thread(ds_service.detect_emotions, message),
+            )
+        except Exception:
+            self.logger.exception("DS inference failed for user %s", user_id)
+            entities, emotions = [], {}
 
-        # Store user message WITH emotions and entities as metadata (data logging)
+        # Update user message metadata with emotions and entities (data logging)
         _fire_and_forget(
             self.memory.store_conversation(
                 user_id=user_id,
@@ -171,7 +186,7 @@ class ConversationOrchestrator:
                     "logged_at": datetime.utcnow().isoformat(),
                 },
             ),
-            "store_user_message",
+            "store_user_message_with_metadata",
         )
 
         _fire_and_forget(

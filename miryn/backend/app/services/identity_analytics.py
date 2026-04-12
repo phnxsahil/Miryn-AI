@@ -20,6 +20,18 @@ class IdentityAnalytics:
     Uses cosine similarity between serialized identity vectors.
     """
 
+    def _parse_list(self, val) -> list:
+        """Parse a value into a list safely."""
+        if isinstance(val, list):
+            return val
+        if isinstance(val, str):
+            try:
+                parsed = json.loads(val)
+                return parsed if isinstance(parsed, list) else []
+            except Exception:
+                return []
+        return []
+
     def _fetch_identity_versions(self, user_id: str) -> List[Dict]:
         """
         Fetch all identity versions for a user ordered by version number.
@@ -89,11 +101,11 @@ class IdentityAnalytics:
                 except Exception:
                     vector[f"value_{k}"] = 1.0
 
-        beliefs = parse_json(identity.get("beliefs") or [])
-        vector["belief_count"] = float(len(beliefs) if isinstance(beliefs, list) else 0)
+        beliefs = self._parse_list(identity.get("beliefs"))
+        vector["belief_count"] = float(len(beliefs))
 
-        open_loops = parse_json(identity.get("open_loops") or [])
-        vector["open_loop_count"] = float(len(open_loops) if isinstance(open_loops, list) else 0)
+        open_loops = self._parse_list(identity.get("open_loops"))
+        vector["open_loop_count"] = float(len(open_loops))
 
         return vector
 
@@ -118,7 +130,7 @@ class IdentityAnalytics:
     def compute_stability_score(self, versions: List[Dict]) -> float:
         """
         Compute identity stability score (0-1).
-        1 = perfectly stable (no change), 0 = completely changed.
+        1 = perfectly stable, 0 = completely changed.
         Based on average cosine similarity between consecutive versions.
         """
         if len(versions) < 2:
@@ -135,8 +147,7 @@ class IdentityAnalytics:
 
     def compute_drift(self, versions: List[Dict]) -> float:
         """
-        Compute identity drift — how much the identity has changed
-        from the first version to the latest version.
+        Compute identity drift — how much identity has changed from first to latest version.
         0 = no drift, 1 = completely different from start.
         """
         if len(versions) < 2:
@@ -156,8 +167,8 @@ class IdentityAnalytics:
             entry = {
                 "version": v["version"],
                 "created_at": str(v["created_at"]),
-                "belief_count": len(v.get("beliefs") or []),
-                "open_loop_count": len(v.get("open_loops") or []),
+                "belief_count": len(self._parse_list(v.get("beliefs"))),
+                "open_loop_count": len(self._parse_list(v.get("open_loops"))),
             }
             if i > 0:
                 vec_prev = self._identity_to_vector(versions[i - 1])

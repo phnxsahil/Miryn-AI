@@ -6,7 +6,7 @@ Computes volatility, trends, mood score and entropy.
 import json
 import logging
 import math
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from datetime import datetime, timedelta
 from sqlalchemy import text
 from app.core.database import has_sql, get_sql_session, get_db
@@ -34,7 +34,7 @@ class EmotionAnalytics:
     def _fetch_emotions(self, user_id: str, days: int = 30) -> List[Dict]:
         """
         Fetch and decrypt emotion records from messages for a user within the last N days.
-        Returns list of {emotion, intensity, timestamp} dicts sorted by time.
+        Returns list of emotion dicts sorted by time.
         """
         cutoff = datetime.utcnow() - timedelta(days=days)
         records = []
@@ -82,9 +82,14 @@ class EmotionAnalytics:
 
                 emotions = meta.get("emotions", {})
                 if emotions and emotions.get("primary_emotion"):
+                    try:
+                        intensity = float(emotions.get("intensity", 0.5))
+                        intensity = max(0.0, min(1.0, intensity))
+                    except (TypeError, ValueError):
+                        intensity = 0.5
                     records.append({
                         "emotion": emotions["primary_emotion"],
-                        "intensity": emotions.get("intensity", 0.5),
+                        "intensity": intensity,
                         "secondary": emotions.get("secondary_emotions", []),
                         "timestamp": r["created_at"],
                     })
@@ -129,11 +134,13 @@ class EmotionAnalytics:
             return "stable"
         scores = [EMOTION_VALENCE.get(r["emotion"], 0.0) * r["intensity"] for r in records]
         if len(scores) <= window:
-            first_half = scores[:len(scores)//2]
-            second_half = scores[len(scores)//2:]
+            first_half = scores[:len(scores) // 2]
+            second_half = scores[len(scores) // 2:]
         else:
             first_half = scores[:window]
             second_half = scores[-window:]
+        if not first_half or not second_half:
+            return "stable"
         avg_first = sum(first_half) / len(first_half)
         avg_second = sum(second_half) / len(second_half)
         diff = avg_second - avg_first
