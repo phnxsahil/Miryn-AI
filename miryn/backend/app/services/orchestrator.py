@@ -68,17 +68,6 @@ class ConversationOrchestrator:
 
             task.add_done_callback(_done)
 
-        # Store user message early so it is never lost even on LLM failure
-        _fire_and_forget(
-            self.memory.store_conversation(
-                user_id=user_id,
-                role="user",
-                content=message,
-                conversation_id=conversation_id,
-            ),
-            "store_user_message_early",
-        )
-
         conflicts = []
         if settings.ENABLE_INLINE_CONFLICT_DETECTION:
             try:
@@ -173,7 +162,7 @@ class ConversationOrchestrator:
             self.logger.exception("DS inference failed for user %s", user_id)
             entities, emotions = [], {}
 
-        # Update user message metadata with emotions and entities (data logging)
+        # Store user message ONCE with full metadata — no duplicate rows
         _fire_and_forget(
             self.memory.store_conversation(
                 user_id=user_id,

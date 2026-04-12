@@ -1,27 +1,56 @@
 """
 Identity Analytics Service - Divyadeep Kaur
-Computes identity stability score and drift over time
-using cosine similarity between identity versions.
 """
 import json
 import logging
 import math
-from typing import List, Dict, Any
-from datetime import datetime
-from sqlalchemy import text
-from app.core.database import has_sql, get_sql_session, get_db
+
+from app.db.database import get_db_connection
 
 logger = logging.getLogger(__name__)
 
 
 class IdentityAnalytics:
-    """
-    Analyzes identity versions to compute stability and drift metrics.
-    Uses cosine similarity between serialized identity vectors.
-    """
+
+    def analyze(self, user_id: str) -> dict:
+        versions = self._fetch_versions(user_id)  # raises on DB error
+        if not versions:
+            return {
+                "message": "No identity data yet.",
+                "stability_score": None,
+                "drift": None,
+                "total_versions": 0,
+                "version_timeline": [],
+            }
+        return {
+            "stability_score": self._stability_score(versions),
+            "drift": self._drift(versions),
+            "total_versions": len(versions),
+            "version_timeline": self._timeline(versions),
+        }
+
+    def _fetch_versions(self, user_id: str) -> list:
+        """Raises on DB failure — never masks outages as empty data."""
+        try:
+            with get_db_connection() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT version, beliefs, open_loops, embedding, created_at
+                    FROM identity_versions
+                    WHERE user_id = ?
+                    ORDER BY created_at ASC
+                    """,
+                    (user_id,),
+                ).fetchall()
+            return [dict(r) for r in rows]
+        except Exception as e:
+            logger.error(
+                "Failed to fetch identity versions for user %s: %s", user_id, e
+            )
+            raise  # propagate so FastAPI returns a real 500
 
     def _parse_list(self, val) -> list:
-        """Parse a value into a list safely."""
+        """Safely parse a DB value into a list (handles JSON strings)."""
         if isinstance(val, list):
             return val
         if isinstance(val, str):
@@ -32,177 +61,58 @@ class IdentityAnalytics:
                 return []
         return []
 
-    def _fetch_identity_versions(self, user_id: str) -> List[Dict]:
-        """
-        Fetch all identity versions for a user ordered by version number.
-        Returns list of identity dicts.
-        """
-        try:
-            if has_sql():
-                with get_sql_session() as session:
-                    result = session.execute(
-                        text("""
-                            SELECT version, traits, values, beliefs,
-                                   open_loops, created_at
-                            FROM identities
-                            WHERE user_id = :user_id
-                            ORDER BY version ASC
-                        """),
-                        {"user_id": user_id},
-                    )
-                    return [dict(row) for row in result.mappings().all()]
-            else:
-                db = get_db()
-                response = (
-                    db.table("identities")
-                    .select("version, traits, values, beliefs, open_loops, created_at")
-                    .eq("user_id", user_id)
-                    .order("version")
-                    .execute()
-                )
-                return response.data or []
-        except Exception as e:
-            logger.warning("Failed to fetch identity versions for user %s: %s", user_id, e)
-            return []
-
-    def _identity_to_vector(self, identity: Dict) -> Dict[str, float]:
-        """
-        Convert an identity record into a flat feature vector.
-        Each key in traits/values becomes a dimension.
-        Beliefs and open_loops contribute as counts.
-        """
-        vector: Dict[str, float] = {}
-
-        def parse_json(val):
-            if isinstance(val, dict):
-                return val
-            if isinstance(val, list):
-                return val
-            if isinstance(val, str):
-                try:
-                    return json.loads(val)
-                except Exception:
-                    return {}
-            return {}
-
-        traits = parse_json(identity.get("traits") or {})
-        if isinstance(traits, dict):
-            for k, v in traits.items():
-                try:
-                    vector[f"trait_{k}"] = float(v) if isinstance(v, (int, float)) else 1.0
-                except Exception:
-                    vector[f"trait_{k}"] = 1.0
-
-        values = parse_json(identity.get("values") or {})
-        if isinstance(values, dict):
-            for k, v in values.items():
-                try:
-                    vector[f"value_{k}"] = float(v) if isinstance(v, (int, float)) else 1.0
-                except Exception:
-                    vector[f"value_{k}"] = 1.0
-
-        beliefs = self._parse_list(identity.get("beliefs"))
-        vector["belief_count"] = float(len(beliefs))
-
-        open_loops = self._parse_list(identity.get("open_loops"))
-        vector["open_loop_count"] = float(len(open_loops))
-
-        return vector
-
-    def _cosine_similarity(self, vec_a: Dict[str, float], vec_b: Dict[str, float]) -> float:
-        """
-        Compute cosine similarity between two feature vectors.
-        Returns value between 0 and 1. 1 = identical, 0 = completely different.
-        """
-        all_keys = set(vec_a.keys()) | set(vec_b.keys())
-        if not all_keys:
-            return 1.0
-
-        dot_product = sum(vec_a.get(k, 0.0) * vec_b.get(k, 0.0) for k in all_keys)
-        mag_a = math.sqrt(sum(v ** 2 for v in vec_a.values()))
-        mag_b = math.sqrt(sum(v ** 2 for v in vec_b.values()))
-
-        if mag_a == 0 or mag_b == 0:
-            return 1.0 if mag_a == mag_b else 0.0
-
-        return round(dot_product / (mag_a * mag_b), 3)
-
-    def compute_stability_score(self, versions: List[Dict]) -> float:
-        """
-        Compute identity stability score (0-1).
-        1 = perfectly stable, 0 = completely changed.
-        Based on average cosine similarity between consecutive versions.
-        """
+    def _stability_score(self, versions: list) -> float:
         if len(versions) < 2:
             return 1.0
-
         similarities = []
-        for i in range(len(versions) - 1):
-            vec_a = self._identity_to_vector(versions[i])
-            vec_b = self._identity_to_vector(versions[i + 1])
-            sim = self._cosine_similarity(vec_a, vec_b)
-            similarities.append(sim)
+        for i in range(1, len(versions)):
+            e1 = self._parse_embedding(versions[i - 1].get("embedding"))
+            e2 = self._parse_embedding(versions[i].get("embedding"))
+            if e1 and e2:
+                similarities.append(self._cosine_similarity(e1, e2))
+        if not similarities:
+            return 1.0
+        return round(sum(similarities) / len(similarities), 4)
 
-        return round(sum(similarities) / len(similarities), 3)
-
-    def compute_drift(self, versions: List[Dict]) -> float:
-        """
-        Compute identity drift — how much identity has changed from first to latest version.
-        0 = no drift, 1 = completely different from start.
-        """
+    def _drift(self, versions: list) -> float:
         if len(versions) < 2:
             return 0.0
+        e_first = self._parse_embedding(versions[0].get("embedding"))
+        e_last = self._parse_embedding(versions[-1].get("embedding"))
+        if not e_first or not e_last:
+            return 0.0
+        return round(1.0 - self._cosine_similarity(e_first, e_last), 4)
 
-        vec_first = self._identity_to_vector(versions[0])
-        vec_last = self._identity_to_vector(versions[-1])
-        similarity = self._cosine_similarity(vec_first, vec_last)
-        return round(1.0 - similarity, 3)
-
-    def get_version_timeline(self, versions: List[Dict]) -> List[Dict]:
-        """
-        Build a timeline of identity changes with similarity between each version.
-        """
-        timeline = []
-        for i, v in enumerate(versions):
-            entry = {
-                "version": v["version"],
-                "created_at": str(v["created_at"]),
+    def _timeline(self, versions: list) -> list:
+        return [
+            {
+                "version": v.get("version"),
+                "created_at": v.get("created_at"),
                 "belief_count": len(self._parse_list(v.get("beliefs"))),
                 "open_loop_count": len(self._parse_list(v.get("open_loops"))),
             }
-            if i > 0:
-                vec_prev = self._identity_to_vector(versions[i - 1])
-                vec_curr = self._identity_to_vector(v)
-                entry["similarity_to_previous"] = self._cosine_similarity(vec_prev, vec_curr)
-            timeline.append(entry)
-        return timeline
+            for v in versions
+        ]
 
-    def analyze(self, user_id: str) -> Dict[str, Any]:
-        """
-        Run full identity analytics for a user.
+    def _parse_embedding(self, val) -> list:
+        if isinstance(val, list):
+            return val
+        if isinstance(val, str):
+            try:
+                return json.loads(val)
+            except Exception:
+                return []
+        return []
 
-        Returns:
-            Dict with stability_score, drift, total_versions,
-            and version_timeline.
-        """
-        versions = self._fetch_identity_versions(user_id)
-
-        if not versions:
-            return {
-                "stability_score": 1.0,
-                "drift": 0.0,
-                "total_versions": 0,
-                "version_timeline": [],
-                "message": "No identity data yet.",
-            }
-
-        return {
-            "stability_score": self.compute_stability_score(versions),
-            "drift": self.compute_drift(versions),
-            "total_versions": len(versions),
-            "version_timeline": self.get_version_timeline(versions),
-        }
+    def _cosine_similarity(self, a: list, b: list) -> float:
+        if len(a) != len(b):
+            return 0.0
+        dot = sum(x * y for x, y in zip(a, b))
+        mag_a = math.sqrt(sum(x ** 2 for x in a))
+        mag_b = math.sqrt(sum(x ** 2 for x in b))
+        if mag_a == 0 or mag_b == 0:
+            return 0.0
+        return dot / (mag_a * mag_b)
 
 
-# Singleton instance
 identity_analytics = IdentityAnalytics()
