@@ -70,8 +70,8 @@ class EmotionAnalytics:
                 )
                 rows = response.data or []
         except Exception as e:
-            logger.warning("Failed to fetch emotions for user %s: %s", user_id, e)
-            return records
+            logger.error("Failed to fetch emotions for user %s: %s", user_id, e)
+            raise  # propagate so FastAPI returns a real 500
 
         for row in rows:
             # per-row isolation — one bad record never kills the batch
