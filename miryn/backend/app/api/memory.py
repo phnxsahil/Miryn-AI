@@ -7,6 +7,7 @@ from app.core.database import get_db, has_sql, get_sql_session
 from app.core.security import get_current_user_id
 from app.core.encryption import decrypt_text
 from app.services.identity_engine import IdentityEngine
+from app.services.memory_ranker import rank_memories
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 identity_engine = IdentityEngine()
@@ -219,3 +220,46 @@ def delete_memory(message_id: str, user_id: str = Depends(get_current_user_id)):
     if not response.data:
         raise HTTPException(status_code=404, detail="Memory not found")
     return {"message": "Memory removed"}
+
+@router.get("/ranked")
+def get_ranked_memories(user_id: str = Depends(get_current_user_id)):
+    """
+    Returns all memories ranked by XGBoost relevance model.
+    Adds relevance_score to each memory.
+    """
+    now = datetime.now(timezone.utc)
+    memories = _get_all_memories(user_id)
+
+    # Build feature-ready dicts
+    ranked = []
+    for item in memories:
+        created_at = item.get("created_at")
+        if created_at:
+            try:
+                if isinstance(created_at, str):
+                    created_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                else:
+                    created_dt = created_at
+                days_ago = max(0, (now - created_dt).days)
+            except Exception:
+                days_ago = 30
+        else:
+            days_ago = 30
+
+        metadata = item.get("metadata") or {}
+        emotions = metadata.get("emotions") or {}
+
+        ranked.append({
+            "id": item.get("id"),
+            "content": item.get("content"),
+            "memory_tier": item.get("memory_tier"),
+            "importance_score": item.get("importance_score"),
+            "created_at": item.get("created_at"),
+            "days_ago": days_ago,
+            "emotional_intensity": float(emotions.get("intensity", 0.5)) if emotions else 0.5,
+            "entity_overlap": int(metadata.get("entity_overlap", 0)),
+            "identity_alignment": 1 if item.get("memory_tier") == "core" else 0,
+        })
+
+    ranked = rank_memories(ranked)
+    return {"ranked_memories": ranked}
