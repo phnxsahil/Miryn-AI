@@ -172,7 +172,7 @@ class ConversationOrchestrator:
                 metadata={
                     "emotions": emotions if isinstance(emotions, dict) else {},
                     "entities": entities if isinstance(entities, list) else [],
-                    "logged_at": datetime.now(timezone.utc).isoformat(),,
+                    "logged_at": datetime.now(timezone.utc).isoformat(),
                 },
             ),
             "store_user_message_with_metadata",
