@@ -1,7 +1,7 @@
 from typing import Dict
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from app.services.identity_engine import IdentityEngine
 from app.services.memory_layer import MemoryLayer
 from app.services.reflection_engine import ReflectionEngine
@@ -172,7 +172,7 @@ class ConversationOrchestrator:
                 metadata={
                     "emotions": emotions if isinstance(emotions, dict) else {},
                     "entities": entities if isinstance(entities, list) else [],
-                    "logged_at": datetime.utcnow().isoformat(),
+                    "logged_at": datetime.now(timezone.utc).isoformat(),
                 },
             ),
             "store_user_message_with_metadata",

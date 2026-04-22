@@ -3,7 +3,7 @@ Analytics API - Divyadeep Kaur
 Exposes emotion and identity analytics endpoints.
 """
 import asyncio
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from app.core.security import get_current_user_id
 from app.services.emotion_analytics import emotion_analytics
 from app.services.identity_analytics import identity_analytics
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 @router.get("/emotions")
 async def get_emotion_analytics(
-    days: int = 30,
+    days: int = Query(30, ge=1, le=365),
     user_id: str = Depends(get_current_user_id),
 ):
     """
@@ -36,7 +36,7 @@ async def get_identity_analytics(
 
 @router.get("/summary")
 async def get_analytics_summary(
-    days: int = 30,
+    days: int = Query(30, ge=1, le=365),
     user_id: str = Depends(get_current_user_id),
 ):
     """
