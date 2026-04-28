@@ -19,12 +19,24 @@
 - Every new endpoint needs a corresponding schema in miryn/backend/app/schemas/
 - Frontend API calls always go through miryn/frontend/lib/api.ts — never direct fetch
 
-## Current broken things (fix these in order)
-1. reflection_worker.py discards analyze_conversation() results — never writes to identity
-2. No streaming endpoint exists — LLMService has no stream_chat() method
-3. Onboarding doesn't load presets — config/presets.json doesn't exist yet
-4. detect_conflicts() in identity_engine.py returns [] always (stub at line 198)
-5. No identity_evolution_log table or writes exist
+## Current status (all core MVP features implemented)
+1. ✅ Reflection worker writes emotions, patterns, and open loops to identity
+2. ✅ Streaming endpoint exists (POST /chat/stream with SSE)
+3. ✅ LLMService.stream_chat() implemented for all providers (OpenAI, Anthropic, Gemini, Vertex)
+4. ✅ detect_conflicts() wired to ReflectionEngine.detect_contradictions()
+5. ✅ identity_evolution_log table + writes in update_identity()
+6. ✅ Onboarding loads presets from config/presets.json and seeds identity
+7. ✅ Auth: signup, login, Google OAuth, refresh token, forgot/reset password, delete account, sessions
+8. ✅ GET /identity/evolution — paginated evolution log
+9. ✅ GET /memory/, DELETE /memory/:id, GET /memory/export — full memory API
+10. ✅ Health endpoint checks DB and Redis connections
+11. ✅ Frontend: 5-step onboarding wizard with preset selection
+12. ✅ Frontend: Identity dashboard with evolution timeline + scored trait/value pills
+13. ✅ Frontend: Memory page with forget button
+14. ✅ Frontend: Settings page (account, notifications, privacy, appearance, danger zone)
+15. ✅ Frontend: Conversation list sidebar with new chat button
+16. ✅ Frontend: Chat empty state with tagline and prompt suggestion
+17. ✅ Frontend: Streaming token-by-token message rendering
 
 ## Testing
 - Run backend: cd miryn/backend && uvicorn app.main:app --reload

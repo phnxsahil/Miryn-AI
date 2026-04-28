@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from app.core.database import get_db, has_sql, get_sql_session
@@ -51,7 +51,11 @@ def _strip_memory_fields(item: dict) -> dict:
     return {k: v for k, v in item.items() if k not in {"metadata", "role"}}
 
 
-def _get_all_memories(user_id: str) -> list[dict]:
+def _clamp_limit(limit: int) -> int:
+    return min(max(limit, 1), 200)
+
+
+def _get_all_memories(user_id: str, limit: int, offset: int) -> list[dict]:
     now = datetime.now(timezone.utc)
     if has_sql():
         with get_sql_session() as session:
@@ -62,9 +66,10 @@ def _get_all_memories(user_id: str) -> list[dict]:
                     WHERE user_id = :user_id
                       AND (delete_at IS NULL OR delete_at > :now)
                     ORDER BY created_at DESC
+                    LIMIT :limit OFFSET :offset
                     """
                 ),
-                {"user_id": user_id, "now": now},
+                {"user_id": user_id, "now": now, "limit": limit, "offset": offset},
             ).mappings().all()
             return [_hydrate_message(dict(row)) for row in rows]
 
@@ -75,15 +80,21 @@ def _get_all_memories(user_id: str) -> list[dict]:
         .eq("user_id", user_id)
         .or_(f"delete_at.is.null,delete_at.gt.{now.isoformat()}")
         .order("created_at", desc=True)
+        .range(offset, offset + limit - 1)
         .execute()
     )
     return [_hydrate_message(row) for row in (response.data or [])]
 
 
 @router.get("/export")
-def export_user_data(user_id: str = Depends(get_current_user_id)):
+def export_user_data(
+    limit: int = Query(50, ge=1),
+    offset: int = Query(0, ge=0),
+    user_id: str = Depends(get_current_user_id),
+):
+    limit = _clamp_limit(limit)
     identity = identity_engine.get_identity(user_id)
-    memories = _get_all_memories(user_id)
+    memories = _get_all_memories(user_id, limit, offset)
     return JSONResponse(
         content={
             "identity": identity,
@@ -95,7 +106,12 @@ def export_user_data(user_id: str = Depends(get_current_user_id)):
 
 
 @router.get("/")
-def get_memory(user_id: str = Depends(get_current_user_id)):
+def get_memory(
+    limit: int = Query(50, ge=1),
+    offset: int = Query(0, ge=0),
+    user_id: str = Depends(get_current_user_id),
+):
+    limit = _clamp_limit(limit)
     now = datetime.utcnow()
 
     if has_sql():
@@ -110,9 +126,10 @@ def get_memory(user_id: str = Depends(get_current_user_id)):
                       AND memory_tier = 'core'
                       AND (delete_at IS NULL OR delete_at > :now)
                     ORDER BY created_at DESC
+                    LIMIT :limit OFFSET :offset
                     """
                 ),
-                {"user_id": user_id, "now": now},
+                {"user_id": user_id, "now": now, "limit": limit, "offset": offset},
             ).mappings().all()
 
             recent_rows = session.execute(
@@ -123,10 +140,10 @@ def get_memory(user_id: str = Depends(get_current_user_id)):
                     WHERE user_id = :user_id
                       AND (delete_at IS NULL OR delete_at > :now)
                     ORDER BY created_at DESC
-                    LIMIT 10
+                    LIMIT :limit OFFSET :offset
                     """
                 ),
-                {"user_id": user_id, "now": now},
+                {"user_id": user_id, "now": now, "limit": min(limit, 10), "offset": offset},
             ).mappings().all()
 
             emotion_rows = session.execute(
@@ -141,10 +158,10 @@ def get_memory(user_id: str = Depends(get_current_user_id)):
                         OR (metadata->>'primary_emotion') IS NOT NULL
                       )
                     ORDER BY created_at DESC
-                    LIMIT 50
+                    LIMIT :limit OFFSET :offset
                     """
                 ),
-                {"user_id": user_id, "now": now},
+                {"user_id": user_id, "now": now, "limit": limit, "offset": offset},
             ).mappings().all()
 
         facts = [_hydrate_message(dict(row)) for row in facts_rows]
@@ -168,7 +185,7 @@ def get_memory(user_id: str = Depends(get_current_user_id)):
         .eq("user_id", user_id)
         .or_(f"delete_at.is.null,delete_at.gt.{now.isoformat()}")
         .order("created_at", desc=True)
-        .limit(200)
+        .range(offset, offset + limit - 1)
         .execute()
     )
     rows = base.data or []
@@ -179,7 +196,7 @@ def get_memory(user_id: str = Depends(get_current_user_id)):
         if item.get("memory_tier") == "core" and item.get("role") == "assistant"
     ]
     emotions = [item for item in hydrated if _has_primary_emotion(item.get("metadata"))]
-    recent = hydrated[:10]
+    recent = hydrated[: min(limit, 10)]
 
     return {
         "facts": [_strip_memory_fields(item) for item in facts],

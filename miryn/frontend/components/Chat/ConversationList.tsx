@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { api } from "@/lib/api";
+import type { Conversation } from "@/lib/types";
 import { MessageSquare } from "lucide-react";
 
 export default function ConversationList({ onItemClick }: { onItemClick?: () => void }) {
-  const [conversations, setConversations] = useState<any[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const pathname = usePathname();
 

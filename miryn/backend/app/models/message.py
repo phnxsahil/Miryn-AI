@@ -17,5 +17,7 @@ class Message(UUIDPrimaryKeyMixin, CreatedAtMixin, MetadataMixin, SerializableMi
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     role = Column(String(20), nullable=False)
     content = Column(Text, nullable=False)
+    idempotency_key = Column(String(255), nullable=True)
+    embedding_source = Column(String(50), nullable=False, default="gemini")
     embedding = Column(Vector(384))
     importance_score = Column(Float, default=0.5)

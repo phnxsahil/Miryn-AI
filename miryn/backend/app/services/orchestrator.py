@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Any
 import asyncio
 import logging
 from datetime import datetime
@@ -20,7 +20,14 @@ class ConversationOrchestrator:
         self.identity = IdentityEngine(reflection=self.reflection)
         self.logger = logging.getLogger(__name__)
 
-    async def handle_message(self, user_id: str, message: str, conversation_id: str) -> Dict:
+    async def handle_message(
+        self,
+        user_id: str,
+        message: str,
+        conversation_id: str,
+        idempotency_key: str | None = None,
+        sql_session: Any | None = None,
+    ) -> Dict:
         """
         Process an incoming user message through identity, memory, LLM, and reflection pipelines and return the assistant response along with derived insights and any detected identity conflicts.
 
@@ -67,6 +74,8 @@ class ConversationOrchestrator:
                     self.logger.exception("%s task failed for user %s", label, user_id)
 
             task.add_done_callback(_done)
+
+
 
         conflicts = []
         if settings.ENABLE_INLINE_CONFLICT_DETECTION:

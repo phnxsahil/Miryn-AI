@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.main import app
 import app.api.auth as auth
+from app.core.security import create_access_token, create_refresh_token
 
 
 @pytest.fixture()
@@ -126,4 +127,41 @@ def test_signup_supabase_missing_data_returns_500(client: TestClient, monkeypatc
 
     res = client.post("/auth/signup", json={"email": "test@example.com", "password": "password123"})
     assert res.status_code == 500
+
+
+def test_refresh_accepts_refresh_token_body(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(auth, "has_sql", lambda: False)
+
+    class _FakeSupabase:
+        def table(self, _name):
+            return self
+
+        def select(self, _fields):
+            return self
+
+        def eq(self, _field, _value):
+            return self
+
+        def limit(self, _value):
+            return self
+
+        def execute(self):
+            class _Resp:
+                data = [{"id": "user-1", "email": "test@example.com", "is_deleted": False}]
+
+            return _Resp()
+
+    monkeypatch.setattr(auth, "get_db", lambda: _FakeSupabase())
+
+    res = client.post("/auth/refresh", json={"refresh_token": create_refresh_token("user-1")})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["access_token"]
+    assert body["refresh_token"]
+    assert body["user"]["id"] == "user-1"
+
+
+def test_refresh_rejects_access_token_in_refresh_body(client: TestClient):
+    res = client.post("/auth/refresh", json={"refresh_token": create_access_token("user-1")})
+    assert res.status_code == 401
 

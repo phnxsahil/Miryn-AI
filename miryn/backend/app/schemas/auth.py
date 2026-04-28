@@ -43,8 +43,16 @@ class LoginRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str | None = None
     token_type: str = "bearer"
+    expires_in: int | None = None
+    refresh_expires_in: int | None = None
     is_new: bool = False
+    user: dict[str, str] | None = None
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 
 class UserOut(BaseModel):

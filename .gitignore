@@ -60,3 +60,10 @@ supabase/.temp/
 !.env.example
 !**/.env.example
 
+# Log files
+*.log
+*.stderr.log
+*.stdout.log
+*.combined.log
+_smoke_result.txt
+launch_probe.log

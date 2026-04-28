@@ -27,8 +27,18 @@ def get_password_hash(password: str) -> str:
 def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
     if expires_delta is None:
         expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    return _create_token(subject, expires_delta, "access")
+
+
+def create_refresh_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
+    if expires_delta is None:
+        expires_delta = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    return _create_token(subject, expires_delta, "refresh")
+
+
+def _create_token(subject: str, expires_delta: timedelta, token_type: str) -> str:
     expire = datetime.now(timezone.utc) + expires_delta
-    to_encode = {"sub": subject, "exp": expire}
+    to_encode = {"sub": subject, "exp": expire, "type": token_type}
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
@@ -45,10 +55,10 @@ def get_current_user_id(
         str: The user id extracted from the token.
     """
     token = credentials.credentials
-    return _decode_token(token)
+    return _decode_token(token, expected_type="access")
 
 
-def _decode_token(token: str) -> str:
+def _decode_token(token: str, expected_type: str = "access") -> str:
     """
     Decode and validate a JWT and extract its subject claim as the user id.
     
@@ -64,10 +74,17 @@ def _decode_token(token: str) -> str:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: str = payload.get("sub")
+        token_type = payload.get("type", "access")
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        if token_type != expected_type:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         return str(user_id)
@@ -89,4 +106,8 @@ def get_user_id_from_token(token: str) -> str:
     Returns:
         str: The token's `sub` claim representing the user id.
     """
-    return _decode_token(token)
+    return _decode_token(token, expected_type="access")
+
+
+def get_user_id_from_refresh_token(token: str) -> str:
+    return _decode_token(token, expected_type="refresh")

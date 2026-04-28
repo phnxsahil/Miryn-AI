@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Header
+from fastapi import APIRouter, Depends, HTTPException, Request, Header, Query
 from fastapi.responses import StreamingResponse
 import asyncio
 import json
 import logging
 from datetime import datetime, timezone
+from uuid import uuid4
 from sqlalchemy import text
 from app.config import settings
 from app.core.database import get_db, has_sql, get_sql_session
@@ -18,6 +19,28 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 orchestrator = ConversationOrchestrator()
 logger = logging.getLogger(__name__)
+
+
+def _enforce_message_rate_limit(user_id: str) -> None:
+    day_key = f"msg_day:{user_id}:{datetime.now(timezone.utc).strftime('%Y%m%d')}"
+    hour_key = f"msg_hour:{user_id}:{datetime.now(timezone.utc).strftime('%Y%m%d%H')}"
+
+    try:
+        day_count = int(redis_client.incr(day_key))
+        if day_count == 1:
+            redis_client.expire(day_key, 86400)
+
+        hour_count = int(redis_client.incr(hour_key))
+        if hour_count == 1:
+            redis_client.expire(hour_key, 3600)
+    except Exception as exc:
+        logger.warning("Chat rate limiter unavailable, allowing request: %s", exc)
+        return
+
+    if day_count > settings.MAX_MESSAGES_PER_DAY:
+        raise HTTPException(status_code=429, detail="Daily message limit reached. Resets at midnight.")
+    if hour_count > settings.MAX_MESSAGES_PER_HOUR:
+        raise HTTPException(status_code=429, detail="Hourly message limit reached. Try again soon.")
 
 
 def _validate_conversation_owner(conversation_id: str, user_id: str):
@@ -49,6 +72,80 @@ def _validate_conversation_owner(conversation_id: str, user_id: str):
         raise HTTPException(status_code=403, detail="Conversation does not belong to this user")
 
 
+def _create_conversation_with_fallback(user_id: str, title: str, sql_session=None) -> str:
+    if sql_session is not None:
+        try:
+            result = sql_session.execute(
+                text(
+                    """
+                    INSERT INTO conversations (user_id, title)
+                    VALUES (:user_id, :title)
+                    RETURNING id
+                    """
+                ),
+                {"user_id": user_id, "title": title},
+            ).mappings().first()
+            if result:
+                return str(result["id"])
+        except Exception:
+            logger.exception("Failed to create conversation via SQL, falling back")
+    elif has_sql():
+        try:
+            with get_sql_session() as session:
+                result = session.execute(
+                    text(
+                        """
+                        INSERT INTO conversations (user_id, title)
+                        VALUES (:user_id, :title)
+                        RETURNING id
+                        """
+                    ),
+                    {"user_id": user_id, "title": title},
+                ).mappings().first()
+                if result:
+                    return str(result["id"])
+        except Exception:
+            logger.exception("Failed to create conversation via SQL, falling back")
+
+    try:
+        db = get_db()
+        conv_response = (
+            db.table("conversations")
+            .insert({
+                "user_id": user_id,
+                "title": title,
+            })
+            .execute()
+        )
+        if conv_response and conv_response.data:
+            conversation_id = conv_response.data[0].get("id")
+            if conversation_id:
+                return str(conversation_id)
+    except Exception:
+        logger.exception("Failed to create conversation via Supabase, using temporary ID")
+
+    return str(uuid4())
+
+
+def _touch_conversation_updated_at(conversation_id: str) -> None:
+    if has_sql():
+        try:
+            with get_sql_session() as session:
+                session.execute(
+                    text("UPDATE conversations SET updated_at = NOW() WHERE id = :id"),
+                    {"id": conversation_id},
+                )
+            return
+        except Exception:
+            logger.warning("Failed to update conversation timestamp via SQL", exc_info=True)
+
+    try:
+        db = get_db()
+        db.table("conversations").update({"updated_at": "now()"}).eq("id", conversation_id).execute()
+    except Exception:
+        logger.warning("Failed to update conversation timestamp via Supabase", exc_info=True)
+
+
 @router.post("/", response_model=ChatResponse)
 async def send_message(
     request: ChatRequest,
@@ -69,85 +166,92 @@ async def send_message(
         HTTPException: 500 if creating a new conversation fails.
     """
     conversation_id = request.conversation_id
+    idempotency_key = request.idempotency_key
 
-    if conversation_id:
-        _validate_conversation_owner(conversation_id, user_id)
+    try:
+        if conversation_id:
+            _validate_conversation_owner(conversation_id, user_id)
 
-    # Rate limiting
-    day_key = f"msg_day:{user_id}:{datetime.now(timezone.utc).strftime('%Y%m%d')}"
-    hour_key = f"msg_hour:{user_id}:{datetime.now(timezone.utc).strftime('%Y%m%d%H')}"
-    day_count = int(redis_client.incr(day_key))
-    if day_count == 1:
-        redis_client.expire(day_key, 86400)
-    hour_count = int(redis_client.incr(hour_key))
-    if hour_count == 1:
-        redis_client.expire(hour_key, 3600)
+        _enforce_message_rate_limit(user_id)
 
-    if day_count > settings.MAX_MESSAGES_PER_DAY:
-        raise HTTPException(status_code=429, detail="Daily message limit reached. Resets at midnight.")
-    if hour_count > settings.MAX_MESSAGES_PER_HOUR:
-        raise HTTPException(status_code=429, detail="Hourly message limit reached. Try again soon.")
-
-    if has_sql():
-        if not conversation_id:
+        if has_sql():
             with get_sql_session() as session:
-                result = session.execute(
-                    text(
-                        """
-                        INSERT INTO conversations (user_id, title)
-                        VALUES (:user_id, :title)
-                        RETURNING id
-                        """
-                    ),
-                    {"user_id": user_id, "title": request.message[:50]},
-                ).mappings().first()
-                if not result:
-                    raise HTTPException(status_code=500, detail="Failed to create conversation")
-                conversation_id = str(result["id"])
-                session.commit()
-    else:
-        db = get_db()
-        if not conversation_id:
-            conv_response = (
-                db.table("conversations")
-                .insert({
-                    "user_id": user_id,
-                    "title": request.message[:50],
-                })
-                .execute()
-            )
-            if not conv_response or not conv_response.data:
-                raise HTTPException(status_code=500, detail="Failed to create conversation")
-            conversation_id = conv_response.data[0].get("id")
+                if not conversation_id:
+                    conversation_id = _create_conversation_with_fallback(
+                        user_id,
+                        request.message[:50],
+                        sql_session=session,
+                    )
+
+                try:
+                    result = await orchestrator.handle_message(
+                        user_id=user_id,
+                        message=request.message,
+                        conversation_id=conversation_id,
+                        idempotency_key=idempotency_key,
+                        sql_session=session,
+                    )
+                except Exception:
+                    logger.exception("Chat request failed, returning fallback response")
+                    result = {
+                        "response": "I'm having trouble responding right now. Please try again shortly.",
+                        "insights": {},
+                        "conflicts": [],
+                    }
+
+                _touch_conversation_updated_at(conversation_id)
+        else:
+            db = get_db()
             if not conversation_id:
-                raise HTTPException(status_code=500, detail="Invalid conversation response")
+                try:
+                    conv_response = (
+                        db.table("conversations")
+                        .insert({
+                            "user_id": user_id,
+                            "title": request.message[:50],
+                        })
+                        .execute()
+                    )
+                    if conv_response and conv_response.data:
+                        conversation_id = conv_response.data[0].get("id")
+                except Exception:
+                    logger.exception("Failed to create conversation, using temporary ID")
+                if not conversation_id:
+                    conversation_id = str(uuid4())
 
-    result = await orchestrator.handle_message(
-        user_id=user_id,
-        message=request.message,
-        conversation_id=conversation_id,
-    )
+            try:
+                result = await orchestrator.handle_message(
+                    user_id=user_id,
+                    message=request.message,
+                    conversation_id=conversation_id,
+                    idempotency_key=idempotency_key,
+                )
+            except Exception:
+                logger.exception("Chat request failed, returning fallback response")
+                result = {
+                    "response": "I'm having trouble responding right now. Please try again shortly.",
+                    "insights": {},
+                    "conflicts": [],
+                }
 
-    # Update updated_at
-    if has_sql():
-        with get_sql_session() as session:
-            session.execute(
-                text("UPDATE conversations SET updated_at = NOW() WHERE id = :id"),
-                {"id": conversation_id}
-            )
-            session.commit()
-    else:
-        db = get_db()
-        db.table("conversations").update({"updated_at": "now()"}).eq("id", conversation_id).execute()
+            _touch_conversation_updated_at(conversation_id)
 
-    return ChatResponse(
-        response=result["response"],
-        conversation_id=conversation_id,
-        insights=result.get("insights"),
-        conflicts=result.get("conflicts"),
-        entities=result.get("entities"),
-        emotions=result.get("emotions"),
-    )
+        return ChatResponse(
+            response=result["response"],
+            conversation_id=conversation_id,
+            insights=result.get("insights"),
+            conflicts=result.get("conflicts"),
+            entities=result.get("entities"),
+            emotions=result.get("emotions"),
+        )
+    except Exception:
+        logger.exception("Unhandled chat request failure, returning top-level fallback response")
+        return ChatResponse(
+            response="I'm having trouble responding right now. Please try again shortly.",
+            conversation_id=conversation_id or str(uuid4()),
+            insights={},
+            conflicts=[],
+        )
 
 
 @router.post("/stream")
@@ -157,60 +261,28 @@ async def stream_message(
     user_id: str = Depends(get_current_user_id),
 ):
     conversation_id = request.conversation_id
+    idempotency_key = request.idempotency_key
 
-    if conversation_id:
-        _validate_conversation_owner(conversation_id, user_id)
+    try:
+        if conversation_id:
+            _validate_conversation_owner(conversation_id, user_id)
 
-    # Rate limiting
-    day_key = f"msg_day:{user_id}:{datetime.now(timezone.utc).strftime('%Y%m%d')}"
-    hour_key = f"msg_hour:{user_id}:{datetime.now(timezone.utc).strftime('%Y%m%d%H')}"
-    day_count = int(redis_client.incr(day_key))
-    if day_count == 1:
-        redis_client.expire(day_key, 86400)
-    hour_count = int(redis_client.incr(hour_key))
-    if hour_count == 1:
-        redis_client.expire(hour_key, 3600)
+        _enforce_message_rate_limit(user_id)
 
-    if day_count > settings.MAX_MESSAGES_PER_DAY:
-        raise HTTPException(status_code=429, detail="Daily message limit reached. Resets at midnight.")
-    if hour_count > settings.MAX_MESSAGES_PER_HOUR:
-        raise HTTPException(status_code=429, detail="Hourly message limit reached. Try again soon.")
-
-    if has_sql():
         if not conversation_id:
-            with get_sql_session() as session:
-                result = session.execute(
-                    text(
-                        """
-                        INSERT INTO conversations (user_id, title)
-                        VALUES (:user_id, :title)
-                        RETURNING id
-                        """
-                    ),
-                    {"user_id": user_id, "title": request.message[:50]},
-                ).mappings().first()
-                if not result:
-                    raise HTTPException(status_code=500, detail="Failed to create conversation")
-                conversation_id = str(result["id"])
-                session.commit()
-    else:
-        db = get_db()
-        if not conversation_id:
-            conv_response = (
-                db.table("conversations")
-                .insert({
-                    "user_id": user_id,
-                    "title": request.message[:50],
-                })
-                .execute()
-            )
-            if not conv_response or not conv_response.data:
-                raise HTTPException(status_code=500, detail="Failed to create conversation")
-            conversation_id = conv_response.data[0].get("id")
-            if not conversation_id:
-                raise HTTPException(status_code=500, detail="Invalid conversation response")
+            conversation_id = _create_conversation_with_fallback(user_id, request.message[:50])
+    except Exception:
+        logger.exception("Unhandled stream setup failure, returning top-level SSE fallback")
+        error_payload = json.dumps({"error": "An internal error occurred. Please try again later."})
+        async def failed_stream():
+            yield f"data: {error_payload}\n\n"
+        return StreamingResponse(failed_stream(), media_type="text/event-stream")
 
-    identity = orchestrator.identity.get_identity(user_id)
+    try:
+        identity = orchestrator.identity.get_identity(user_id)
+    except Exception:
+        logger.exception("Failed to load identity for chat stream; continuing with empty identity")
+        identity = {}
     memories = []
     try:
         memories = await orchestrator.memory.retrieve_context(
@@ -235,6 +307,7 @@ async def stream_message(
             role="user",
             content=request.message,
             conversation_id=conversation_id,
+            idempotency_key=idempotency_key,
         )
     except Exception as exc:
         logger.warning(
@@ -289,16 +362,7 @@ async def stream_message(
         yield f"data: {done_payload}\n\n"
 
     # Update updated_at
-    if has_sql():
-        with get_sql_session() as session:
-            session.execute(
-                text("UPDATE conversations SET updated_at = NOW() WHERE id = :id"),
-                {"id": conversation_id}
-            )
-            session.commit()
-    else:
-        db = get_db()
-        db.table("conversations").update({"updated_at": "now()"}).eq("id", conversation_id).execute()
+    _touch_conversation_updated_at(conversation_id)
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
@@ -382,6 +446,8 @@ async def update_title(
 @router.get("/history")
 def get_chat_history(
     conversation_id: str,
+    limit: int = Query(50, ge=1),
+    offset: int = Query(0, ge=0),
     user_id: str = Depends(get_current_user_id),
 ):
     """
@@ -394,6 +460,8 @@ def get_chat_history(
     Returns:
         list[dict]: A list of message objects ordered by created_at. Each message will include a content field; if content is missing, it is populated by decrypting content_encrypted.
     """
+    limit = min(limit, 200)
+
     if has_sql():
         with get_sql_session() as session:
             result = session.execute(
@@ -403,9 +471,15 @@ def get_chat_history(
                     WHERE conversation_id = :conversation_id
                       AND user_id = :user_id
                     ORDER BY created_at
+                    LIMIT :limit OFFSET :offset
                     """
                 ),
-                {"conversation_id": conversation_id, "user_id": user_id},
+                {
+                    "conversation_id": conversation_id,
+                    "user_id": user_id,
+                    "limit": limit,
+                    "offset": offset,
+                },
             )
             rows = [dict(row) for row in result.mappings().all()]
             for row in rows:
@@ -420,6 +494,7 @@ def get_chat_history(
         .eq("conversation_id", conversation_id)
         .eq("user_id", user_id)
         .order("created_at")
+        .range(offset, offset + limit - 1)
         .execute()
     )
 

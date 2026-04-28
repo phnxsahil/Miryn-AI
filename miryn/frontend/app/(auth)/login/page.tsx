@@ -1,15 +1,26 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+  useEffect(() => {
+    api.ensureAuthenticated().then((authenticated) => {
+      if (authenticated) {
+        router.replace("/chat");
+      }
+    });
+  }, [router]);
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
     if (!credentialResponse.credential) return;
@@ -17,8 +28,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res: any = await api.googleLogin(credentialResponse.credential);
-      api.setToken(res.access_token);
-      window.location.href = res.is_new ? "/onboarding" : "/chat";
+      api.setSession(res);
+      window.location.assign(res.is_new ? "/onboarding" : "/chat");
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Google sign-in failed"));
     } finally {
@@ -32,9 +43,9 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await api.login(email, password);
-      api.setToken(res.access_token);
-      window.location.href = "/chat";
+      const res: any = await api.login(email, password);
+      api.setSession(res);
+      window.location.assign("/chat");
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Login failed"));
     } finally {
@@ -42,24 +53,22 @@ export default function LoginPage() {
     }
   };
 
-  const demoEnabled = process.env.NEXT_PUBLIC_ENABLE_DEMO === "true";
   const handleAutoLogin = async () => {
-    if (!demoEnabled) return;
     setError(null);
     setLoading(true);
     try {
       const res = await fetch("/api/demo-login", { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data?.error || "Auto-login failed");
+        throw new Error(data?.error || "Demo sign-in failed");
       }
       if (!data?.access_token) {
         throw new Error("Demo login did not return a token");
       }
-      api.setToken(data.access_token);
-      window.location.href = "/chat";
+      api.setSession(data);
+      window.location.assign("/onboarding");
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Auto-login failed"));
+      setError(getErrorMessage(err, "Demo sign-in failed"));
     } finally {
       setLoading(false);
     }
@@ -99,25 +108,30 @@ export default function LoginPage() {
         </button>
 
         <div className="flex flex-col items-center pt-2">
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={() => setError("Google sign-in failed")}
-            theme="filled_black"
-            shape="rectangular"
-            width="100%"
-          />
+          {googleClientId ? (
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError("Google sign-in failed")}
+              theme="filled_black"
+              shape="rectangular"
+              prompt="select_account"
+              width={320}
+            />
+          ) : (
+            <p className="text-xs text-secondary">
+              Google sign-in is unavailable. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID.
+            </p>
+          )}
         </div>
 
-        {demoEnabled && (
-          <button
-            type="button"
-            className="w-full rounded-md border border-white/10 py-3 text-sm hover:border-white/30 disabled:opacity-60"
-            onClick={handleAutoLogin}
-            disabled={loading}
-          >
-            Auto-login (demo)
-          </button>
-        )}
+        <button
+          type="button"
+          className="w-full rounded-md border border-white/10 py-3 text-sm hover:border-white/30 disabled:opacity-60"
+          onClick={handleAutoLogin}
+          disabled={loading}
+        >
+          Demo sign in
+        </button>
       </form>
     </div>
   );

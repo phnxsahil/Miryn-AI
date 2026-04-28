@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 1 week
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     RATE_LIMIT_PER_MINUTE: int = 60
     LOGIN_ATTEMPT_LIMIT: int = 5
     LOGIN_ATTEMPT_WINDOW_SECONDS: int = 900
@@ -64,6 +65,11 @@ class Settings(BaseSettings):
 
     # Tool sandbox
     TOOL_SANDBOX_URL: Optional[str] = None
+
+    # Observability
+    SENTRY_DSN: Optional[str] = None
+    SENTRY_ENVIRONMENT: str = "development"
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.0
 
     class Config:
         env_file = str(_ENV_FILE)

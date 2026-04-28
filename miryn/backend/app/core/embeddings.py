@@ -103,15 +103,12 @@ class EmbeddingService:
             compressed.append(sum(chunk) / len(chunk))
         return compressed
 
-    def embed(self, text: str) -> List[float]:
+    def embed_with_source(self, text: str) -> tuple[List[float], str]:
         """
-        Produce an embedding vector for the input text using Gemini when available, otherwise fall back to a deterministic hash-based embedding.
-
-        Parameters:
-            text (str): The input text to embed.
+        Produce an embedding vector and its source label.
 
         Returns:
-            List[float]: An embedding vector of length equal to the service's configured dimension.
+            Tuple[List[float], str]: (embedding vector, source label).
         """
         client = self._ensure_gemini()
         if client:
@@ -132,7 +129,7 @@ class EmbeddingService:
                         )
                         embedding = res.embeddings[0].values if res.embeddings else None
                         if embedding:
-                            return self._compress(list(embedding))
+                            return self._compress(list(embedding)), "gemini"
                     except Exception as exc:
                         last_error = exc
                         continue
@@ -142,7 +139,20 @@ class EmbeddingService:
                     self.logger.warning("Gemini embedding returned empty results for all candidates, fallback to hash")
             except Exception as exc:
                 self.logger.warning("Gemini embedding error, fallback to hash: %s", exc)
-        return self._hash_embed(text)
+        return self._hash_embed(text), "hash_fallback"
+
+    def embed(self, text: str) -> List[float]:
+        """
+        Produce an embedding vector for the input text using Gemini when available, otherwise fall back to a deterministic hash-based embedding.
+
+        Parameters:
+            text (str): The input text to embed.
+
+        Returns:
+            List[float]: An embedding vector of length equal to the service's configured dimension.
+        """
+        embedding, _source = self.embed_with_source(text)
+        return embedding
 
     def embed_batch(self, texts: List[str]) -> List[List[float]]:
         """

@@ -1,0 +1,118 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Deploy: Connect your repo → Render will detect this file automatically
+
+services:
+  # ───────────────────────────────────────────────
+  # 1. Backend API (FastAPI)
+  # ───────────────────────────────────────────────
+  - type: web
+    name: miryn-api
+    runtime: docker
+    dockerfilePath: ./miryn/backend/Dockerfile
+    dockerContext: ./miryn/backend
+    region: oregon
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      # Database (Neon Postgres — set in Render dashboard)
+      - key: DATABASE_URL
+        sync: false
+      # Redis (Render managed)
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: miryn-redis
+          property: connectionString
+      # LLM provider
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash-preview-04-17
+      - key: GEMINI_EMBEDDING_MODEL
+        value: text-embedding-004
+      # Auth
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      # App URLs (set after first deploy)
+      - key: FRONTEND_URL
+        sync: false
+      - key: BACKEND_URL
+        sync: false
+      # Optional
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+
+  # ───────────────────────────────────────────────
+  # 2. Celery Worker (background reflection jobs)
+  # ───────────────────────────────────────────────
+  - type: worker
+    name: miryn-worker
+    runtime: docker
+    dockerfilePath: ./miryn/backend/Dockerfile
+    dockerContext: ./miryn/backend
+    region: oregon
+    plan: starter
+    dockerCommand: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: miryn-redis
+          property: connectionString
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash-preview-04-17
+      - key: GEMINI_EMBEDDING_MODEL
+        value: text-embedding-004
+      - key: SECRET_KEY
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+  # ───────────────────────────────────────────────
+  # 3. Frontend (Next.js)
+  # ───────────────────────────────────────────────
+  - type: web
+    name: miryn-web
+    runtime: docker
+    dockerfilePath: ./miryn/frontend/Dockerfile
+    dockerContext: ./miryn/frontend
+    region: oregon
+    plan: starter
+    envVars:
+      # Set after backend deploys — e.g. https://miryn-api.onrender.com
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+        sync: false
+      - key: NEXT_PUBLIC_ENABLE_DEMO
+        value: "false"
+
+  # ───────────────────────────────────────────────
+  # 4. Redis (managed)
+  # ───────────────────────────────────────────────
+  - type: redis
+    name: miryn-redis
+    region: oregon
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []  # Allow all internal

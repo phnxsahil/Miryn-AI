@@ -3,6 +3,7 @@ import type {
   EvolutionLogEntry,
   IdentityUpdatePayload,
   ImportStatus,
+  Identity,
   MemorySnapshot,
   NotificationPreferences,
   OnboardingPayload,
@@ -12,8 +13,15 @@ import type {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+type AuthSession = {
+  access_token: string;
+  refresh_token?: string | null;
+};
+
 class ApiClient {
   private token: string | null = null;
+  private refreshTokenValue: string | null = null;
+  private refreshRequest: Promise<AuthSession> | null = null;
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -32,14 +40,30 @@ class ApiClient {
     }
   }
 
+  setSession(session: AuthSession | null) {
+    this.setToken(session?.access_token ?? null);
+    this.setRefreshToken(session?.refresh_token ?? null);
+  }
+
   clearToken() {
-    this.setToken(null);
+    this.setSession(null);
   }
 
   loadToken() {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("miryn_token");
-      if (token) this.token = token;
+      this.token = localStorage.getItem("miryn_token");
+      this.refreshTokenValue = localStorage.getItem("miryn_refresh_token");
+    }
+  }
+
+  private setRefreshToken(token: string | null) {
+    this.refreshTokenValue = token;
+    if (typeof window !== "undefined") {
+      if (token) {
+        localStorage.setItem("miryn_refresh_token", token);
+      } else {
+        localStorage.removeItem("miryn_refresh_token");
+      }
     }
   }
 
@@ -48,13 +72,13 @@ class ApiClient {
       const data = (await res.json()) as unknown;
       if (typeof data === "string") return data;
       if (data && typeof data === "object") {
-        const detail = "detail" in data ? (data as any).detail : undefined;
-        const message = "message" in data ? (data as any).message : undefined;
-        
-        if (Array.isArray(detail) && detail.length > 0 && detail[0].msg) {
-          return detail[0].msg;
+        const detail = "detail" in data ? (data as { detail?: unknown }).detail : undefined;
+        const message = "message" in data ? (data as { message?: unknown }).message : undefined;
+
+        if (Array.isArray(detail) && detail.length > 0 && typeof detail[0] === "object" && detail[0] && "msg" in detail[0]) {
+          return String((detail[0] as { msg?: unknown }).msg ?? res.statusText);
         }
-        
+
         if (typeof detail === "string") return detail;
         if (typeof message === "string") return message;
         return String(detail || message || res.statusText);
@@ -71,7 +95,15 @@ class ApiClient {
     }
 
     const headers = new Headers(options.headers);
-    headers.set("Content-Type", "application/json");
+    const requestId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+    if (!isFormData && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+    headers.set("X-Request-ID", requestId);
 
     if (this.token) {
       headers.set("Authorization", `Bearer ${this.token}`);
@@ -83,25 +115,24 @@ class ApiClient {
     });
 
     if (!res.ok) {
-      if (res.status === 401 && !triedRefresh) {
+      const responseRequestId = res.headers.get("X-Request-ID") || requestId;
+      if (res.status === 401 && !triedRefresh && endpoint !== "/auth/refresh" && this.refreshTokenValue) {
         try {
-          const refreshed = await this.refreshToken();
-          if (refreshed?.access_token) {
-            this.setToken(refreshed.access_token);
-            return this.request(endpoint, options, true);
-          }
+          const refreshed = await this.refreshSession();
+          this.setSession(refreshed);
+          return this.request(endpoint, options, true);
         } catch {
           this.clearToken();
-          throw new Error("Session expired. Please log in again.");
+          throw new Error(`Session expired. Please log in again. [req ${responseRequestId}]`);
         }
       }
 
       const message = await this.parseError(res);
       if (res.status === 401) {
         this.clearToken();
-        throw new Error("Session expired. Please log in again.");
+        throw new Error(`Session expired. Please log in again. [req ${responseRequestId}]`);
       }
-      throw new Error(message || "Request failed");
+      throw new Error(`${message || "Request failed"} [req ${responseRequestId}]`);
     }
 
     if (res.status === 204) {
@@ -120,6 +151,55 @@ class ApiClient {
     }
   }
 
+  private async refreshSession(): Promise<AuthSession> {
+    if (this.refreshRequest) {
+      return this.refreshRequest;
+    }
+
+    if (!this.refreshTokenValue) {
+      throw new Error("Missing refresh token");
+    }
+
+    this.refreshRequest = fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refresh_token: this.refreshTokenValue }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const message = await this.parseError(res);
+          throw new Error(message || "Session expired");
+        }
+        return res.json() as Promise<AuthSession>;
+      })
+      .finally(() => {
+        this.refreshRequest = null;
+      });
+
+    return this.refreshRequest;
+  }
+
+  async ensureAuthenticated() {
+    this.loadToken();
+    if (this.token) {
+      return true;
+    }
+    if (!this.refreshTokenValue) {
+      return false;
+    }
+
+    try {
+      const refreshed = await this.refreshSession();
+      this.setSession(refreshed);
+      return true;
+    } catch {
+      this.clearToken();
+      return false;
+    }
+  }
+
   async signup(email: string, password: string) {
     return this.request("/auth/signup", {
       method: "POST",
@@ -131,20 +211,18 @@ class ApiClient {
     return this.request("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
-    });
+    }) as Promise<AuthSession>;
   }
 
   async googleLogin(idToken: string) {
     return this.request("/auth/google", {
       method: "POST",
       body: JSON.stringify({ id_token: idToken }),
-    });
+    }) as Promise<AuthSession>;
   }
 
   async refreshToken() {
-    return this.request("/auth/refresh", {
-      method: "POST",
-    });
+    return this.refreshSession();
   }
 
   async forgotPassword(email: string) {
@@ -183,10 +261,8 @@ class ApiClient {
   }
 
   async logout() {
-    this.setToken(null);
+    this.clearToken();
   }
-
-  // --- CHAT ---
 
   async listConversations() {
     return this.request("/chat/conversations") as Promise<Conversation[]>;
@@ -200,7 +276,6 @@ class ApiClient {
   }
 
   async sendMessage(message: string, conversationId?: string) {
-
     return this.request("/chat/", {
       method: "POST",
       body: JSON.stringify({ message, conversation_id: conversationId }),
@@ -212,20 +287,41 @@ class ApiClient {
       this.loadToken();
     }
 
-    const res = await fetch(`${API_URL}/chat/stream`, {
+    let res = await fetch(`${API_URL}/chat/stream`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${this.token}`,
+        Authorization: `Bearer ${this.token}`,
       },
       body: JSON.stringify({ message, conversation_id: conversationId }),
     });
 
+    if (res.status === 401 && this.refreshTokenValue) {
+      const refreshed = await this.refreshSession();
+      this.setSession(refreshed);
+      res = await fetch(`${API_URL}/chat/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.token}`,
+        },
+        body: JSON.stringify({ message, conversation_id: conversationId }),
+      });
+    }
+
     if (!res.ok) {
+      if (res.status === 401) {
+        this.clearToken();
+        throw new Error("Session expired. Please log in again.");
+      }
       throw new Error(await res.text());
     }
 
-    const reader = res.body.getReader();
+    const reader = res.body?.getReader();
+    if (!reader) {
+      throw new Error("Stream unavailable");
+    }
+
     const decoder = new TextDecoder();
     let buffer = "";
     while (true) {
@@ -247,8 +343,8 @@ class ApiClient {
     return this.request(`/chat/history?${params}`);
   }
 
-  async getIdentity() {
-    return this.request("/identity/");
+  async getIdentity(): Promise<Identity> {
+    return this.request("/identity/") as Promise<Identity>;
   }
 
   async updateIdentity(payload: IdentityUpdatePayload) {

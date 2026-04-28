@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 class ChatRequest(BaseModel):
     message: str
     conversation_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
 
 
 class ChatResponse(BaseModel):

@@ -263,6 +263,20 @@ export default function ChatInterface() {
       )}
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+        {messages.length === 0 && !loading && (
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-6 animate-in fade-in duration-700">
+            <div className="space-y-3">
+              <h2 className="text-3xl md:text-5xl font-serif font-light text-white/90 tracking-tight">Miryn</h2>
+              <p className="text-sm md:text-base text-secondary italic">A quiet room for honest reflection.</p>
+            </div>
+            <button
+              onClick={() => sendMessage("Tell me about my week — help me reflect on it.")}
+              className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm text-secondary hover:text-white hover:border-white/20 hover:bg-white/10 transition-all"
+            >
+              &ldquo;Start by telling me about your week.&rdquo;
+            </button>
+          </div>
+        )}
         {messages.map((msg, idx) => (
           <MessageBubble
             key={`${msg.timestamp}-${idx}`}

@@ -8,11 +8,11 @@ from datetime import datetime
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from app.core.database import get_db, has_sql, get_sql_session
-from app.core.security import get_password_hash, verify_password, create_access_token, get_current_user_id, get_user_id_from_token
+from app.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token, get_current_user_id, get_user_id_from_refresh_token
 from app.core.cache import redis_client
 from app.core.audit import log_event
 from app.config import settings
-from app.schemas.auth import SignupRequest, LoginRequest, TokenResponse, UserOut, ForgotPasswordRequest, ResetPasswordRequest, GoogleLoginRequest, PasswordUpdate, SessionOut
+from app.schemas.auth import SignupRequest, LoginRequest, TokenResponse, UserOut, ForgotPasswordRequest, ResetPasswordRequest, GoogleLoginRequest, PasswordUpdate, SessionOut, RefreshTokenRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -77,6 +77,27 @@ def _is_unique_violation(exc: Exception) -> bool:
         return True
 
     return False
+
+
+def _issue_token_response(user_id: str, email: str | None = None, is_new: bool = False) -> TokenResponse:
+    access_token = create_access_token(subject=user_id)
+    refresh_token = create_refresh_token(subject=user_id)
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        refresh_expires_in=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        is_new=is_new,
+        user={"id": user_id, "email": email} if email else {"id": user_id},
+    )
+
+
+def _default_notification_preferences() -> dict[str, bool]:
+    return {
+        "checkin_reminders": True,
+        "weekly_digest": True,
+        "browser_push": False,
+    }
 
 
 @router.post("/signup", response_model=UserOut)
@@ -244,7 +265,6 @@ def google_auth(payload: GoogleLoginRequest, request: Request):
     if not user_id:
         raise HTTPException(status_code=500, detail="Failed to authenticate user")
 
-    token = create_access_token(subject=user_id)
     log_event(
         event_type="auth.google",
         user_id=user_id,
@@ -254,7 +274,7 @@ def google_auth(payload: GoogleLoginRequest, request: Request):
         ip=client_host,
         user_agent=request.headers.get("user-agent"),
     )
-    return TokenResponse(access_token=token, is_new=is_new)
+    return _issue_token_response(user_id=user_id, email=email, is_new=is_new)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -278,7 +298,6 @@ def login(payload: LoginRequest, request: Request):
         if not verify_password(payload.password, user["password_hash"]):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-        token = create_access_token(subject=str(user["id"]))
         log_event(
             event_type="auth.login",
             user_id=user["id"],
@@ -288,7 +307,7 @@ def login(payload: LoginRequest, request: Request):
             ip=client_host,
             user_agent=request.headers.get("user-agent"),
         )
-        return TokenResponse(access_token=token)
+        return _issue_token_response(user_id=str(user["id"]), email=str(user["email"]))
 
     db = get_db()
 
@@ -309,7 +328,6 @@ def login(payload: LoginRequest, request: Request):
     if not user.get("password_hash") or not verify_password(payload.password, user["password_hash"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    token = create_access_token(subject=str(user["id"]))
     log_event(
         event_type="auth.login",
         user_id=user["id"],
@@ -319,18 +337,42 @@ def login(payload: LoginRequest, request: Request):
         ip=client_host,
         user_agent=request.headers.get("user-agent"),
     )
-    return TokenResponse(access_token=token)
+    return _issue_token_response(user_id=str(user["id"]), email=str(user["email"]))
 
 
 @router.post("/refresh", response_model=TokenResponse)
-def refresh_token(request: Request):
-    auth_header = request.headers.get("authorization", "")
-    if not auth_header.lower().startswith("bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authentication token")
-    token = auth_header.split(" ", 1)[1].strip()
-    user_id = get_user_id_from_token(token)
-    new_token = create_access_token(subject=str(user_id))
-    return TokenResponse(access_token=new_token)
+def refresh_token(request: Request, payload: RefreshTokenRequest | None = None):
+    refresh_token_value = payload.refresh_token if payload else None
+
+    if not refresh_token_value:
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.lower().startswith("bearer "):
+            refresh_token_value = auth_header.split(" ", 1)[1].strip()
+
+    if not refresh_token_value:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token")
+
+    user_id = get_user_id_from_refresh_token(refresh_token_value)
+
+    email = None
+    if has_sql():
+        with get_sql_session() as session:
+            user = session.execute(
+                text("SELECT id, email, is_deleted FROM users WHERE id = :user_id LIMIT 1"),
+                {"user_id": user_id},
+            ).mappings().first()
+            if not user or user.get("is_deleted"):
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not available")
+            email = str(user["email"])
+    else:
+        db = get_db()
+        res = db.table("users").select("id, email, is_deleted").eq("id", user_id).limit(1).execute()
+        user = res.data[0] if res.data else None
+        if not user or user.get("is_deleted"):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not available")
+        email = str(user["email"])
+
+    return _issue_token_response(user_id=str(user_id), email=email)
 
 
 @router.post("/forgot-password")
@@ -429,15 +471,28 @@ def delete_account(user_id: str = Depends(get_current_user_id)):
 @router.get("/me")
 def get_me(user_id: str = Depends(get_current_user_id)):
     if has_sql():
-        with get_sql_session() as session:
-            user = session.execute(
-                text("SELECT id, email, password_hash, notification_preferences, data_retention FROM users WHERE id = :user_id"),
-                {"user_id": user_id},
-            ).mappings().first()
+        try:
+            with get_sql_session() as session:
+                user = session.execute(
+                    text("SELECT id, email, password_hash, notification_preferences, data_retention FROM users WHERE id = :user_id"),
+                    {"user_id": user_id},
+                ).mappings().first()
+        except Exception as exc:
+            logger.warning("Extended /auth/me query failed, falling back to base user query: %s", exc)
+            with get_sql_session() as session:
+                user = session.execute(
+                    text("SELECT id, email, password_hash FROM users WHERE id = :user_id"),
+                    {"user_id": user_id},
+                ).mappings().first()
     else:
         db = get_db()
-        res = db.table("users").select("id, email, password_hash, notification_preferences, data_retention").eq("id", user_id).single().execute()
-        user = res.data
+        try:
+            res = db.table("users").select("id, email, password_hash, notification_preferences, data_retention").eq("id", user_id).single().execute()
+            user = res.data
+        except Exception as exc:
+            logger.warning("Extended Supabase /auth/me query failed, falling back to base user query: %s", exc)
+            res = db.table("users").select("id, email, password_hash").eq("id", user_id).single().execute()
+            user = res.data
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -446,11 +501,7 @@ def get_me(user_id: str = Depends(get_current_user_id)):
         "id": str(user["id"]),
         "email": user["email"],
         "has_password": user["password_hash"] is not None,
-        "notification_preferences": user.get("notification_preferences") or {
-            "checkin_reminders": True,
-            "weekly_digest": True,
-            "browser_push": False
-        },
+        "notification_preferences": user.get("notification_preferences") or _default_notification_preferences(),
         "data_retention": user.get("data_retention") or "forever",
         "encryption_enabled": settings.ENCRYPTION_KEY is not None and len(settings.ENCRYPTION_KEY) > 0
     }

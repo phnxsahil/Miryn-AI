@@ -107,11 +107,11 @@ export default function OnboardingFlow() {
       {step === 1 && (
         <div className="space-y-8">
           <div>
-            <h1 className="text-2xl md:text-4xl font-serif font-light">Let's get to know you</h1>
+            <h1 className="text-2xl md:text-4xl font-serif font-light">Let&apos;s get to know you</h1>
             <p className="text-secondary mt-2 text-sm md:text-base">A quick foundation to personalize Miryn.</p>
           </div>
           <div className="space-y-3">
-            <label className="text-[10px] md:text-xs uppercase tracking-[0.2em] text-secondary">What's your name?</label>
+            <label className="text-[10px] md:text-xs uppercase tracking-[0.2em] text-secondary">What&apos;s your name?</label>
             <input
               className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 md:py-4 text-white focus:border-accent/50 focus:outline-none transition-colors"
               value={name}
@@ -153,7 +153,7 @@ export default function OnboardingFlow() {
                 <div className="text-sm font-medium text-white">{preset.display_name}</div>
                 <div className="mt-1 text-[10px] md:text-xs text-secondary leading-relaxed">{preset.tagline}</div>
                 <div className="mt-4 rounded-xl bg-white/5 p-3 text-[10px] md:text-xs text-white/60 italic leading-relaxed">
-                  "{preset.example_response}"
+                  &quot;{preset.example_response}&quot;
                 </div>
               </button>
             ))}

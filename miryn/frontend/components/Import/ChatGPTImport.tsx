@@ -111,7 +111,7 @@ export default function ChatGPTImport({ onClose }: ChatGPTImportProps) {
                   </p>
                   <ol className="list-decimal list-inside space-y-2">
                     <li>Go to ChatGPT → Settings → Data Controls.</li>
-                    <li>Select "Export Data" and wait for the email.</li>
+                    <li>Select &quot;Export Data&quot; and wait for the email.</li>
                     <li>Download the ZIP and find <code className="text-accent-purple">conversations.json</code>.</li>
                   </ol>
                 </div>

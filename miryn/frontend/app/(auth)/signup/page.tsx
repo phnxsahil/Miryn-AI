@@ -1,15 +1,25 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
 
 export default function SignupPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    api.ensureAuthenticated().then((authenticated) => {
+      if (authenticated) {
+        router.replace("/chat");
+      }
+    });
+  }, [router]);
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
     if (!credentialResponse.credential) return;
@@ -17,8 +27,8 @@ export default function SignupPage() {
     setLoading(true);
     try {
       const res: any = await api.googleLogin(credentialResponse.credential);
-      api.setToken(res.access_token);
-      window.location.href = res.is_new ? "/onboarding" : "/chat";
+      api.setSession(res);
+      window.location.assign(res.is_new ? "/onboarding" : "/chat");
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Google sign-in failed"));
     } finally {
@@ -34,12 +44,12 @@ export default function SignupPage() {
     try {
       await api.signup(email, password);
       try {
-        const res = await api.login(email, password);
-        api.setToken(res.access_token);
-        window.location.href = "/onboarding";
+        const res: any = await api.login(email, password);
+        api.setSession(res);
+        window.location.assign("/onboarding");
       } catch {
         setError("Account created. Please log in manually.");
-        window.location.href = "/login?created=1";
+        window.location.assign("/login?created=1");
       }
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Signup failed"));
@@ -87,7 +97,8 @@ export default function SignupPage() {
             onError={() => setError("Google sign-in failed")}
             theme="filled_black"
             shape="rectangular"
-            width="100%"
+            prompt="select_account"
+            width={320}
           />
         </div>
       </form>

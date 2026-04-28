@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import type { Session, User, NotificationPreferences } from "@/lib/types";
 import { getErrorMessage } from "@/lib/utils";
+
+type NotificationToggleKey = "checkin_reminders" | "weekly_digest" | "browser_push";
+type NotificationToggleItem = { id: NotificationToggleKey; label: string; desc: string };
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -70,7 +72,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handlePrefChange = async (key: keyof NotificationPreferences, value: any) => {
+  const handlePrefChange = async (key: NotificationToggleKey, value: boolean) => {
     if (!user) return;
     const updatedPrefs = {
       ...user.notification_preferences,
@@ -192,18 +194,18 @@ export default function SettingsPage() {
       <section className="space-y-6">
         <h2 className="text-[10px] uppercase tracking-[0.2em] text-secondary font-bold">Notifications</h2>
         <div className="bg-surface border border-white/10 rounded-2xl p-6 space-y-6">
-          {[
+          {([
             { id: "checkin_reminders", label: "Check-in reminders", desc: "Get notified when Miryn wants to follow up on an open loop." },
             { id: "weekly_digest", label: "Weekly digest email", desc: "A summary of your identity evolution and key patterns." },
             { id: "browser_push", label: "Browser push notifications", desc: "Receive instant updates in your browser." }
-          ].map(item => (
+          ] as NotificationToggleItem[]).map((item) => (
             <div key={item.id} className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-white">{item.label}</p>
                 <p className="text-xs text-secondary">{item.desc}</p>
               </div>
               <button
-                onClick={() => handlePrefChange(item.id as any, !user?.notification_preferences[item.id as keyof NotificationPreferences])}
+                onClick={() => handlePrefChange(item.id, !user?.notification_preferences[item.id])}
                 className={`w-10 h-5 rounded-full transition-colors relative ${user?.notification_preferences[item.id as keyof NotificationPreferences] ? "bg-accent-purple" : "bg-white/10"}`}
               >
                 <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${user?.notification_preferences[item.id as keyof NotificationPreferences] ? "left-6" : "left-1"}`} />

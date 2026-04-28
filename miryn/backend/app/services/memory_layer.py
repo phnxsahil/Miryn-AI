@@ -46,6 +46,8 @@ class MemoryLayer:
         content: str,
         conversation_id: str,
         metadata: Dict[str, Any] | None = None,
+        idempotency_key: str | None = None,
+        sql_session: Any | None = None,
     ):
         """
         Store a user's message into the appropriate memory tier and invalidate the user's cache.
@@ -65,7 +67,7 @@ class MemoryLayer:
         Raises:
             Exception: Re-raises any exception encountered while persisting the message after logging it.
         """
-        embedding = await asyncio.to_thread(self.embedder.embed, content)
+        embedding, embedding_source = await asyncio.to_thread(self.embedder.embed_with_source, content)
         meta = metadata or {}
         tier = self._decide_tier(meta, content)
         try:
@@ -81,6 +83,9 @@ class MemoryLayer:
                     embedding,
                     meta,
                     tier,
+                    idempotency_key,
+                    embedding_source,
+                    sql_session,
                 )
         except Exception:
             self.logger.exception("Failed to persist message for user %s", user_id)
@@ -395,6 +400,9 @@ class MemoryLayer:
         embedding: List[float],
         metadata: Dict[str, Any],
         tier: str,
+        idempotency_key: str | None,
+        embedding_source: str,
+        sql_session: Any | None = None,
     ) -> None:
         """
         Persist a user's message into storage, applying tier-aware encryption and retention.
@@ -425,41 +433,45 @@ class MemoryLayer:
             payload = self._encrypt_payload(content, metadata)
         if has_sql():
             vector_literal = self._vector_literal(embedding)
+            params = {
+                "user_id": user_id,
+                "conversation_id": conversation_id,
+                "role": role,
+                "content": payload["content"],
+                "embedding": vector_literal,
+                "metadata": json.dumps(payload["metadata"]),
+                "content_encrypted": payload["content_encrypted"],
+                "metadata_encrypted": payload["metadata_encrypted"],
+                "encryption_version": 1,
+                "importance_score": importance,
+                "memory_tier": tier,
+                "delete_at": delete_at,
+                "idempotency_key": idempotency_key,
+                "embedding_source": embedding_source,
+            }
+            if sql_session is not None:
+                self._execute_message_insert_sql(sql_session, params)
+                return
+
             with get_sql_session() as session:
-                session.execute(
-                    text(
-                        """
-                        INSERT INTO messages (
-                            user_id, conversation_id, role, content, embedding, metadata,
-                            content_encrypted, metadata_encrypted, encryption_version,
-                            importance_score, memory_tier, delete_at
-                        ) VALUES (
-                            :user_id, :conversation_id, :role, :content, :embedding, :metadata,
-                            :content_encrypted, :metadata_encrypted, :encryption_version,
-                            :importance_score, :memory_tier, :delete_at
-                        )
-                        """
-                    ),
-                    {
-                        "user_id": user_id,
-                        "conversation_id": conversation_id,
-                        "role": role,
-                        "content": payload["content"],
-                        "embedding": vector_literal,
-                        "metadata": json.dumps(payload["metadata"]),
-                        "content_encrypted": payload["content_encrypted"],
-                        "metadata_encrypted": payload["metadata_encrypted"],
-                        "encryption_version": 1,
-                        "importance_score": importance,
-                        "memory_tier": tier,
-                        "delete_at": delete_at,
-                    },
-                )
+                self._execute_message_insert_sql(session, params)
                 session.commit()
             return
 
         if not self.supabase:
             raise RuntimeError("Supabase client is not configured")
+
+        if idempotency_key:
+            existing = (
+                self.supabase.table("messages")
+                .select("id")
+                .eq("user_id", user_id)
+                .eq("idempotency_key", idempotency_key)
+                .limit(1)
+                .execute()
+            )
+            if existing.data:
+                return
 
         self.supabase.table("messages").insert({
             "user_id": user_id,
@@ -474,7 +486,62 @@ class MemoryLayer:
             "content_encrypted": payload["content_encrypted"],
             "metadata_encrypted": payload["metadata_encrypted"],
             "encryption_version": 1,
+            "idempotency_key": idempotency_key,
+            "embedding_source": embedding_source,
         }).execute()
+
+    def _execute_message_insert_sql(self, session: Any, params: Dict[str, Any]) -> None:
+        try:
+            session.execute(
+                text(
+                    """
+                    INSERT INTO messages (
+                        user_id, conversation_id, role, content, embedding, metadata,
+                        content_encrypted, metadata_encrypted, encryption_version,
+                        importance_score, memory_tier, delete_at, idempotency_key,
+                        embedding_source
+                    ) VALUES (
+                        :user_id, :conversation_id, :role, :content, :embedding, :metadata,
+                        :content_encrypted, :metadata_encrypted, :encryption_version,
+                        :importance_score, :memory_tier, :delete_at, :idempotency_key,
+                        :embedding_source
+                    )
+                    ON CONFLICT (user_id, idempotency_key)
+                    DO UPDATE SET id = messages.id
+                    RETURNING *
+                    """
+                ),
+                params,
+            )
+            return
+        except Exception as exc:
+            self.logger.warning(
+                "Falling back to legacy message insert; local schema may be missing idempotency/embedding_source columns: %s",
+                exc,
+            )
+
+        legacy_params = {
+            key: value
+            for key, value in params.items()
+            if key not in {"idempotency_key", "embedding_source"}
+        }
+        session.execute(
+            text(
+                """
+                INSERT INTO messages (
+                    user_id, conversation_id, role, content, embedding, metadata,
+                    content_encrypted, metadata_encrypted, encryption_version,
+                    importance_score, memory_tier, delete_at
+                ) VALUES (
+                    :user_id, :conversation_id, :role, :content, :embedding, :metadata,
+                    :content_encrypted, :metadata_encrypted, :encryption_version,
+                    :importance_score, :memory_tier, :delete_at
+                )
+                RETURNING *
+                """
+            ),
+            legacy_params,
+        )
 
     def _build_cache_key(self, user_id: str, query: str, conversation_id: str | None) -> str:
         """

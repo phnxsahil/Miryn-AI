@@ -24,6 +24,20 @@ function Pill({ label }: { label: string }) {
   );
 }
 
+function ScoredPill({ label, value }: { label: string; value: unknown }) {
+  const numValue = typeof value === "number" ? value : null;
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs tracking-[0.15em] uppercase text-white/80">
+      {label}
+      {numValue !== null && (
+        <span className="text-[10px] text-amber-200 font-mono tabular-nums">
+          {numValue.toFixed(2)}
+        </span>
+      )}
+    </span>
+  );
+}
+
 /**
  * Renders a horizontal progress meter whose filled width reflects a numeric value.
  *
@@ -148,7 +162,7 @@ export default function IdentityDashboard() {
             <div className="mt-4 flex flex-wrap gap-2">
               {traitKeys.length === 0 && <span className="text-secondary text-sm">No traits yet.</span>}
               {traitKeys.map((key) => (
-                <Pill key={key} label={key} />
+                <ScoredPill key={key} label={key} value={identity.traits[key]} />
               ))}
             </div>
           </div>
@@ -158,7 +172,7 @@ export default function IdentityDashboard() {
             <div className="mt-4 flex flex-wrap gap-2">
               {valueKeys.length === 0 && <span className="text-secondary text-sm">No values yet.</span>}
               {valueKeys.map((key) => (
-                <Pill key={key} label={key} />
+                <ScoredPill key={key} label={key} value={identity.values[key]} />
               ))}
             </div>
           </div>
