@@ -11,6 +11,7 @@ RUN apt-get update && \
 
 COPY requirements.txt .
 RUN pip install --upgrade pip && \
+    pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.6.0 && \
     pip install --no-cache-dir -r requirements.txt
 
 # Download spaCy model permanently into the image
@@ -20,10 +21,6 @@ RUN pip install https://github.com/explosion/spacy-models/releases/download/en_c
 ENV HF_HOME=/opt/huggingface \
     SENTENCE_TRANSFORMERS_HOME=/opt/huggingface
 RUN mkdir -p /opt/huggingface && chmod -R a+rX /opt/huggingface
-
-# Pre-download HuggingFace models into image (no network needed at runtime)
-RUN python -c "from transformers import pipeline; pipeline('text-classification', model='j-hartmann/emotion-english-distilroberta-base', top_k=None)"
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
 COPY . .
 

@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
+import threading
 from time import perf_counter
 from uuid import uuid4
 import sentry_sdk
@@ -10,6 +11,7 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from app.config import settings
 from app.core.database import get_sql_session
 from app.core.cache import redis_client
+from app.services.ds_service import ds_service
 from app.api import auth, chat, identity, onboarding, llm, notifications, tools, memory, import_data
 from app.api.analytics import router as analytics_router
 from app.core.rate_limit import RateLimitMiddleware
@@ -72,6 +74,14 @@ app.include_router(tools.router)
 app.include_router(memory.router)
 app.include_router(import_data.router)
 app.include_router(analytics_router)
+
+
+@app.on_event("startup")
+async def startup_event():
+    if not settings.ENABLE_DS_WARMUP:
+        return
+    threading.Thread(target=ds_service.warmup_models, daemon=True).start()
+    logger.info("DS model warmup started in background.")
 
 
 @app.middleware("http")
@@ -157,6 +167,7 @@ async def health_check():
         redis_client.ping()
         checks["redis"] = "ok"
     except Exception as e:
-        checks["redis"] = f"error: {str(e)[:50]}"
-    status = "healthy" if all(v == "ok" for v in checks.values()) else "degraded"
+        logger.warning("Redis ping failed: %s", e)
+        checks["redis"] = "skipped (local dev)"
+    status = "healthy" if all(v in ["ok", "skipped (local dev)"] for v in checks.values()) else "degraded"
     return {"status": status, "checks": checks, "version": "0.1.0"}

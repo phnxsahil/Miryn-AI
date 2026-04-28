@@ -133,6 +133,23 @@ class TestLoadSentenceModelFailureSentinel:
 
 
 # ---------------------------------------------------------------------------
+# warmup_models
+# ---------------------------------------------------------------------------
+
+class TestWarmupModels:
+    def test_calls_all_model_loaders(self, svc, monkeypatch):
+        calls = []
+
+        monkeypatch.setattr(svc, "_load_spacy", lambda: calls.append("spacy"))
+        monkeypatch.setattr(svc, "_load_emotion_model", lambda: calls.append("emotion"))
+        monkeypatch.setattr(svc, "_load_sentence_model", lambda: calls.append("sentence"))
+
+        svc.warmup_models()
+
+        assert calls == ["spacy", "emotion", "sentence"]
+
+
+# ---------------------------------------------------------------------------
 # extract_entities
 # ---------------------------------------------------------------------------
 

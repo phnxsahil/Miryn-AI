@@ -72,6 +72,12 @@ class DSService:
             self._sentence_failed = True
         return self._sentence_model
 
+    def warmup_models(self):
+        """Best-effort model warmup for startup; never raises."""
+        self._load_spacy()
+        self._load_emotion_model()
+        self._load_sentence_model()
+
     def extract_entities(self, text: str) -> List[Dict]:
         """
         Extract named entities from text using spaCy.
