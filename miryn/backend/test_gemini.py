@@ -1,10 +1,16 @@
 import asyncio
 import os
+import pytest
 from google import genai
 from google.genai import types
 
+@pytest.mark.anyio
 async def test_stream():
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        pytest.skip("GEMINI_API_KEY is not configured")
+
+    client = genai.Client(api_key=api_key)
     try:
         # Test if it needs await
         print("Testing with await...")
