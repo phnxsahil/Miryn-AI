@@ -12,6 +12,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
     api.ensureAuthenticated()
@@ -96,13 +97,19 @@ export default function SignupPage() {
         </button>
 
         <div className="flex flex-col items-center pt-2">
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={() => setError("Google sign-in failed")}
-            theme="filled_black"
-            shape="rectangular"
-            width={320}
-          />
+          {googleClientId ? (
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError("Google sign-in failed")}
+              theme="filled_black"
+              shape="rectangular"
+              width={320}
+            />
+          ) : (
+            <p className="text-xs text-secondary text-center px-4">
+              Google sign-up is unavailable. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID.
+            </p>
+          )}
         </div>
       </form>
     </div>
