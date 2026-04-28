@@ -23,6 +23,8 @@ google-cloud-aiplatform==1.91.0
 
 # Embeddings
 numpy==1.26.4
+transformers==4.40.0
+sentence-transformers==2.7.0
 
 # Background jobs
 celery[redis]==5.3.4

@@ -2,11 +2,11 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { JWT } from "next-auth/jwt";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const REQUEST_TIMEOUT_MS = 10_000;
 
-if (!API_URL) {
-  throw new Error("NEXT_PUBLIC_API_URL is not configured");
+if (!process.env.NEXT_PUBLIC_API_URL && process.env.NODE_ENV === "production") {
+  console.warn("NEXT_PUBLIC_API_URL is not configured. Falling back to localhost for build.");
 }
 
 type AuthSuccess = {
