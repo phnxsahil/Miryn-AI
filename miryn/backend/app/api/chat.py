@@ -4,7 +4,6 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone
-from uuid import uuid4
 from sqlalchemy import text
 from app.config import settings
 from app.core.database import get_db, has_sql, get_sql_session
@@ -73,6 +72,7 @@ def _validate_conversation_owner(conversation_id: str, user_id: str):
 
 
 def _create_conversation_with_fallback(user_id: str, title: str, sql_session=None) -> str:
+    title_preview = title[:50]
     if sql_session is not None:
         try:
             result = sql_session.execute(
@@ -88,7 +88,11 @@ def _create_conversation_with_fallback(user_id: str, title: str, sql_session=Non
             if result:
                 return str(result["id"])
         except Exception:
-            logger.exception("Failed to create conversation via SQL, falling back")
+            logger.exception(
+                "Failed to create conversation via SQL, falling back to Supabase (user_id=%s, title_preview=%s)",
+                user_id,
+                title_preview,
+            )
     elif has_sql():
         try:
             with get_sql_session() as session:
@@ -105,7 +109,11 @@ def _create_conversation_with_fallback(user_id: str, title: str, sql_session=Non
                 if result:
                     return str(result["id"])
         except Exception:
-            logger.exception("Failed to create conversation via SQL, falling back")
+            logger.exception(
+                "Failed to create conversation via SQL, falling back to Supabase (user_id=%s, title_preview=%s)",
+                user_id,
+                title_preview,
+            )
 
     try:
         db = get_db()
@@ -122,9 +130,13 @@ def _create_conversation_with_fallback(user_id: str, title: str, sql_session=Non
             if conversation_id:
                 return str(conversation_id)
     except Exception:
-        logger.exception("Failed to create conversation via Supabase, using temporary ID")
+        logger.exception(
+            "Failed to create conversation via Supabase; aborting conversation creation (user_id=%s, title_preview=%s)",
+            user_id,
+            title_preview,
+        )
 
-    return str(uuid4())
+    raise HTTPException(status_code=500, detail="Failed to create conversation")
 
 
 def _touch_conversation_updated_at(conversation_id: str) -> None:
@@ -141,7 +153,9 @@ def _touch_conversation_updated_at(conversation_id: str) -> None:
 
     try:
         db = get_db()
-        db.table("conversations").update({"updated_at": "now()"}).eq("id", conversation_id).execute()
+        db.table("conversations").update(
+            {"updated_at": datetime.now(timezone.utc).isoformat()}
+        ).eq("id", conversation_id).execute()
     except Exception:
         logger.warning("Failed to update conversation timestamp via Supabase", exc_info=True)
 
@@ -168,56 +182,19 @@ async def send_message(
     conversation_id = request.conversation_id
     idempotency_key = request.idempotency_key
 
-    try:
-        if conversation_id:
-            _validate_conversation_owner(conversation_id, user_id)
+    if conversation_id:
+        _validate_conversation_owner(conversation_id, user_id)
 
-        _enforce_message_rate_limit(user_id)
+    _enforce_message_rate_limit(user_id)
 
-        if has_sql():
-            with get_sql_session() as session:
-                if not conversation_id:
-                    conversation_id = _create_conversation_with_fallback(
-                        user_id,
-                        request.message[:50],
-                        sql_session=session,
-                    )
-
-                try:
-                    result = await orchestrator.handle_message(
-                        user_id=user_id,
-                        message=request.message,
-                        conversation_id=conversation_id,
-                        idempotency_key=idempotency_key,
-                        sql_session=session,
-                    )
-                except Exception:
-                    logger.exception("Chat request failed, returning fallback response")
-                    result = {
-                        "response": "I'm having trouble responding right now. Please try again shortly.",
-                        "insights": {},
-                        "conflicts": [],
-                    }
-
-                _touch_conversation_updated_at(conversation_id)
-        else:
-            db = get_db()
+    if has_sql():
+        with get_sql_session() as session:
             if not conversation_id:
-                try:
-                    conv_response = (
-                        db.table("conversations")
-                        .insert({
-                            "user_id": user_id,
-                            "title": request.message[:50],
-                        })
-                        .execute()
-                    )
-                    if conv_response and conv_response.data:
-                        conversation_id = conv_response.data[0].get("id")
-                except Exception:
-                    logger.exception("Failed to create conversation, using temporary ID")
-                if not conversation_id:
-                    conversation_id = str(uuid4())
+                conversation_id = _create_conversation_with_fallback(
+                    user_id,
+                    request.message[:50],
+                    sql_session=session,
+                )
 
             try:
                 result = await orchestrator.handle_message(
@@ -225,6 +202,7 @@ async def send_message(
                     message=request.message,
                     conversation_id=conversation_id,
                     idempotency_key=idempotency_key,
+                    sql_session=session,
                 )
             except Exception:
                 logger.exception("Chat request failed, returning fallback response")
@@ -235,23 +213,35 @@ async def send_message(
                 }
 
             _touch_conversation_updated_at(conversation_id)
+    else:
+        if not conversation_id:
+            conversation_id = _create_conversation_with_fallback(user_id, request.message[:50])
 
-        return ChatResponse(
-            response=result["response"],
-            conversation_id=conversation_id,
-            insights=result.get("insights"),
-            conflicts=result.get("conflicts"),
-            entities=result.get("entities"),
-            emotions=result.get("emotions"),
-        )
-    except Exception:
-        logger.exception("Unhandled chat request failure, returning top-level fallback response")
-        return ChatResponse(
-            response="I'm having trouble responding right now. Please try again shortly.",
-            conversation_id=conversation_id or str(uuid4()),
-            insights={},
-            conflicts=[],
-        )
+        try:
+            result = await orchestrator.handle_message(
+                user_id=user_id,
+                message=request.message,
+                conversation_id=conversation_id,
+                idempotency_key=idempotency_key,
+            )
+        except Exception:
+            logger.exception("Chat request failed, returning fallback response")
+            result = {
+                "response": "I'm having trouble responding right now. Please try again shortly.",
+                "insights": {},
+                "conflicts": [],
+            }
+
+        _touch_conversation_updated_at(conversation_id)
+
+    return ChatResponse(
+        response=result["response"],
+        conversation_id=conversation_id,
+        insights=result.get("insights"),
+        conflicts=result.get("conflicts"),
+        entities=result.get("entities"),
+        emotions=result.get("emotions"),
+    )
 
 
 @router.post("/stream")
@@ -271,7 +261,9 @@ async def stream_message(
 
         if not conversation_id:
             conversation_id = _create_conversation_with_fallback(user_id, request.message[:50])
-    except Exception:
+    except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise
         logger.exception("Unhandled stream setup failure, returning top-level SSE fallback")
         error_payload = json.dumps({"error": "An internal error occurred. Please try again later."})
         async def failed_stream():

@@ -16,6 +16,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 type AuthSession = {
   access_token: string;
   refresh_token?: string | null;
+  is_new?: boolean;
 };
 
 class ApiClient {
@@ -297,16 +298,21 @@ class ApiClient {
     });
 
     if (res.status === 401 && this.refreshTokenValue) {
-      const refreshed = await this.refreshSession();
-      this.setSession(refreshed);
-      res = await fetch(`${API_URL}/chat/stream`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.token}`,
-        },
-        body: JSON.stringify({ message, conversation_id: conversationId }),
-      });
+      try {
+        const refreshed = await this.refreshSession();
+        this.setSession(refreshed);
+        res = await fetch(`${API_URL}/chat/stream`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.token}`,
+          },
+          body: JSON.stringify({ message, conversation_id: conversationId }),
+        });
+      } catch {
+        this.setSession(null);
+        throw new Error("Session expired. Please log in again.");
+      }
     }
 
     if (!res.ok) {

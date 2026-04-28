@@ -84,7 +84,7 @@ async def request_logging_middleware(request: Request, call_next):
         response = await call_next(request)
     except Exception:
         duration_ms = round((perf_counter() - started_at) * 1000, 2)
-        logger.exception(
+        logger.info(
             "request_failed request_id=%s method=%s path=%s duration_ms=%s",
             request_id,
             request.method,

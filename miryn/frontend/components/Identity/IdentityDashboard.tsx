@@ -10,20 +10,6 @@ const tone = [
   "bg-[radial-gradient(circle_at_left,_rgba(255,255,255,0.06),_transparent_50%)]",
 ];
 
-/**
- * Render a compact, styled pill element with an uppercase label.
- *
- * @param label - Text to display inside the pill
- * @returns A styled inline span element containing the provided label
- */
-function Pill({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs tracking-[0.2em] uppercase text-white/80">
-      {label}
-    </span>
-  );
-}
-
 function ScoredPill({ label, value }: { label: string; value: unknown }) {
   const numValue = typeof value === "number" ? value : null;
   return (

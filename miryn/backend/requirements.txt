@@ -19,7 +19,7 @@ redis==4.6.0
 openai==1.51.0
 anthropic==0.34.0
 google-genai==0.8.0
-google-cloud-aiplatform
+google-cloud-aiplatform==1.91.0
 
 # Embeddings
 numpy==1.26.4
@@ -32,14 +32,14 @@ PyJWT[crypto]==2.11.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.1.3
 python-multipart==0.0.22
-google-auth
-requests
+google-auth==2.49.2
+requests==2.33.1
 
 # Utils
 python-dotenv==1.0.0
 cryptography==44.0.1
-sentry-sdk[fastapi]
+sentry-sdk[fastapi]==2.58.0
 
 # Tests
-pytest
-httpx
+pytest==9.0.3
+httpx==0.27.2

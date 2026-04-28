@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { GoogleLogin } from "@react-oauth/google";
+import { CredentialResponse, GoogleLogin } from "@react-oauth/google";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
@@ -14,19 +14,23 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    api.ensureAuthenticated().then((authenticated) => {
-      if (authenticated) {
-        router.replace("/chat");
-      }
-    });
+    api.ensureAuthenticated()
+      .then((authenticated) => {
+        if (authenticated) {
+          router.replace("/chat");
+        }
+      })
+      .catch((err: unknown) => {
+        console.error("Failed to verify existing session on signup page", err);
+      });
   }, [router]);
 
-  const handleGoogleSuccess = async (credentialResponse: any) => {
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     if (!credentialResponse.credential) return;
     setError(null);
     setLoading(true);
     try {
-      const res: any = await api.googleLogin(credentialResponse.credential);
+      const res = await api.googleLogin(credentialResponse.credential);
       api.setSession(res);
       window.location.assign(res.is_new ? "/onboarding" : "/chat");
     } catch (err: unknown) {
@@ -44,7 +48,7 @@ export default function SignupPage() {
     try {
       await api.signup(email, password);
       try {
-        const res: any = await api.login(email, password);
+        const res = await api.login(email, password);
         api.setSession(res);
         window.location.assign("/onboarding");
       } catch {
@@ -97,7 +101,6 @@ export default function SignupPage() {
             onError={() => setError("Google sign-in failed")}
             theme="filled_black"
             shape="rectangular"
-            prompt="select_account"
             width={320}
           />
         </div>

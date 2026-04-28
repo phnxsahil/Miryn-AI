@@ -112,7 +112,7 @@ def get_memory(
     user_id: str = Depends(get_current_user_id),
 ):
     limit = _clamp_limit(limit)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     if has_sql():
         with get_sql_session() as session:

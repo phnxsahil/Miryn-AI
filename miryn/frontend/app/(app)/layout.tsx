@@ -27,13 +27,14 @@ export default function AppLayout({
         if (!mounted) return;
         if (!authenticated) {
           router.replace("/login");
-        } else {
-          void api.getMe().catch(() => null);
+          return;
         }
+        void api.getMe().catch(() => null);
+        setAuthChecked(true);
       })
-      .finally(() => {
+      .catch(() => {
         if (mounted) {
-          setAuthChecked(true);
+          router.replace("/login");
         }
       });
 

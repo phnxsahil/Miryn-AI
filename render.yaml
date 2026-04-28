@@ -36,7 +36,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: ENCRYPTION_KEY
-        sync: false
+        generateValue: true
       - key: GOOGLE_CLIENT_ID
         sync: false
       # App URLs (set after first deploy)
@@ -80,9 +80,15 @@ services:
       - key: GEMINI_EMBEDDING_MODEL
         value: text-embedding-004
       - key: SECRET_KEY
-        sync: false
+        fromService:
+          type: web
+          name: miryn-api
+          envVarKey: SECRET_KEY
       - key: ENCRYPTION_KEY
-        sync: false
+        fromService:
+          type: web
+          name: miryn-api
+          envVarKey: ENCRYPTION_KEY
       - key: OPENAI_API_KEY
         sync: false
       - key: ANTHROPIC_API_KEY
@@ -106,6 +112,10 @@ services:
         sync: false
       - key: NEXT_PUBLIC_ENABLE_DEMO
         value: "false"
+      - key: SENTRY_DSN
+        sync: false
+      - key: NEXT_PUBLIC_SENTRY_DSN
+        sync: false
 
   # ───────────────────────────────────────────────
   # 4. Redis (managed)

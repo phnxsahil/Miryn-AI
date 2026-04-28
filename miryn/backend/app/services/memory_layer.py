@@ -6,6 +6,8 @@ import hashlib
 import logging
 from datetime import datetime, timedelta
 from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
+from psycopg2.errors import UndefinedColumn, UndefinedTable
 from app.core.database import get_db, has_sql, get_sql_session
 from app.core.cache import redis_client
 from app.core.embeddings import embedding_service
@@ -100,6 +102,7 @@ class MemoryLayer:
         limit: int = 5,
         strategy: str = "hybrid",
         conversation_id: str | None = None,
+        sql_session: Any | None = None,
     ) -> List[Dict[str, Any]]:
         """
         Retrieve relevant memory items for a user based on a query and combine transient and persisted results according to the selected strategy.
@@ -110,6 +113,7 @@ class MemoryLayer:
             limit (int): Maximum number of results to return.
             strategy (str): Scoring strategy to use; one of "hybrid", "semantic", "temporal", or "importance".
             conversation_id (str | None): Optional conversation scope to restrict transient results and cache key; use None for global context.
+            sql_session (Any | None): Optional open SQLAlchemy session to reuse for persistent lookups when SQL mode is enabled.
         
         Returns:
             List[Dict[str, Any]]: A list of memory entries (dictionaries) relevant to the query, truncated to `limit`.
@@ -125,9 +129,9 @@ class MemoryLayer:
         query_embedding = await asyncio.to_thread(self.embedder.embed, query)
 
         transient_results = self._transient_search(user_id, conversation_id, limit=10)
-        semantic_results = self._semantic_search(user_id, query_embedding, limit=15)
-        temporal_results = self._temporal_search(user_id, days=self.episodic_days, limit=15)
-        important_results = self._importance_search(user_id, threshold=0.7, limit=15)
+        semantic_results = self._semantic_search(user_id, query_embedding, limit=15, sql_session=sql_session)
+        temporal_results = self._temporal_search(user_id, days=self.episodic_days, limit=15, sql_session=sql_session)
+        important_results = self._importance_search(user_id, threshold=0.7, limit=15, sql_session=sql_session)
 
         if strategy == "hybrid":
             scored = self._hybrid_score(semantic_results, temporal_results, important_results)
@@ -161,7 +165,13 @@ class MemoryLayer:
             self.logger.debug("Failed to cache context for user %s", user_id)
         return combined[:limit]
 
-    def _semantic_search(self, user_id: str, embedding: List[float], limit: int):
+    def _semantic_search(
+        self,
+        user_id: str,
+        embedding: List[float],
+        limit: int,
+        sql_session: Any | None = None,
+    ):
         """
         Retrieve semantically similar, decrypted messages from the user's core memory tier.
         
@@ -177,6 +187,30 @@ class MemoryLayer:
         """
         if has_sql():
             vector_literal = self._vector_literal(embedding)
+            if sql_session is not None:
+                result = sql_session.execute(
+                    text(
+                        """
+                        SELECT id, content, metadata, importance_score, created_at,
+                               content_encrypted, metadata_encrypted,
+                               1 - (embedding <=> CAST(:query_embedding AS vector)) as similarity
+                        FROM messages
+                        WHERE user_id = :user_id
+                          AND memory_tier = 'core'
+                          AND (delete_at IS NULL OR delete_at > NOW())
+                          AND 1 - (embedding <=> CAST(:query_embedding AS vector)) > :match_threshold
+                        ORDER BY embedding <=> CAST(:query_embedding AS vector)
+                        LIMIT :match_count
+                        """
+                    ),
+                    {
+                        "query_embedding": vector_literal,
+                        "match_threshold": 0.7,
+                        "match_count": limit,
+                        "user_id": user_id,
+                    },
+                )
+                return [self._decrypt_message(dict(row)) for row in result.mappings().all()]
             with get_sql_session() as session:
                 result = session.execute(
                     text(
@@ -214,7 +248,7 @@ class MemoryLayer:
         data = response.data or []
         return [self._decrypt_message(dict(row)) for row in data]
 
-    def _temporal_search(self, user_id: str, days: int, limit: int):
+    def _temporal_search(self, user_id: str, days: int, limit: int, sql_session: Any | None = None):
         """
         Retrieve episodic messages for a user created within the past `days`, ordered by recency.
         
@@ -232,6 +266,27 @@ class MemoryLayer:
         now = datetime.utcnow()
 
         if has_sql():
+            if sql_session is not None:
+                result = sql_session.execute(
+                    text(
+                        """
+                        SELECT * FROM messages
+                        WHERE user_id = :user_id
+                          AND memory_tier = 'episodic'
+                          AND (delete_at IS NULL OR delete_at > :now)
+                          AND created_at >= :cutoff
+                        ORDER BY created_at DESC
+                        LIMIT :limit
+                        """
+                    ),
+                    {
+                        "user_id": user_id,
+                        "cutoff": cutoff,
+                        "now": now,
+                        "limit": limit,
+                    },
+                )
+                return [self._decrypt_message(dict(row)) for row in result.mappings().all()]
             with get_sql_session() as session:
                 result = session.execute(
                     text(
@@ -268,7 +323,7 @@ class MemoryLayer:
         data = response.data or []
         return [self._decrypt_message(dict(row)) for row in data]
 
-    def _importance_search(self, user_id: str, threshold: float, limit: int):
+    def _importance_search(self, user_id: str, threshold: float, limit: int, sql_session: Any | None = None):
         """
         Retrieve messages for a user with importance at or above a given threshold, ordered by importance.
         
@@ -282,6 +337,27 @@ class MemoryLayer:
         """
         now = datetime.utcnow()
         if has_sql():
+            if sql_session is not None:
+                result = sql_session.execute(
+                    text(
+                        """
+                        SELECT * FROM messages
+                        WHERE user_id = :user_id
+                          AND memory_tier IN ('episodic', 'core')
+                          AND (delete_at IS NULL OR delete_at > :now)
+                          AND importance_score >= :threshold
+                        ORDER BY importance_score DESC
+                        LIMIT :limit
+                        """
+                    ),
+                    {
+                        "user_id": user_id,
+                        "threshold": threshold,
+                        "now": now,
+                        "limit": limit,
+                    },
+                )
+                return [self._decrypt_message(dict(row)) for row in result.mappings().all()]
             with get_sql_session() as session:
                 result = session.execute(
                     text(
@@ -491,30 +567,52 @@ class MemoryLayer:
         }).execute()
 
     def _execute_message_insert_sql(self, session: Any, params: Dict[str, Any]) -> None:
-        try:
-            session.execute(
-                text(
-                    """
-                    INSERT INTO messages (
-                        user_id, conversation_id, role, content, embedding, metadata,
-                        content_encrypted, metadata_encrypted, encryption_version,
-                        importance_score, memory_tier, delete_at, idempotency_key,
-                        embedding_source
-                    ) VALUES (
-                        :user_id, :conversation_id, :role, :content, :embedding, :metadata,
-                        :content_encrypted, :metadata_encrypted, :encryption_version,
-                        :importance_score, :memory_tier, :delete_at, :idempotency_key,
-                        :embedding_source
-                    )
-                    ON CONFLICT (user_id, idempotency_key)
-                    DO UPDATE SET id = messages.id
-                    RETURNING *
-                    """
-                ),
-                params,
+        statement = text(
+            """
+            INSERT INTO messages (
+                user_id, conversation_id, role, content, embedding, metadata,
+                content_encrypted, metadata_encrypted, encryption_version,
+                importance_score, memory_tier, delete_at, idempotency_key,
+                embedding_source
+            ) VALUES (
+                :user_id, :conversation_id, :role, :content, :embedding, :metadata,
+                :content_encrypted, :metadata_encrypted, :encryption_version,
+                :importance_score, :memory_tier, :delete_at, :idempotency_key,
+                :embedding_source
             )
+            RETURNING *
+            """
+        )
+        if params["idempotency_key"] is not None:
+            statement = text(
+                """
+                INSERT INTO messages (
+                    user_id, conversation_id, role, content, embedding, metadata,
+                    content_encrypted, metadata_encrypted, encryption_version,
+                    importance_score, memory_tier, delete_at, idempotency_key,
+                    embedding_source
+                ) VALUES (
+                    :user_id, :conversation_id, :role, :content, :embedding, :metadata,
+                    :content_encrypted, :metadata_encrypted, :encryption_version,
+                    :importance_score, :memory_tier, :delete_at, :idempotency_key,
+                    :embedding_source
+                )
+                ON CONFLICT (user_id, idempotency_key)
+                DO UPDATE SET id = messages.id
+                RETURNING *
+                """
+            )
+        try:
+            session.execute(statement, params)
             return
-        except Exception as exc:
+        except ProgrammingError as exc:
+            if not isinstance(getattr(exc, "orig", None), (UndefinedColumn, UndefinedTable)):
+                raise
+            self.logger.warning(
+                "Falling back to legacy message insert; local schema may be missing idempotency/embedding_source columns: %s",
+                exc,
+            )
+        except (UndefinedColumn, UndefinedTable) as exc:
             self.logger.warning(
                 "Falling back to legacy message insert; local schema may be missing idempotency/embedding_source columns: %s",
                 exc,

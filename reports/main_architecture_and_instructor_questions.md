@@ -68,15 +68,20 @@ Miryn uses a practical, mixed memory model:
 
 Tier decision supports explicit metadata override and heuristics:
 
-- `importance >= 0.8` -> core
-- ephemeral/short low-importance content -> transient
+- `memory_importance >= 0.8` -> core
+- ephemeral/short low-memory_importance content -> transient
 - otherwise -> episodic
+
+Field definitions:
+
+- `memory_importance`: float in the `0.0-1.0` range used for memory-tier decisions and hybrid retrieval weighting.
+- `loop_priority`: ranked open-loop priority shown as `P1`, `P2`, etc. (or equivalent numeric ordering where `1` is highest priority).
 
 Hybrid ranking uses weighted scoring:
 
 - semantic score weight: 0.5
 - recency score weight: 0.3
-- importance score weight: 0.2
+- memory importance score weight: 0.2
 
 ### 3.2 Identity Model (Versioned Snapshots)
 
@@ -121,7 +126,7 @@ Most assistants only keep conversation history. Miryn maintains an explicit iden
 This is likely what instructors will ask about:
 
 - Identity version numbering: every identity change increments `version`.
-- Open-loop priority numbering: open loops carry `importance` (shown in UI as `P1`, `P2`, etc.).
+- Open-loop priority numbering: open loops carry `loop_priority` (shown in UI as `P1`, `P2`, etc.).
 - Emotion intensity scoring: each emotion record has `intensity` on a 0-1 scale.
 - Belief confidence scoring: each belief has `confidence` on a 0-1 style scale.
 - Conflict severity scoring: each detected contradiction has `severity`.
@@ -183,7 +188,7 @@ It is implemented as continuous intensity scores (0-1) per emotion entry, plus o
 7. How do you quantify open loops?
 
 Suggested answer:
-Each loop has an `importance` integer used for ranking and UI emphasis (P-level style priority). This is useful for coaching-like follow-ups.
+Each loop has a `loop_priority` value used for ranking and UI emphasis (P-level style priority). This is useful for coaching-like follow-ups.
 
 8. How is contradiction/conflict represented?
 
