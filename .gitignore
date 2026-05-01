@@ -67,3 +67,6 @@ supabase/.temp/
 *.combined.log
 _smoke_result.txt
 launch_probe.log
+
+# Reports temporary files
+reports/render_tmp/

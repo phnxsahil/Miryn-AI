@@ -1,7 +1,10 @@
 export type Message = {
+  id?: string;
   role: "user" | "assistant" | "system";
   content: string;
   timestamp: string;
+  metadata?: Record<string, unknown>;
+  importance_score?: number;
 };
 
 export type Conversation = {
@@ -120,6 +123,128 @@ export type MemorySnapshot = {
   facts: MemoryItem[];
   emotions: MemoryItem[];
   recent: MemoryItem[];
+};
+
+export type DemoPersonaCard = {
+  user_id: string;
+  key: string;
+  label: string;
+  subtitle: string;
+  email: string;
+  goal: string;
+};
+
+export type IdentityMetrics = {
+  stability_score: number | null;
+  drift: number | null;
+  total_versions: number;
+  version_timeline: Array<{
+    version: number;
+    state?: string;
+    belief_count: number;
+    open_loop_count: number;
+    drift_score: number;
+    created_at: string;
+  }>;
+};
+
+export type EmotionMetrics = {
+  mood_score: number | null;
+  volatility: number | null;
+  trend: string;
+  entropy: number | null;
+  dominant_emotions: Array<{ emotion: string; count: number }>;
+};
+
+export type MemoryMetrics = {
+  total_messages: number;
+  core_count: number;
+  episodic_count: number;
+  transient_count: number;
+  emotion_tagged_count: number;
+  average_importance: number;
+  distribution: Array<{ tier: string; count: number }>;
+};
+
+export type DemoConversation = {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  messages: Message[];
+};
+
+export type DemoPersonaDetail = {
+  profile: {
+    user_id: string;
+    label: string;
+    subtitle: string;
+    email: string;
+    goal: string;
+    report_summary: string;
+  };
+  identity: Identity;
+  identity_metrics: IdentityMetrics;
+  emotion_metrics: EmotionMetrics;
+  memory_metrics: MemoryMetrics;
+  memory_snapshot: {
+    recent: Message[];
+    facts: Message[];
+    emotions: Message[];
+  };
+  conversations: DemoConversation[];
+};
+
+export type DifferenceMetrics = {
+  shared_belief_topics: string[];
+  left_only_belief_topics: string[];
+  right_only_belief_topics: string[];
+  shared_open_loops: string[];
+  left_only_open_loops: string[];
+  right_only_open_loops: string[];
+  shared_pattern_types: string[];
+  left_only_pattern_types: string[];
+  right_only_pattern_types: string[];
+  left_conflict_count: number;
+  right_conflict_count: number;
+};
+
+export type ComparePayload = {
+  generated_at: string;
+  left: DemoPersonaDetail;
+  right: DemoPersonaDetail;
+  difference_metrics: DifferenceMetrics;
+  charts: {
+    drift_timeline: Array<{ version: number; left: number; right: number }>;
+    emotion_distribution: {
+      left: Array<{ emotion: string; count: number }>;
+      right: Array<{ emotion: string; count: number }>;
+    };
+    memory_distribution: {
+      left: Array<{ tier: string; count: number }>;
+      right: Array<{ tier: string; count: number }>;
+    };
+    identity_counts: {
+      left: Array<{ label: string; count: number }>;
+      right: Array<{ label: string; count: number }>;
+    };
+  };
+  report_sections: {
+    introduction: string;
+    comparison_dimensions: Array<{ title: string; body: string }>;
+    drift_analysis: string;
+    memory_observations: string;
+    miryn_standout: string;
+    conclusion: string;
+  };
+};
+
+export type CompareReport = {
+  generated_at: string;
+  left_user_id: string;
+  right_user_id: string;
+  markdown: string;
+  sections: ComparePayload["report_sections"];
 };
 
 export type OnboardingAnswer = {

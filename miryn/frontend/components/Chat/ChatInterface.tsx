@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import type { Message, ConversationInsights, ToolRun, Notification } from "@/lib/types";
@@ -8,8 +9,9 @@ import { getErrorMessage } from "@/lib/utils";
 import MessageBubble from "./MessageBubble";
 import InputBox from "./InputBox";
 import InsightsPanel from "./InsightsPanel";
-import ToolPanel from "./ToolPanel";
-import NotificationsPanel from "./NotificationsPanel";
+
+const ToolPanel = dynamic(() => import("./ToolPanel"));
+const NotificationsPanel = dynamic(() => import("./NotificationsPanel"));
 
 /**
  * Full chat UI component that manages conversation state, message flow, tools, insights, and notifications.
@@ -29,6 +31,7 @@ export default function ChatInterface() {
   const [conflicts, setConflicts] = useState<Array<{ statement: string; conflict_with: string; severity?: number }>>([]);
   const [pendingTools, setPendingTools] = useState<ToolRun[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [secondaryPanelsReady, setSecondaryPanelsReady] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const streamingIndexRef = useRef<number | null>(null);
@@ -61,11 +64,37 @@ export default function ChatInterface() {
   }, [idFromUrl]);
 
   useEffect(() => {
-    api.listPendingTools().then((tools) => setPendingTools((tools as ToolRun[]) || [])).catch(() => null);
-    api.listNotifications().then((notes) => setNotifications((notes as Notification[]) || [])).catch(() => null);
+    let timeoutId: number | null = null;
+    let idleId: number | null = null;
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      idleId = window.requestIdleCallback(() => setSecondaryPanelsReady(true), { timeout: 1200 });
+    } else {
+      timeoutId = window.setTimeout(() => setSecondaryPanelsReady(true), 500);
+    }
+
+    return () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+      if (idleId !== null && typeof window !== "undefined" && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleId);
+      }
+    };
   }, []);
 
   useEffect(() => {
+    if (!secondaryPanelsReady) {
+      return;
+    }
+    api.listPendingTools().then((tools) => setPendingTools((tools as ToolRun[]) || [])).catch(() => null);
+    api.listNotifications().then((notes) => setNotifications((notes as Notification[]) || [])).catch(() => null);
+  }, [secondaryPanelsReady]);
+
+  useEffect(() => {
+    if (!secondaryPanelsReady) {
+      return;
+    }
     const token = typeof window !== "undefined" ? localStorage.getItem("miryn_token") : null;
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     const url = token ? `${baseUrl}/chat/events/stream?token=${token}` : `${baseUrl}/chat/events/stream`;
@@ -94,7 +123,7 @@ export default function ChatInterface() {
     };
 
     return () => source.close();
-  }, []);
+  }, [secondaryPanelsReady]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -270,7 +299,7 @@ export default function ChatInterface() {
               <p className="text-sm md:text-base text-secondary italic">A quiet room for honest reflection.</p>
             </div>
             <button
-              onClick={() => sendMessage("Tell me about my week — help me reflect on it.")}
+              onClick={() => sendMessage("Tell me about my week - help me reflect on it.")}
               className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm text-secondary hover:text-white hover:border-white/20 hover:bg-white/10 transition-all"
             >
               &ldquo;Start by telling me about your week.&rdquo;
@@ -289,8 +318,12 @@ export default function ChatInterface() {
 
       <div className="shrink-0">
         <InsightsPanel insights={insights} conflicts={conflicts} />
-        <NotificationsPanel notifications={notifications} onMarkRead={markNotificationRead} />
-        <ToolPanel pending={pendingTools} onGenerate={generateTool} onApprove={approveTool} />
+        {secondaryPanelsReady && (
+          <>
+            <NotificationsPanel notifications={notifications} onMarkRead={markNotificationRead} />
+            <ToolPanel pending={pendingTools} onGenerate={generateTool} onApprove={approveTool} />
+          </>
+        )}
         <InputBox onSend={sendMessage} disabled={loading} />
       </div>
     </div>

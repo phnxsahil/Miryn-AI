@@ -1,24 +1,25 @@
-﻿/* Global styles for the Miryn experience */
+/* Global styles for the Miryn experience */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --void: #040404;
-  --surface: rgba(255, 255, 255, 0.018);
-  --border: rgba(255, 255, 255, 0.07);
+  --void: #000000;
+  --surface: rgba(255, 255, 255, 0.015);
+  --border: rgba(255, 255, 255, 0.05);
   --accent: #c8b89a;
   --text-primary: #ffffff;
-  --text-secondary: #7a7a7a;
+  --text-secondary: #888888;
 }
 
 body {
   font-family: var(--font-dm), system-ui, sans-serif;
-  background: radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,0.06), transparent 60%),
-    radial-gradient(1000px 800px at 90% -20%, rgba(200,184,154,0.08), transparent 55%),
+  background: radial-gradient(1200px 600px at 10% -10%, rgba(200,184,154,0.05), transparent 60%),
+    radial-gradient(1000px 800px at 90% -20%, rgba(255,255,255,0.03), transparent 55%),
     var(--void);
   color: var(--text-primary);
+  min-height: 100vh;
 }
 
 h1, h2, h3, h4 {

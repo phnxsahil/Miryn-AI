@@ -1,5 +1,9 @@
 import type {
+  ComparePayload,
+  CompareReport,
   Conversation,
+  DemoPersonaCard,
+  DemoPersonaDetail,
   EvolutionLogEntry,
   IdentityUpdatePayload,
   ImportStatus,
@@ -412,6 +416,31 @@ class ApiClient {
 
   async getMemory(): Promise<MemorySnapshot> {
     return this.request("/memory/") as Promise<MemorySnapshot>;
+  }
+
+  async getDemoPersonas(): Promise<DemoPersonaCard[]> {
+    const response = await this.request("/analytics/demo/personas") as { personas?: DemoPersonaCard[] };
+    return response.personas || [];
+  }
+
+  async seedDemoPersonas() {
+    return this.request("/analytics/demo/seed", {
+      method: "POST",
+    }) as Promise<{ seeded_at: string; demo_password: string; personas: DemoPersonaCard[] }>;
+  }
+
+  async getDemoPersonaDetail(userId: string): Promise<DemoPersonaDetail> {
+    return this.request(`/analytics/demo/persona/${userId}`) as Promise<DemoPersonaDetail>;
+  }
+
+  async compareUsers(leftUserId: string, rightUserId: string): Promise<ComparePayload> {
+    const params = new URLSearchParams({ left_user_id: leftUserId, right_user_id: rightUserId }).toString();
+    return this.request(`/analytics/compare?${params}`) as Promise<ComparePayload>;
+  }
+
+  async getComparisonReport(leftUserId: string, rightUserId: string): Promise<CompareReport> {
+    const params = new URLSearchParams({ left_user_id: leftUserId, right_user_id: rightUserId }).toString();
+    return this.request(`/analytics/report?${params}`) as Promise<CompareReport>;
   }
 
   async deleteMemory(id: string) {

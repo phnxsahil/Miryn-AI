@@ -1,36 +1,10 @@
 [*] Health check...
-[+] Health: {"status":"healthy"}
+[+] Health: {"status":"healthy","checks":{"db":"ok","redis":"ok"},"version":"0.1.0"}
 [*] Logging in...
-[✗] SMOKE TEST FAILED — timed out
-Traceback (most recent call last):
-  File "D:\Sahil-projects\Miry-AI\miryn\backend\_run_smoke.py", line 30, in <module>
-    with urllib.request.urlopen(req, timeout=15) as r:
-         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
-  File "D:\python\Lib\urllib\request.py", line 189, in urlopen
-    return opener.open(url, data, timeout)
-           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
-  File "D:\python\Lib\urllib\request.py", line 489, in open
-    response = self._open(req, data)
-  File "D:\python\Lib\urllib\request.py", line 506, in _open
-    result = self._call_chain(self.handle_open, protocol, protocol +
-                              '_open', req)
-  File "D:\python\Lib\urllib\request.py", line 466, in _call_chain
-    result = func(*args)
-  File "D:\python\Lib\urllib\request.py", line 1348, in http_open
-    return self.do_open(http.client.HTTPConnection, req)
-           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "D:\python\Lib\urllib\request.py", line 1323, in do_open
-    r = h.getresponse()
-  File "D:\python\Lib\http\client.py", line 1450, in getresponse
-    response.begin()
-    ~~~~~~~~~~~~~~^^
-  File "D:\python\Lib\http\client.py", line 336, in begin
-    version, status, reason = self._read_status()
-                              ~~~~~~~~~~~~~~~~~^^
-  File "D:\python\Lib\http\client.py", line 297, in _read_status
-    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
-               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
-  File "D:\python\Lib\socket.py", line 719, in readinto
-    return self._sock.recv_into(b)
-           ~~~~~~~~~~~~~~~~~~~~^^^
-TimeoutError: timed out
+[+] Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ...
+[*] Calling /chat/stream ...
+[+] HTTP 200
+[!] Error: An internal error occurred. Please try again later.
+[+] Full response (0 chars):
+
+[✗] SMOKE TEST FAILED — no chunks

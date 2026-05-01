@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import ConversationList from "@/components/Chat/ConversationList";
 import { api } from "@/lib/api";
@@ -13,11 +13,18 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const closeMenu = () => setIsMenuOpen(false);
+  const navLinkClass = (href: string) =>
+    `block py-2 px-3 rounded-xl transition-colors ${
+      pathname.startsWith(href)
+        ? "bg-white/10 text-white"
+        : "text-secondary hover:bg-white/5 hover:text-white"
+    }`;
 
   useEffect(() => {
     let mounted = true;
@@ -79,39 +86,22 @@ export default function AppLayout({
         </div>
 
         <nav className="space-y-3 text-sm text-secondary">
-          <Link
-            className="block py-2 px-3 rounded-xl hover:bg-white/5 hover:text-white transition-colors"
-            href="/chat"
-            onClick={closeMenu}
-          >
+          <Link className={navLinkClass("/chat")} href="/chat" onClick={closeMenu}>
             Chat
           </Link>
-          <Link
-            className="block py-2 px-3 rounded-xl hover:bg-white/5 hover:text-white transition-colors"
-            href="/onboarding"
-            onClick={closeMenu}
-          >
+          <Link className={navLinkClass("/compare")} href="/compare" onClick={closeMenu}>
+            Compare
+          </Link>
+          <Link className={navLinkClass("/onboarding")} href="/onboarding" onClick={closeMenu}>
             Onboarding
           </Link>
-          <Link
-            className="block py-2 px-3 rounded-xl hover:bg-white/5 hover:text-white transition-colors"
-            href="/identity"
-            onClick={closeMenu}
-          >
+          <Link className={navLinkClass("/identity")} href="/identity" onClick={closeMenu}>
             Identity
           </Link>
-          <Link
-            className="block py-2 px-3 rounded-xl hover:bg-white/5 hover:text-white transition-colors"
-            href="/memory"
-            onClick={closeMenu}
-          >
+          <Link className={navLinkClass("/memory")} href="/memory" onClick={closeMenu}>
             Memory
           </Link>
-          <Link
-            className="block py-2 px-3 rounded-xl hover:bg-white/5 hover:text-white transition-colors"
-            href="/settings"
-            onClick={closeMenu}
-          >
+          <Link className={navLinkClass("/settings")} href="/settings" onClick={closeMenu}>
             Settings
           </Link>
         </nav>

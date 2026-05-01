@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Request, Depends
+from uuid import uuid4
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from postgrest import APIError as PostgrestAPIError
@@ -106,15 +107,18 @@ def signup(payload: SignupRequest, request: Request):
     if has_sql():
         with get_sql_session() as session:
             try:
-                result = session.execute(
+                session.execute(
                     text(
                         """
-                        INSERT INTO users (email, password_hash)
-                        VALUES (:email, :password_hash)
-                        RETURNING id, email
+                        INSERT INTO users (id, email, password_hash)
+                        VALUES (:id, :email, :password_hash)
                         """
                     ),
-                    {"email": payload.email, "password_hash": get_password_hash(payload.password)},
+                    {"id": str(uuid4()), "email": payload.email, "password_hash": get_password_hash(payload.password)},
+                )
+                result = session.execute(
+                    text("SELECT id, email FROM users WHERE email = :email LIMIT 1"),
+                    {"email": payload.email},
                 ).mappings().first()
             except IntegrityError as exc:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered") from exc

@@ -16,7 +16,7 @@ function ScoredPill({ label, value }: { label: string; value: unknown }) {
     <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs tracking-[0.15em] uppercase text-white/80">
       {label}
       {numValue !== null && (
-        <span className="text-[10px] text-amber-200 font-mono tabular-nums">
+        <span className="text-[10px] text-accent font-mono tabular-nums">
           {numValue.toFixed(2)}
         </span>
       )}
@@ -24,33 +24,18 @@ function ScoredPill({ label, value }: { label: string; value: unknown }) {
   );
 }
 
-/**
- * Renders a horizontal progress meter whose filled width reflects a numeric value.
- *
- * @param value - Progress value expected in the 0–1 range; values outside this range are clamped
- *                to the nearest boundary
- * @returns A JSX element of a rounded horizontal bar with its fill width set to `value * 100%`
- *          (clamped between `0%` and `100%`)
- */
 function Meter({ value }: { value: number }) {
   const pct = Math.max(0, Math.min(100, Math.round(value * 100)));
   return (
-    <div className="h-2 w-full rounded-full bg-white/10">
+    <div className="h-1.5 w-full rounded-full bg-white/5 border border-white/5 overflow-hidden">
       <div
-        className="h-2 rounded-full bg-gradient-to-r from-amber-400/80 via-amber-300/70 to-white/60"
+        className="h-full rounded-full bg-gradient-to-r from-accent/40 via-accent/70 to-white/90 shadow-[0_0_10px_rgba(200,184,154,0.3)]"
         style={{ width: `${pct}%` }}
       />
     </div>
   );
 }
 
-/**
- * Renders the Identity Dashboard UI and loads the current identity from the API on mount.
- *
- * The component fetches the identity, shows a loading state while fetching, displays an error message if loading fails, and when available renders summary stats, traits, values, beliefs, open loops, patterns, emotions, conflicts, and a privacy vault note.
- *
- * @returns The React element representing the identity dashboard
- */
 export default function IdentityDashboard() {
   const [identity, setIdentity] = useState<Identity | null>(null);
   const [evolution, setEvolution] = useState<EvolutionLogEntry[]>([]);
@@ -84,212 +69,162 @@ export default function IdentityDashboard() {
   }, [identity]);
 
   if (error) {
-    return <div className="text-red-400 p-8">{error}</div>;
+    return <div className="text-red-400 p-8 font-mono text-sm border border-red-900/50 bg-red-950/20 rounded-2xl">{error}</div>;
   }
 
   if (!identity) {
-    return <div className="text-secondary p-8">Loading identity...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-void">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full border-t-2 border-accent animate-spin" />
+          <div className="text-secondary text-sm tracking-widest uppercase animate-pulse">Synchronizing Identity...</div>
+        </div>
+      </div>
+    );
   }
 
   const traitKeys = Object.keys(identity.traits || {});
   const valueKeys = Object.keys(identity.values || {});
 
   return (
-    <div className={`min-h-screen ${tone[0]} ${tone[1]} text-white`}>
-      <div className="mx-auto max-w-6xl px-4 md:px-8 py-6 md:py-10">
-        <div className="flex flex-col gap-4 md:gap-6 md:flex-row md:items-end md:justify-between">
+    <div className={`min-h-screen ${tone[0]} ${tone[1]} text-white bg-void`}>
+      <div className="mx-auto max-w-6xl px-4 md:px-8 py-6 md:py-12">
+        {/* Header Section */}
+        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between border-b border-white/5 pb-8 mb-12">
           <div>
-            <div className="text-[10px] md:text-xs uppercase tracking-[0.35em] text-secondary">
-              Identity Dashboard
+            <div className="text-[10px] md:text-xs uppercase tracking-[0.4em] text-accent/70 mb-2">
+              Cognitive Architecture / 001
             </div>
-            <h1 className="mt-2 md:mt-3 text-2xl md:text-4xl font-serif font-light">Miryn Profile</h1>
-            <p className="mt-2 text-xs md:text-sm text-secondary">
-              A living map of who you are becoming. Updated continuously as you speak.
+            <h1 className="text-3xl md:text-5xl font-serif font-extralight tracking-tight">
+              Identity: <span className="text-accent italic">{identity.email || "Persona Alpha"}</span>
+            </h1>
+            <p className="mt-4 text-sm md:text-base text-secondary max-w-xl font-light leading-relaxed">
+              A high-fidelity mapping of your digital psyche. This matrix evolves dynamically based on your interactions, beliefs, and emotional resonance.
             </p>
           </div>
-          <div className="flex items-center gap-3 md:gap-4">
-            <button
-              onClick={() => setShowImport(true)}
-              className="rounded-full border border-accent-purple/30 bg-accent-purple/10 px-3 md:px-4 py-1.5 md:py-2 text-[10px] md:text-xs uppercase tracking-[0.2em] text-accent-purple hover:bg-accent-purple/20 transition-all"
-            >
-              Seed with ChatGPT
-            </button>
-            <div className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 md:px-4 py-1.5 md:py-2 text-[10px] md:text-xs uppercase tracking-[0.2em] text-amber-200">
-              State: {identity.state}
+          <div className="flex items-center gap-3">
+            <div className="rounded-full border border-accent/20 bg-accent/5 px-4 py-2 text-[10px] uppercase tracking-widest text-accent">
+              v{identity.version || "1.0"}
             </div>
-            <div className="rounded-full border border-white/10 bg-white/5 px-3 md:px-4 py-1.5 md:py-2 text-[10px] md:text-xs uppercase tracking-[0.2em] text-white/70">
-              {identity.version != null ? `v${identity.version}` : "—"}
+            <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] uppercase tracking-widest text-secondary">
+              Status: {identity.state}
             </div>
           </div>
         </div>
 
-        <section className="mt-8 md:mt-10 grid gap-4 md:gap-6 grid-cols-2 md:grid-cols-4">
-          <div className="rounded-2xl border border-white/10 bg-black/30 p-4 md:p-5">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-secondary">Beliefs</div>
-            <div className="mt-2 md:mt-3 text-2xl md:text-3xl font-serif">{stats?.beliefs}</div>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-black/30 p-4 md:p-5">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-secondary">Open Loops</div>
-            <div className="mt-2 md:mt-3 text-2xl md:text-3xl font-serif">{stats?.loops}</div>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-black/30 p-4 md:p-5">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-secondary">Patterns</div>
-            <div className="mt-2 md:mt-3 text-2xl md:text-3xl font-serif">{stats?.patterns}</div>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-black/30 p-4 md:p-5">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-secondary">Emotions</div>
-            <div className="mt-2 md:mt-3 text-2xl md:text-3xl font-serif">{stats?.emotions}</div>
-          </div>
+        {/* Stats Grid */}
+        <section className="grid gap-4 md:gap-6 grid-cols-2 md:grid-cols-4 mb-12">
+          {[
+            { label: "Beliefs", val: stats?.beliefs },
+            { label: "Open Loops", val: stats?.loops },
+            { label: "Patterns", val: stats?.patterns },
+            { label: "Emotions", val: stats?.emotions },
+          ].map((s, i) => (
+            <div key={i} className="group rounded-2xl border border-white/5 bg-white/[0.02] p-6 hover:bg-white/[0.04] transition-all duration-500">
+              <div className="text-[10px] uppercase tracking-[0.3em] text-secondary group-hover:text-accent transition-colors">{s.label}</div>
+              <div className="mt-4 text-3xl md:text-4xl font-serif font-light">{s.val}</div>
+            </div>
+          ))}
         </section>
 
-        <section className="mt-8 md:mt-10 grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-black/40 p-5 md:p-6">
-            <div className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-secondary">Traits</div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {traitKeys.length === 0 && <span className="text-secondary text-sm">No traits yet.</span>}
-              {traitKeys.map((key) => (
-                <ScoredPill key={key} label={key} value={identity.traits[key]} />
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-black/40 p-5 md:p-6">
-            <div className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-secondary">Values</div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {valueKeys.length === 0 && <span className="text-secondary text-sm">No values yet.</span>}
-              {valueKeys.map((key) => (
-                <ScoredPill key={key} label={key} value={identity.values[key]} />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-8 md:mt-10 grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-black/40 p-5 md:p-6">
-            <div className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-secondary">Beliefs</div>
-            <div className="mt-4 space-y-4">
-              {(identity.beliefs?.length ?? 0) === 0 && <div className="text-secondary text-sm">No beliefs yet.</div>}
-              {(identity.beliefs ?? []).map((belief, idx) => (
-                <div key={`belief-${idx}`} className="space-y-2">
-                  <div className="text-sm text-white">{belief.topic}</div>
-                  <div className="text-xs text-secondary leading-relaxed">{belief.belief}</div>
-                  <Meter value={belief.confidence ?? 0.5} />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-black/40 p-5 md:p-6">
-            <div className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-secondary">Open Loops</div>
-            <div className="mt-4 space-y-4">
-              {(identity.open_loops?.length ?? 0) === 0 && <div className="text-secondary text-sm">No open loops yet.</div>}
-              {(identity.open_loops ?? []).map((loop, idx) => (
-                <div key={`loop-${idx}`} className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-sm text-white">{loop.topic}</div>
-                    <div className="text-xs text-secondary mt-1">Status: {loop.status || "open"}</div>
-                  </div>
-                  <div className="text-[10px] md:text-xs text-amber-200 uppercase tracking-wider">P{loop.importance ?? 1}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-8 md:mt-10 grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-black/40 p-5 md:p-6">
-            <div className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-secondary">Patterns</div>
-            <div className="mt-4 space-y-3">
-              {(identity.patterns?.length ?? 0) === 0 && <div className="text-secondary text-sm">No patterns yet.</div>}
-              {(identity.patterns ?? []).map((pattern, idx) => (
-                <div key={`pattern-${idx}`} className="space-y-1">
-                  <div className="text-sm text-white">{pattern.pattern_type}</div>
-                  <div className="text-xs text-secondary leading-relaxed">{pattern.description}</div>
-                  <Meter value={pattern.confidence ?? 0.5} />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-black/40 p-5 md:p-6">
-            <div className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-secondary">Emotions</div>
-            <div className="mt-4 space-y-3">
-              {(identity.emotions?.length ?? 0) === 0 && <div className="text-secondary text-sm">No emotions logged yet.</div>}
-              {(identity.emotions ?? []).map((emotion, idx) => (
-                <div key={`emotion-${idx}`} className="space-y-1">
-                  <div className="text-sm text-white">{emotion.primary_emotion}</div>
-                  <div className="text-xs text-secondary leading-relaxed">
-                    {(emotion.secondary_emotions || []).join(", ") || "—"}
-                  </div>
-                  <Meter value={emotion.intensity ?? 0.5} />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-black/40 p-5 md:p-6">
-            <div className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-secondary">Conflicts</div>
-            <div className="mt-4 space-y-3">
-              {(identity.conflicts?.length ?? 0) === 0 && <div className="text-secondary text-sm">No conflicts detected.</div>}
-              {(identity.conflicts ?? []).map((conflict, idx) => (
-                <div key={`conflict-${idx}`} className="space-y-1">
-                  <div className="text-xs text-white leading-relaxed">{conflict.statement}</div>
-                  <div className="text-[10px] text-amber-200 uppercase tracking-wider mt-1">vs {conflict.conflict_with}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-8 md:mt-10 rounded-2xl border border-white/10 bg-black/40 p-5 md:p-6">
-          <div className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-secondary">Privacy Vault</div>
-          <p className="mt-3 text-xs md:text-sm text-secondary leading-relaxed">
-            Tier‑2 and Tier‑3 memory can be encrypted at rest when enabled on the server.
-            This dashboard reflects your latest identity snapshot, not raw message logs.
-          </p>
-        </section>
-
-        <section className="mt-8 md:mt-10">
-          <div className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-secondary">Evolution Timeline</div>
-          <div className="mt-4 space-y-4">
-            {evolution.length === 0 && (
-              <div className="rounded-2xl border border-white/10 bg-black/40 p-5 md:p-6 text-secondary text-sm">
-                Nothing recorded yet - start a conversation
+        {/* Core Matrix Grid */}
+        <div className="grid gap-8 md:gap-12 lg:grid-cols-2">
+          {/* Left Column: Traits & Values */}
+          <div className="space-y-8 md:space-y-12">
+            <section className="rounded-3xl border border-white/5 bg-white/[0.01] p-8 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-[10px] uppercase tracking-[0.5em] text-secondary">Trait Distribution</h2>
               </div>
-            )}
-            {evolution.map((entry) => {
-              const date = new Date(entry.created_at).toLocaleDateString();
-              const oldValue = entry.old_value ? JSON.stringify(entry.old_value) : null;
-              const newValue = entry.new_value ? JSON.stringify(entry.new_value) : null;
-              return (
-                <div key={entry.id} className="rounded-2xl border border-white/10 bg-black/40 p-5 md:p-6">
-                  <div className="text-xs md:text-sm text-white leading-relaxed">
-                    On {date}, Miryn noticed your <span className="text-amber-200 uppercase tracking-wider text-[10px] md:text-xs ml-1">{entry.field_changed}</span> shifted
-                  </div>
-                  {(oldValue || newValue) && (
-                    <div className="mt-3 grid gap-3 grid-cols-1 md:grid-cols-2">
-                      {oldValue && (
-                        <div className="rounded-xl border border-white/10 bg-black/30 p-3 text-[10px] md:text-xs text-secondary">
-                          <div className="text-[9px] md:text-[10px] uppercase tracking-[0.2em] text-secondary/60">Old</div>
-                          <div className="mt-2 text-white/70 break-words">{oldValue}</div>
-                        </div>
-                      )}
-                      {newValue && (
-                        <div className="rounded-xl border border-white/10 bg-black/30 p-3 text-[10px] md:text-xs text-secondary">
-                          <div className="text-[9px] md:text-[10px] uppercase tracking-[0.2em] text-secondary/60">New</div>
-                          <div className="mt-2 text-white/70 break-words">{newValue}</div>
-                        </div>
-                      )}
+              <div className="flex flex-wrap gap-3">
+                {traitKeys.map((key) => (
+                  <ScoredPill key={key} label={key} value={identity.traits[key]} />
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-white/5 bg-white/[0.01] p-8 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-[10px] uppercase tracking-[0.5em] text-secondary">Axiological Values</h2>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {valueKeys.map((key) => (
+                  <ScoredPill key={key} label={key} value={identity.values[key]} />
+                ))}
+              </div>
+            </section>
+          </div>
+
+          {/* Right Column: Beliefs & Patterns */}
+          <div className="space-y-8 md:space-y-12">
+            <section className="rounded-3xl border border-white/5 bg-white/[0.01] p-8 backdrop-blur-sm">
+              <h2 className="text-[10px] uppercase tracking-[0.5em] text-secondary mb-8">Epistemic Beliefs</h2>
+              <div className="space-y-6">
+                {(identity.beliefs || []).map((belief, idx) => (
+                  <div key={idx} className="space-y-3">
+                    <div className="flex justify-between items-end">
+                      <span className="text-sm font-medium text-white/90">{belief.topic}</span>
+                      <span className="text-[10px] font-mono text-accent uppercase tracking-tighter">Confidence {(belief.confidence * 100).toFixed(0)}%</span>
                     </div>
-                  )}
+                    <p className="text-xs text-secondary leading-relaxed italic">"{belief.belief}"</p>
+                    <Meter value={belief.confidence} />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-white/5 bg-white/[0.01] p-8 backdrop-blur-sm">
+              <h2 className="text-[10px] uppercase tracking-[0.5em] text-secondary mb-8">Behavioral Patterns</h2>
+              <div className="space-y-6">
+                {(identity.patterns || []).map((pattern, idx) => (
+                  <div key={idx} className="space-y-3">
+                    <div className="text-sm font-medium text-white/90 capitalize">{pattern.pattern_type.replace(/_/g, ' ')}</div>
+                    <p className="text-xs text-secondary leading-relaxed">{pattern.description}</p>
+                    <Meter value={pattern.confidence} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        </div>
+
+        {/* Full Width Section: Evolution Timeline */}
+        <section className="mt-12 md:mt-20">
+          <div className="flex items-center gap-4 mb-10">
+            <h2 className="text-[10px] uppercase tracking-[0.5em] text-secondary whitespace-nowrap">Evolution Timeline</h2>
+            <div className="h-[1px] w-full bg-white/5" />
+          </div>
+          
+          <div className="relative space-y-6">
+            <div className="absolute left-6 top-0 bottom-0 w-[1px] bg-white/5 hidden md:block" />
+            {evolution.length === 0 ? (
+              <div className="text-secondary text-sm font-light italic">No evolution data recorded yet. Conversations will trigger matrix shifts.</div>
+            ) : (
+              evolution.map((entry, idx) => (
+                <div key={entry.id} className="relative md:pl-16">
+                  <div className="absolute left-5 top-8 w-2 h-2 rounded-full bg-accent/40 hidden md:block" />
+                  <div className="rounded-3xl border border-white/5 bg-white/[0.01] p-6 md:p-8 hover:bg-white/[0.02] transition-colors">
+                    <div className="flex items-center gap-4 mb-4">
+                      <span className="text-[10px] font-mono text-accent">{new Date(entry.created_at).toLocaleDateString()}</span>
+                      <span className="h-3 w-[1px] bg-white/10" />
+                      <span className="text-[10px] uppercase tracking-widest text-secondary">{entry.field_changed} shift</span>
+                    </div>
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <div className="text-[9px] uppercase tracking-widest text-secondary/40">From</div>
+                        <div className="text-xs text-secondary font-light truncate max-w-full italic">{typeof entry.old_value === 'object' ? JSON.stringify(entry.old_value) : entry.old_value}</div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-[9px] uppercase tracking-widest text-accent/40">To</div>
+                        <div className="text-xs text-white/90 font-medium truncate max-w-full">{typeof entry.new_value === 'object' ? JSON.stringify(entry.new_value) : entry.new_value}</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              );
-            })}
+              ))
+            )}
           </div>
         </section>
       </div>
-
-      {showImport && <ChatGPTImport onClose={() => setShowImport(false)} />}
     </div>
   );
 }

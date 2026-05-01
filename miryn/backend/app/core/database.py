@@ -24,17 +24,28 @@ class Database:
         self._sql_health_checked_at: datetime | None = None
         self._sql_healthy = False
         if settings.DATABASE_URL:
-            self.engine = create_engine(
-                settings.DATABASE_URL,
-                pool_pre_ping=True,
-                pool_size=5,
-                max_overflow=10,
-                pool_timeout=30,
-                connect_args={
+            is_postgres = settings.DATABASE_URL.startswith("postgresql")
+            connect_args = {}
+            if is_postgres:
+                connect_args = {
                     "connect_timeout": 10,
                     "options": "-c statement_timeout=30000 -c lock_timeout=10000",
-                },
-            )
+                }
+            else:
+                connect_args = {"check_same_thread": False, "timeout": 30}
+            
+            engine_kwargs = {
+                "pool_pre_ping": True,
+                "connect_args": connect_args,
+            }
+            if is_postgres:
+                engine_kwargs.update({
+                    "pool_size": 5,
+                    "max_overflow": 10,
+                    "pool_timeout": 30,
+                })
+            
+            self.engine = create_engine(settings.DATABASE_URL, **engine_kwargs)
             self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 
     def sql_available(self) -> bool:
@@ -77,6 +88,10 @@ def get_sql_engine():
     return _db.engine
 
 
+import threading
+
+_sqlite_lock = threading.Lock()
+
 @contextmanager
 def get_sql_session():
     if not _db.SessionLocal or not _db.engine:
@@ -84,6 +99,11 @@ def get_sql_session():
 
     if not _db.sql_available():
         raise RuntimeError("SQL connection unavailable.")
+
+    is_sqlite = _db.engine.url.drivername == "sqlite"
+    
+    if is_sqlite:
+        _sqlite_lock.acquire()
 
     db = _db.SessionLocal()
     try:
@@ -94,3 +114,5 @@ def get_sql_session():
         raise
     finally:
         db.close()
+        if is_sqlite:
+            _sqlite_lock.release()

@@ -1,0 +1,560 @@
+MIRYN AI
+Project Report Submitted in Partial Fulfilment of the Requirements for the Degree of
+Bachelor of Technology
+in
+Computer Science Engineering
+Submitted by
+Divyadeep Kaur – Roll No: __________
+Sahil Sharma – Roll No: __________
+Gracy Mehra – Roll No: __________
+Under the Supervision of
+Dr. Vyomika Singh
+Assistant Professor
+Department of Computer Science and Engineering
+DIT University, Dehradun
+Academic Year 2024–25
+Declaration
+I/We declare that this written submission represents my ideas in my own words and where others' ideas or words have been included, I have adequately cited and referenced the original sources. I also declare that I have adhered to all principles of academic honesty and integrity and have not misrepresented or fabricated or falsified any idea/data/fact/source in my submission. I understand that any violation of the above will be cause for disciplinary action by the University and can also evoke penal action from the sources which have thus not been properly cited or from whom proper permission has not been taken when needed. The plagiarism check report is attached at the end of this document.
+Name of the Student _____________________  Signature and Date _________________
+Name of the Student _____________________  Signature and Date __________________
+Name of the Student _____________________  Signature and Date __________________
+Acknowledgements
+I would like to express my sincere gratitude to my faculty advisor, Dr. Vyomika Singh, for the continuous guidance, encouragement, and constructive feedback throughout the duration of this capstone project. Without their mentorship, this work would not have been possible.
+I extend my thanks to the Department of Computer Science and Engineering at DIT University for providing the necessary infrastructure, computing resources, and academic support required to complete this project.
+I am also grateful to the open-source communities behind FastAPI, PostgreSQL, React, XGBoost, HuggingFace Transformers, and the pgvector extension, whose tools and libraries formed the technical backbone of this system.
+Finally, I thank my team members and peers for their collaboration, code reviews, and technical discussions that continuously improved the quality of this project.
+Abstract
+Modern AI conversational systems suffer from a fundamental limitation: they lack persistent memory of the user. Each conversation begins from scratch, with no awareness of who the user is, what they have shared previously, how they feel, or how their beliefs and identity have evolved over time. This makes AI companions feel transactional and shallow rather than genuinely intelligent and empathetic.
+Miryn-AI addresses this gap by building a context-aware AI companion backend with persistent memory, real-time emotion detection, named entity recognition (NER), identity tracking, and ML-powered memory ranking. The system is designed to remember users across sessions, detect shifts in their emotional state and personal beliefs, and intelligently rank which stored memories are most relevant to the current conversation.
+The backend is implemented in Python using FastAPI and PostgreSQL with pgvector for semantic search. A dedicated Data Science (DS) service layer runs inference using HuggingFace Transformer models for emotion detection and spaCy for NER. An XGBoost-based memory ranking model is trained on 500 synthetic labelled examples and achieves an NDCG@5 of 0.99, Precision@1 of 0.62, and Recall@5 of 0.72. Analytics APIs expose emotion trends, identity volatility scores, semantic drift metrics, and version timelines. The system is fully containerized using Docker Compose and documented via Swagger/OpenAPI.
+This report documents the complete architecture, design decisions, implementation details, data science pipeline, evaluation metrics, and future roadmap of the Miryn-AI system.
+Keywords: AI Companion, Persistent Memory, Emotion Analytics, Identity Tracking, Named Entity Recognition, Memory Ranking, XGBoost, FastAPI, pgvector, Semantic Search, Natural Language Processing
+Table of Contents
+Chapter 1: Introduction
+   1.1 Motivation and Problem Statement
+   1.2 Project Objectives
+   1.3 Scope of the Project
+   1.4 Technology Stack Overview
+   1.5 Report Organization
+Chapter 2: Background and Related Work
+   2.1 Persistent Memory in AI Systems
+   2.2 Emotion Detection in Conversational AI
+   2.3 Named Entity Recognition
+   2.4 Identity and Belief Tracking
+   2.5 Learning to Rank for Information Retrieval
+Chapter 3: System Architecture
+   3.1 High-Level Architecture
+   3.2 Database Schema
+   3.3 Request Lifecycle
+Chapter 4: Backend Implementation
+   4.1 FastAPI Application Structure
+   4.2 Authentication and Security
+   4.3 Chat Orchestrator
+   4.4 API Endpoints
+   4.5 Database Access Layer
+   4.6 Caching and Task Queue
+Chapter 5: Data Science Service Layer
+   5.1 Overview
+   5.2 Emotion Detection
+   5.3 Named Entity Recognition
+   5.4 Sentence Embeddings
+   5.5 Concurrent Inference with asyncio.gather
+Chapter 6: Analytics APIs — Emotion, Identity and Memory
+   6.1 Overview of Analytics Architecture
+   6.2 Emotion Analytics
+   6.3 Identity Analytics
+   6.4 User Drift Comparison
+Chapter 7: Memory Ranking ML Model
+   7.1 Problem Formulation
+   7.2 Feature Engineering
+   7.3 Training Data Generation
+   7.4 Model Training
+   7.5 Feature Importances
+   7.6 Memory Ranking API
+Chapter 8: Evaluation Metrics
+   8.1 Regression Metrics
+   8.2 Ranking Metrics
+   8.3 Results
+Chapter 9: Use Cases and Application Scenarios
+Chapter 10: Testing and Results
+Chapter 11: Conclusion and Future Work
+References
+List of Tables
+Table 1.1: Technology Stack Overview
+Table 3.1: Docker Container Responsibilities
+Table 5.1: Emotion Labels and Descriptions
+Table 7.1: Feature Engineering — Memory Ranking
+Table 7.2: XGBoost Model Hyperparameters
+Table 7.3: Feature Importance Scores
+Table 8.1: Regression Evaluation Metrics
+Table 8.2: Ranking Evaluation Metrics
+Table 10.1: Memory Ranking Endpoint Test Results
+List of Figures
+Fig. 3.1: High-Level System Architecture Diagram (Docker Compose deployment)
+Fig. 3.2: Entity-Relationship Diagram of the Miryn-AI Database Schema
+Fig. 3.3: Request Lifecycle Sequence Diagram
+Fig. 6.1: Sample Emotion Analytics API Response — Mood Score Timeline and Volatility
+Fig. 6.2: Identity Version Timeline with Semantic Drift Values
+Fig. 6.3: User A vs User B — Identity Drift Over Time
+Fig. 7.1: Sample POST /memory/ranked Request and Response (Swagger UI Screenshot)
+Fig. 8.1: Precision@K and Recall@K Curves for the Memory Ranking Model
+Fig. 9.1: Use Case Diagram — Miryn-AI System Actors and Use Cases
+Fig. 9.2: Miryn-API live on render cloud deployment 
+Chapter 1: Introduction
+1.1 Motivation and Problem Statement
+The rapid proliferation of large language models (LLMs) has made conversational AI accessible to millions of users worldwide. Systems like ChatGPT, Claude, and Gemini demonstrate remarkable language understanding and reasoning capabilities. However, a fundamental architectural limitation persists across virtually all commercially deployed AI chat systems: the absence of persistent user memory.
+Each conversation session begins without any knowledge of prior interactions. The AI does not know the user's name, their recurring concerns, the emotions they expressed last Tuesday, or how their beliefs about themselves have changed over the past month. This creates an inherently transactional relationship between the user and the AI — one that cannot evolve into a genuine, context-aware companionship.
+Consider a user who has been experiencing anxiety around their career for several months. Each time they begin a new session with a standard AI assistant, they must re-explain their situation from scratch. There is no continuity of care, no recognition of patterns, and no ability for the AI to proactively surface relevant memories or notice emotional deterioration over time.
+Miryn-AI is built to solve this problem. It is a backend system for a context-aware AI companion that maintains persistent memory across sessions, detects and stores the user's emotional state in each message, extracts named entities (people, places, organisations), tracks the evolution of the user's identity and core beliefs over time, and uses a machine learning model to rank which memories are most relevant to retrieve for each new message.
+1.2 Project Objectives
+The primary objectives of this capstone project are:
+Design and implement a persistent memory backend for an AI companion that stores messages, entities, and emotions across sessions.
+Build a Data Science service layer capable of running real-time NER and emotion detection inference on every user message.
+Implement an identity tracking system that captures the user's beliefs, values, and self-perception, and detects when these change over time.
+Develop emotion analytics and identity analytics APIs that quantify mood trends, volatility, semantic drift, and identity stability.
+Train a machine learning memory ranking model (XGBoost) that assigns relevance scores to stored memories based on five features: recency, emotional intensity, entity overlap, topic similarity, and identity alignment.
+Evaluate the ranking model using Precision@K, Recall@K, and NDCG metrics and expose the ranked memory retrieval via a REST API endpoint.
+Containerize the entire system using Docker Compose and document all endpoints via Swagger/OpenAPI.
+1.3 Scope of the Project
+This project focuses exclusively on the backend system. The frontend is developed by a separate team member (Sahil) and is outside the scope of this report. The scope of this report covers:
+The FastAPI backend service and its REST API layer.
+The PostgreSQL database schema including messages, memories, entities, emotions, and identities tables.
+The DS (Data Science) inference service using HuggingFace and spaCy models.
+The analytics services for emotion and identity analysis.
+The memory ranking ML pipeline from data generation through training and evaluation.
+The Docker Compose deployment infrastructure.
+1.4 Technology Stack Overview
+Table 1.1: Technology Stack Overview
+Component
+Technology
+Backend Framework
+FastAPI (Python 3.11)
+Database
+PostgreSQL 15 with pgvector extension
+Vector Search
+pgvector — cosine similarity on 384-dim embeddings
+Caching
+Redis 7
+Task Queue
+Celery with Redis broker
+Emotion Detection
+HuggingFace: j-hartmann/emotion-english-distilroberta-base
+Sentence Embeddings
+SentenceTransformers: all-MiniLM-L6-v2
+Named Entity Recognition
+spaCy: en_core_web_sm
+Memory Ranking Model
+XGBoost Regressor
+Containerization
+Docker Compose (7 containers)
+API Documentation
+Swagger/OpenAPI via FastAPI
+Authentication
+JWT via python-jose
+1.5 Report Organization
+This report is organized into eleven chapters. Chapter 2 provides a review of related work in persistent memory AI systems. Chapter 3 describes the overall system architecture. Chapters 4 through 8 provide detailed implementation documentation. Chapter 9 covers use cases, Chapter 10 presents testing results, and Chapter 11 concludes with future directions.
+Chapter 2: Background and Related Work
+2.1 Persistent Memory in AI Systems
+The challenge of giving AI systems persistent, long-term memory of users is an active area of research and product development. Early approaches relied on explicit user profiles stored in relational databases and retrieved using keyword matching. These systems suffered from rigid schema design and could not capture the nuanced, evolving nature of human identity and emotion.
+More recent approaches leverage dense vector representations (embeddings) for semantic retrieval. Semantic memory systems encode past conversations as embedding vectors and retrieve the most contextually similar memories using cosine similarity search. The introduction of pgvector for PostgreSQL made it practical to perform approximate nearest neighbour (ANN) searches directly in the application database, eliminating the need for a separate vector store such as Pinecone or Weaviate.
+MemGPT [Packer et al., 2023] proposed a hierarchical memory model for LLMs that distinguishes between in-context memory (the current conversation window) and external memory (long-term storage). This work demonstrated that intelligently paging memories in and out of the LLM context can significantly improve long-horizon task performance. Miryn-AI adopts a similar philosophy but extends it with explicit emotion and identity tracking layers.
+2.2 Emotion Detection in Conversational AI
+Sentiment analysis and emotion detection have a long history in NLP. Early lexicon-based approaches (e.g., VADER, SentiWordNet) assigned sentiment polarity to text based on word dictionaries. While fast, these approaches are brittle to sarcasm, context-dependence, and domain shift.
+Transformer-based models pre-trained on large corpora and fine-tuned on emotion classification datasets have substantially improved accuracy. The model used in Miryn-AI — j-hartmann/emotion-english-distilroberta-base — is a DistilRoBERTa model fine-tuned on the GoEmotions dataset, capable of classifying text into seven emotion categories: anger, disgust, fear, joy, neutral, sadness, and surprise. Each classification also produces a continuous intensity score between 0 and 1, which Miryn-AI stores and uses as a feature in its memory ranking model.
+2.3 Named Entity Recognition
+Named Entity Recognition (NER) is the task of identifying and classifying named entities in text into predefined categories such as persons (PERSON), organisations (ORG), locations (GPE/LOC), dates (DATE), and events (EVENT). NER is a foundational component of information extraction pipelines.
+spaCy is a widely-used industrial NLP library that provides a pre-trained English NER pipeline (en_core_web_sm) based on convolutional neural networks. In Miryn-AI, every user message is passed through spaCy's NER pipeline. Extracted entities are stored in the message metadata and in a dedicated entities table, allowing the system to build a rich knowledge graph of the people, places, and events that the user mentions over time.
+2.4 Identity and Belief Tracking
+The concept of tracking a user's 'identity' in AI systems is relatively novel. Prior work in personalised dialogue systems (e.g., Persona-Chat, BlenderBot) focused on modelling static user personas that do not evolve over time. Miryn-AI takes a dynamic approach: the identity model is updated as the user's expressed beliefs and self-descriptions change across sessions, and each update is recorded as a new 'version' in the identities table.
+The semantic drift between successive identity versions is computed using cosine distance between the embedding vectors of each version. This provides a continuous measure of how much the user's self-perception has shifted, analogous to concept drift in machine learning but applied to human identity.
+2.5 Learning to Rank for Information Retrieval
+Learning to Rank (LTR) is a supervised ML approach to the problem of ordering items by relevance. Pointwise, pairwise, and listwise LTR methods have been extensively studied in the context of web search and document retrieval. XGBoost, a gradient-boosted tree ensemble method, has demonstrated strong performance on tabular ranking tasks due to its ability to model non-linear feature interactions and its robustness to outliers.
+In the context of memory retrieval for AI companions, the ranking problem is to order a set of stored memories by their predicted relevance to the current user message. Miryn-AI frames this as a pointwise regression problem: the model predicts a relevance score between 0 and 1 for each (message, memory) pair, and memories are retrieved in descending score order.
+Chapter 3: System Architecture
+3.1 High-Level Architecture
+Miryn-AI follows a microservices-inspired architecture deployed as a set of Docker containers. The system comprises seven containers orchestrated by Docker Compose:
+Table 3.1: Docker Container Responsibilities
+Container
+Responsibility
+miryn-backend-1
+FastAPI application server — all REST API endpoints
+miryn-postgres-1
+PostgreSQL 15 database with pgvector extension
+miryn-redis-1
+Redis 7 cache and Celery message broker
+miryn-celery-worker-1
+Asynchronous task execution (background jobs)
+miryn-celery-beat-1
+Periodic task scheduler
+miryn-frontend-1
+React frontend (out of scope for this report)
+miryn-sandbox-1
+Isolated code execution sandbox
+The backend container exposes port 8000 and serves all API requests. The DS inference service runs as an embedded module within the backend, loading HuggingFace and spaCy models into memory at startup. All containers communicate over a private Docker bridge network (miryn_default), with only the backend and frontend exposed to the host machine.
+Fig. 3.1: High-Level System Architecture Diagram (Docker Compose deployment)
+3.2 Database Schema
+The PostgreSQL database schema is designed around the following core tables:
+3.2.1 Users and Authentication
+The users table stores user credentials and profile information. Authentication is implemented using JSON Web Tokens (JWT). The get_current_user_id dependency in app/core/security.py validates the Bearer token on every protected endpoint and injects the authenticated user ID into the request context.
+3.2.2 Messages
+The messages table is the central table of the system. Each row represents a single message in a conversation. The schema includes a metadata JSONB column that stores the extracted emotions and entities for each message. This denormalised storage approach ensures that the raw extraction results are always available alongside the message, even if the downstream analytics tables are incomplete.
+3.2.3 Memories
+The memories table stores vector embeddings of user messages and important fragments of conversation. Each row contains a 384-dimensional embedding vector (computed by all-MiniLM-L6-v2) stored as a pgvector column. Semantic similarity search is performed using pgvector's cosine distance operator (<=>), enabling sub-millisecond retrieval of the top-K most contextually similar memories.
+3.2.4 Entities
+The entities table stores named entities extracted from messages. Each entity has a type (PERSON, ORG, GPE, DATE, etc.), a value, and a foreign key to the source message. Over time this table accumulates a rich knowledge graph of the people, places, and events in the user's life.
+3.2.5 Identities
+The identities table implements a versioned record of the user's identity. Each row represents one 'version' of the user's self-model at a point in time. The table stores the raw belief text, its embedding vector, and a timestamp. The identity analytics service computes drift between successive versions as the cosine distance between their embedding vectors.
+Fig. 3.2: Entity-Relationship Diagram of the Miryn-AI Database Schema
+3.3 Request Lifecycle
+A typical user message follows this lifecycle through the system:
+User sends a message via the frontend. The React client sends a POST /chat request with a Bearer JWT token.
+The FastAPI backend authenticates the request via get_current_user_id and routes it to the chat orchestrator (app/services/orchestrator.py).
+The orchestrator dispatches the message concurrently to the DS service and to the LLM (via asyncio.gather). The DS service performs NER and emotion detection in parallel with the LLM call, ensuring no latency penalty.
+The extracted emotions and entities are stored in the messages table's metadata JSONB column.
+The memory ranking model is queried to retrieve the top-K most relevant historical memories. These are injected into the LLM prompt context.
+The LLM generates a response using the enriched context. The response is returned to the user and stored as a new message.
+Background Celery tasks update the identity model and analytics tables asynchronously.
+Fig. 3.3: Miryn API Overview — REST Endpoint Structure (Swagger UI)
+Chapter 4: Backend Implementation
+4.1 FastAPI Application Structure
+The backend application follows a layered architecture with clear separation between API routes, service logic, and data access. The directory structure of the backend is:
+backend/app/   main.py              — FastAPI app, middleware, router registration   api/                 — Route handlers (auth, chat, identity, analytics, memory_ranking)   services/            — Business logic (orchestrator, DS service, analytics services)   core/                — Shared utilities (database, cache, security, rate limiting)   schemas/             — Pydantic request/response models   config.py            — Environment variable configuration
+4.2 Authentication and Security
+Authentication is implemented using industry-standard JWT (JSON Web Token) bearer tokens. The app/core/security.py module exposes the get_current_user_id FastAPI dependency, which is injected into every protected endpoint. The dependency validates the token signature, checks expiry, and extracts the user ID. Rate limiting is enforced via a custom RateLimitMiddleware that uses Redis to count requests per user per minute.
+4.3 Chat Orchestrator
+The orchestrator (app/services/orchestrator.py) is the central coordination module. It is responsible for:
+Receiving a validated chat message and user context.
+Spawning concurrent inference tasks using asyncio.gather — the DS service (NER + emotion detection) and the LLM completion call run in parallel.
+Persisting the message and its metadata (extracted emotions, entities) to the database.
+Retrieving relevant memories using the ranking model and injecting them into the LLM prompt.
+Returning the LLM's response with full metadata including detected emotions and entities.
+A key design decision in the orchestrator is to run DS inference off the main event loop using asyncio's thread pool executor. This prevents the CPU-bound HuggingFace model inference from blocking the async event loop and degrading API response times for other concurrent requests.
+4.4 API Endpoints
+The following table summarises all implemented API endpoints:
+4.5 Database Access Layer
+Database access uses SQLAlchemy 2.0 with synchronous sessions managed by the get_sql_session context manager in app/core/database.py. PostgreSQL is connected via psycopg2-binary. The pgvector extension is registered at startup to enable vector similarity queries. Connection pooling is managed by SQLAlchemy's built-in pool with configurable pool size and timeout settings.
+4.6 Caching and Task Queue
+Redis serves dual purposes: as an application cache for frequently accessed user data and as the message broker for the Celery task queue. Celery workers handle asynchronous post-processing tasks such as identity model updates, embedding generation for new messages, and analytics table refreshes. Celery Beat schedules periodic tasks such as daily analytics aggregation. This architecture ensures that the synchronous chat request latency is minimised by offloading non-critical computation to background workers.
+Chapter 5: Data Science Service Layer
+5.1 Overview
+The Data Science (DS) service layer is one of the most technically complex and novel components of Miryn-AI. It is implemented in app/services/ds_service.py and is responsible for running real-time ML inference on every user message. The service is designed to be non-blocking: all model inference runs off the asyncio event loop in a thread pool, ensuring it does not degrade API throughput.
+The DS service loads three ML models at startup:
+Emotion Detection Model: j-hartmann/emotion-english-distilroberta-base (HuggingFace Transformers)
+Sentence Embedding Model: all-MiniLM-L6-v2 (SentenceTransformers, 384-dimensional output)
+NER Pipeline: spaCy en_core_web_sm
+Threading locks are used to protect model inference from concurrent access, as the HuggingFace models are not thread-safe by default. The HuggingFace cache path is configured via the HF_HOME environment variable to a stable location (/opt/huggingface) inside the container, ensuring models are pre-downloaded into the Docker image and not re-downloaded at runtime.
+5.2 Emotion Detection
+Emotion detection is performed using a fine-tuned DistilRoBERTa model. For each user message, the model produces a probability distribution over seven emotion labels:
+Emotion Label
+Description
+joy
+Happiness, excitement, positivity
+sadness
+Grief, disappointment, melancholy
+anger
+Frustration, rage, irritability
+fear
+Anxiety, dread, apprehension
+disgust
+Revulsion, distaste, disapproval
+surprise
+Astonishment, unexpectedness
+neutral
+Absence of strong emotion
+Table 5.1: Emotion Labels and Descriptions
+Method
+Endpoint
+Description
+POST
+/auth/register
+Register a new user account
+POST
+/auth/login
+Authenticate and receive JWT token
+POST
+/chat
+Send a message; returns AI response with emotions and entities
+GET
+/memory
+Retrieve stored memories for the authenticated user
+POST
+/memory/ranked
+Rank a list of memories by ML relevance score
+GET
+/identity
+Get the current identity model for the user
+GET
+/analytics/emotions
+Emotion analytics: mood score, trend, volatility, entropy
+GET
+/analytics/identity
+Identity analytics: stability score, drift, version timeline
+GET
+/analytics/summary
+Combined emotion + identity analytics summary
+GET
+/health
+Health check: database and Redis connectivity
+The top-K emotions (by probability score) are returned for each message. The probability score serves as the emotional intensity value (0 to 1) stored in the message metadata. This intensity score is subsequently used as a feature in the memory ranking model.
+Fallback handling is implemented: if the emotion detection model fails (e.g., due to a timeout or OOM error), the service returns an empty emotions list rather than propagating the exception, ensuring chat functionality is never blocked by DS inference failures.
+5.3 Named Entity Recognition
+NER is performed using spaCy's en_core_web_sm pipeline. The pipeline identifies the following entity types in user messages:
+PERSON — Names of people mentioned by the user (e.g., 'my sister Priya', 'Dr. Sharma')
+ORG — Organisations (e.g., 'Google', 'DIT University')
+GPE / LOC — Countries, cities, geographic locations (e.g., 'Delhi', 'Paris')
+DATE / TIME — Temporal references (e.g., 'next Monday', 'last March')
+EVENT — Named events (e.g., 'the interview', 'my exam')
+Extracted entities are stored in both the messages.metadata JSONB column and the dedicated entities table. Over time, this builds a queryable knowledge graph of the user's world. For example, if a user mentions 'Google' in 15 separate messages, the system can recognise Google as a persistent, high-salience entity in that user's life.
+5.4 Sentence Embeddings
+The all-MiniLM-L6-v2 model from SentenceTransformers produces 384-dimensional dense vector embeddings for text inputs. These embeddings capture the semantic meaning of text in a continuous vector space: semantically similar texts have embeddings with high cosine similarity, while semantically dissimilar texts have low cosine similarity.
+Embeddings are generated for:
+Every user message — stored in the memories table for semantic retrieval.
+Every identity version — stored in the identities table for semantic drift computation.
+The pgvector extension stores these 384-dimensional vectors as native PostgreSQL vector columns, enabling efficient cosine similarity queries using the <=> operator. This allows the system to retrieve the top-K semantically most similar memories in sub-millisecond time, even at scale.
+5.5 Concurrent Inference with asyncio.gather
+A key engineering decision in the DS service integration is the use of asyncio.gather to run DS inference concurrently with the LLM completion call. Both operations are I/O-bound from the asyncio perspective (they block the thread, not the event loop), so running them concurrently via a thread pool executor provides significant latency savings.
+The implementation uses asyncio.get_event_loop().run_in_executor(None, ...) to offload the CPU-bound model inference to the default thread pool, then awaits both the DS result and the LLM result together with asyncio.gather. In practice this reduces the total latency of a chat request by approximately the time of DS inference (typically 100–400ms depending on message length).
+Chapter 6: Analytics APIs — Emotion, Identity and Memory
+6.1 Overview of Analytics Architecture
+The analytics layer of Miryn-AI is one of its most distinctive features. Rather than simply storing data, the system actively analyses patterns in the user's emotional state and identity over time, exposing quantitative metrics via REST APIs. These metrics are designed to be both psychologically meaningful (to end users and practitioners) and technically rigorous (to demonstrate ML and data engineering competence).
+The analytics APIs are implemented in three files:
+app/services/emotion_analytics.py — Emotion trend and volatility analysis
+app/services/identity_analytics.py — Identity stability and semantic drift analysis
+app/api/analytics.py — Route handlers exposing GET /analytics/emotions, /identity, and /summary
+6.2 Emotion Analytics
+The emotion analytics service analyses the sequence of emotion records stored in the user's message history over a configurable time window (default: 30 days). It computes the following metrics:
+6.2.1 Mood Score
+The mood score is a single scalar value between -1.0 (maximally negative) and +1.0 (maximally positive) that summarises the user's overall emotional state over the analysis window. It is computed as a weighted average of emotion intensities, with positive emotions (joy, surprise) assigned positive weights and negative emotions (sadness, anger, fear, disgust) assigned negative weights.
+6.2.2 Emotional Volatility
+Volatility measures how much the user's dominant emotion changes from message to message. High volatility indicates rapid emotional swings; low volatility indicates emotional stability. Technically, volatility is computed as the standard deviation of the mood score time series, normalised to [0, 1].
+6.2.3 Emotional Trend
+The trend indicates whether the user's mood is improving, stable, or deteriorating over the analysis window. It is computed as the slope of a linear regression fit to the mood score time series. A positive slope indicates an improving trend; a negative slope indicates deterioration.
+6.2.4 Emotional Entropy
+Entropy measures the diversity of the user's emotional range. A user who expresses only one emotion repeatedly (e.g., always neutral) has low entropy. A user who expresses a wide variety of emotions has high entropy. Entropy is computed using the Shannon entropy formula applied to the empirical distribution of emotion labels over the analysis window.
+6.2.5 Dominant Emotions
+The dominant emotions are the top-3 most frequently expressed emotions during the analysis window, ranked by their total accumulated intensity score.
+Fig. 6.1: Mood Score Timeline and Emotional Volatility (30-day window)
+6.3 Identity Analytics
+Identity analytics operates on the versioned identity records stored in the identities table. Each time the system detects a significant shift in the user's expressed beliefs or self-description, a new identity version is created. The identity analytics service analyses the sequence of versions to compute:
+6.3.1 Stability Score
+The identity stability score is a value between 0 (completely unstable — identity changes every session) and 1 (perfectly stable — identity has never changed). It is computed as 1 minus the mean pairwise semantic drift between successive identity versions.
+6.3.2 Semantic Drift
+Semantic drift is the central metric of the identity analytics system. For each pair of consecutive identity versions (v_i, v_{i+1}), the drift is computed as the cosine distance between their embedding vectors:
+drift(v_i, v_{i+1}) = 1 − cosine_similarity(embed(v_i), embed(v_{i+1}))
+A drift value of 0 indicates no change between versions. A drift value of 1 indicates maximal semantic divergence. In practice, even significant identity shifts produce drift values in the range 0.1–0.5.
+6.3.3 Index Volatility
+Index volatility extends the drift metric to measure the variance of drift values across all version transitions. A user whose identity drifts consistently (always by approximately the same amount) has low index volatility. A user whose identity oscillates — sometimes stable, sometimes wildly shifting — has high index volatility. This metric can flag pathological patterns such as identity fragmentation.
+6.3.4 Version Timeline
+The version timeline is a chronological list of all identity versions with their timestamps and drift values. This allows the system (and the user) to identify specific moments when significant identity shifts occurred, correlate them with emotional events, and understand the trajectory of identity evolution over time.
+Fig. 6.2: Identity Version Timeline — Semantic Drift Between Versions (User A)
+6.4 User Drift Comparison (User A vs User B)
+One of the most powerful analytical capabilities of Miryn-AI is the ability to compare how different users evolve over time. This section presents a hypothetical case study comparing two users — User A and User B — using the identity analytics system.
+User A is a university student experiencing significant life transitions: starting a new job, moving cities, and ending a long-term relationship. Over a 3-month period, User A generates 8 identity versions with the following drift values between successive versions: 0.08, 0.23, 0.41, 0.19, 0.35, 0.28, 0.12. The mean drift is 0.24 and the stability score is 0.76.
+User B is in a stable period of life, with consistent work routine and stable relationships. Over the same 3-month period, User B generates 4 identity versions with drift values: 0.04, 0.06, 0.05, 0.03. The mean drift is 0.045 and the stability score is 0.955.
+Fig. 6.3: Cumulative Identity Drift Over 3 Months — User A vs User B
+The graph (to be provided by the team) will show the cumulative semantic drift plotted over time for both users, clearly illustrating the divergence in their identity trajectories. User A's curve rises steeply during the job transition and breakup periods, while User B's curve remains nearly flat. This kind of visualisation demonstrates the system's ability to quantify and communicate psychologically meaningful patterns in user data.
+Chapter 7: Memory Ranking ML Model
+7.1 Problem Formulation
+The memory ranking problem is formulated as a supervised pointwise regression task. Given a current user message and a set of stored memories, the model must assign a relevance score s ∈ [0, 1] to each (message, memory) pair. Memories are then retrieved in descending order of their predicted relevance score, and the top-K memories are injected into the LLM's context window.
+This approach improves upon pure vector similarity search (which retrieves memories based solely on semantic text similarity) by incorporating additional signals: recency, emotional importance, entity overlap, and identity alignment. A memory about the user's Google interview may be semantically dissimilar to a message about job anxiety, yet highly relevant. The ML model is designed to capture these non-obvious relevance signals.
+7.2 Feature Engineering
+Each (message, memory) pair is represented by a 4-dimensional feature vector:
+Table 7.1: Feature Engineering — Memory Ranking
+Feature
+Formula
+Interpretation
+Recency Score
+max(0, 1 − days_ago / 180)
+Exponential decay; recent memories score higher
+Emotional Intensity
+Emotion detection probability score
+High-intensity memories are more salient
+Entity Overlap
+min(entity_count / 5, 1.0)
+Memories mentioning the same entities are more relevant
+Identity Alignment
+0 or 1 (binary flag)
+Memories tied to core beliefs score higher
+Note: Semantic similarity between the message and memory text was intentionally omitted from the feature vector, as it is already captured by the pgvector retrieval step that pre-filters candidates before ranking. The ranking model operates on the pre-filtered candidate set and uses non-semantic features to produce a final ordering.
+7.3 Training Data Generation
+A key challenge in building the memory ranking model was the absence of labelled training data (since Miryn-AI had no real users at the time of model development). The solution was to generate synthetic training data using a principled algorithmic approach.
+The data generation script (app/services/generate_training_data.py) creates 500 labelled (message, memory, relevance_score) triplets. The relevance score for each triplet is computed as a weighted combination of the four features:
+score = 0.35 × text_overlap + 0.20 × recency + 0.20 × emotional_intensity + 0.15 × entity_overlap + 0.10 × identity_alignment + ε
+where ε is a small Gaussian noise term added to prevent overfitting to the exact feature weights. The 500 examples cover 20 diverse message templates and 25 memory templates across domains including work, relationships, health, emotions, goals, and personal milestones.
+7.4 Model Training
+The XGBoost regressor is trained on 400 examples (80% of the dataset), with 100 examples held out as a test set. The model hyperparameters are:
+Table 7.2: XGBoost Model Hyperparameters
+Hyperparameter
+Value
+n_estimators
+100
+max_depth
+4
+learning_rate
+0.1
+subsample
+0.8
+random_state
+42
+objective
+reg:squarederror
+Training runs entirely within the Docker container and completes in under 2 seconds. The trained model is serialised using Python's pickle module and stored at app/services/memory_ranking_model.pkl.
+7.5 Feature Importances
+The XGBoost model's feature importance scores reveal which features are most predictive of memory relevance:
+Table 7.3: Feature Importance Scores
+Feature
+Importance Score
+Interpretation
+identity_alignment
+0.9384
+Dominant predictor — core belief memories are most relevant
+recency
+0.0355
+Recent memories are moderately more relevant
+entity_overlap
+0.0160
+Shared entities contribute to relevance
+emotional_intensity
+0.0100
+Emotional salience has a small but positive effect
+The dominance of identity_alignment (0.94) is a psychologically intuitive result: memories that are directly tied to the user's core beliefs and self-model are almost always relevant to ongoing conversations, regardless of recency or topic similarity. This finding validates the design decision to include identity alignment as a feature.
+7.6 Memory Ranking API
+The trained model is exposed via the POST /memory/ranked endpoint (app/api/memory_ranking.py). The endpoint accepts a list of memory objects, scores each using the trained XGBoost model, and returns them sorted by relevance score in descending order. The response schema includes the full memory metadata alongside the predicted relevance score.
+Fig. 7.1: Miryn API — Swagger UI (auth, chat, identity, and memory endpoints)
+Chapter 8: Evaluation Metrics
+8.1 Regression Metrics
+The memory ranking model is first evaluated as a regression problem, measuring the accuracy of the predicted relevance scores against the ground-truth scores in the held-out test set (100 examples):
+Table 8.1: Regression Evaluation Metrics
+Metric
+Value
+Interpretation
+RMSE
+0.0542
+Average prediction error is only 0.054 on a 0–1 scale
+MAE
+0.0419
+Median prediction error is 0.042 on a 0–1 scale
+These results indicate that the model's relevance score predictions are highly accurate. An RMSE of 0.054 on a unit-scaled target is considered excellent for a ranking regression model trained on synthetic data.
+8.2 Ranking Metrics
+The primary evaluation framework for a memory ranking system is information retrieval metrics, which measure the quality of the ranked list rather than individual score accuracy. The evaluation script (app/services/evaluate_model.py) groups the 500 examples into batches of 10 (simulating a pool of 10 candidate memories per query) and computes the following metrics:
+8.2.1 Precision@K
+Precision@K measures what fraction of the top-K retrieved memories are actually relevant (relevance score ≥ 0.5). A high Precision@1 indicates the model reliably surfaces the single most relevant memory at the top of the ranked list.
+8.2.2 Recall@K
+Recall@K measures what fraction of all relevant memories are captured in the top-K retrieved set. A high Recall@5 indicates the model rarely misses relevant memories when retrieving the top 5.
+8.2.3 NDCG@K
+Normalised Discounted Cumulative Gain (NDCG) is the gold-standard ranking metric. It evaluates not just whether relevant memories are retrieved, but whether they are ranked in the correct order. NDCG penalises relevant memories that are ranked lower than they should be, using a logarithmic discount factor. An NDCG of 1.0 indicates a perfectly ordered ranked list.
+8.3 Results
+Table 8.2: Ranking Evaluation Metrics
+Metric
+Value
+Benchmark
+Precision@1
+0.6200
+Good — top memory is correct 62% of the time
+Precision@3
+0.3600
+Expected decline as K increases
+Precision@5
+0.2400
+Consistent with P@3 trend
+Recall@1
+0.4333
+Captures 43% of relevant memories in top 1
+Recall@3
+0.6783
+Captures 68% of relevant memories in top 3
+Recall@5
+0.7200
+Captures 72% of relevant memories in top 5
+NDCG@3
+0.9800
+Excellent — near-perfect ranking order
+NDCG@5
+0.9855
+Excellent — near-perfect ranking order
+The headline result is the NDCG@5 of 0.9855: the model ranks relevant memories in nearly perfect order. The relatively lower Precision@K values reflect the challenge of the synthetic dataset rather than a fundamental model weakness — the synthetic relevance scores are continuous, making the binary relevance threshold (0.5) artificially conservative.
+Recall@5 of 0.72 is a practically important result: when the system retrieves the top 5 memories for context injection, it captures 72% of all truly relevant memories, providing the LLM with a rich and highly relevant context window.
+Fig. 8.1: Precision@K, Recall@K and NDCG@K — Memory Ranking Model Evaluation
+Chapter 9: Use Cases and Application Scenarios
+9.1 Mental Health Companion
+The primary intended use case for Miryn-AI is as a mental health and emotional wellness companion. The system's persistent memory, emotion detection, and identity tracking capabilities are directly aligned with the needs of users seeking continuous emotional support.
+In this use case, a user interacts with the AI companion over several weeks or months. The system tracks the user's emotional trajectory, detects patterns such as persistent sadness or increasing anxiety volatility, and proactively incorporates relevant past context ('Last week you mentioned feeling stressed about your interview — how did it go?') into the AI's responses. The identity analytics layer can detect when the user's self-perception shifts significantly, which may indicate important life events or psychological transitions.
+9.2 Personalised Productivity Assistant
+Miryn-AI can function as a personalised productivity and journaling assistant. Users can log their daily thoughts, goals, and progress. The NER pipeline extracts project names, deadlines, and people mentioned, building a structured knowledge graph of the user's professional life. The memory ranking model ensures that when the user asks 'What should I focus on today?', the most relevant recent memories (upcoming deadlines, unresolved tasks, important meetings) are surfaced in the AI's context.
+9.3 Long-Term Relationship and Life Journal
+Users can use Miryn-AI as a long-term life journal: a record of their experiences, relationships, emotions, and growth. The identity version timeline provides a quantitative narrative of how the user has changed over months or years. The semantic drift metric can identify inflection points — moments when the user's worldview or self-concept shifted significantly — that correspond to major life events.
+9.4 Research and Clinical Applications
+The emotion analytics and identity analytics APIs expose quantitative signals that could be valuable in research and clinical contexts. The mood score trajectory, emotional volatility, and identity drift metrics provide objective, longitudinal measurements of psychological state that could supplement traditional assessment tools. The API-first design makes integration with external research platforms straightforward.
+9.5 System Use Case Diagram
+Fig. 9.2: Miryn-API live on render cloud deployment 
+Chapter 10: Testing and Results
+10.1 API Testing via Swagger
+All API endpoints are tested using the interactive Swagger UI documentation served at http://localhost:8000/docs. The Swagger interface allows end-to-end testing of each endpoint with authentication, request body construction, and response inspection. All 10 implemented endpoints have been verified to return correct responses with valid JWT authentication.
+10.2 Health Check Verification
+The /health endpoint verifies connectivity to both PostgreSQL and Redis. During testing, all health checks consistently returned status "healthy" with both database and redis reporting "ok" status.
+10.3 Memory Ranking Endpoint Test
+The POST /memory/ranked endpoint was tested with a set of three memories of varying relevance. The system correctly ranked the memories:
+Table 10.1: Memory Ranking Endpoint Test Results
+Rank
+Memory
+Predicted Score
+1st
+User mentioned interviewing at Google last week
+0.5378
+2nd
+User felt stressed before their exam
+0.2991
+3rd
+User loves Italian food
+0.1906
+The ranking correctly identifies the Google interview memory as most relevant (high recency + high emotional intensity + identity alignment = 1) and Italian food preference as least relevant (low emotional intensity + no identity alignment + 45 days old). This validates the model's ability to distinguish contextually relevant from contextually irrelevant memories.
+10.4 Docker Compose Deployment Test
+The full system was deployed using docker compose up -d. All 7 containers started successfully. The backend container initialised correctly with all FastAPI routes registered, including the new analytics and memory ranking endpoints added in this capstone phase. The system successfully served requests within seconds of container startup.
+10.5 DS Service Inference Test
+The DS service was tested by submitting messages with clearly defined emotional content. The emotion detection model correctly classified:
+'I am so excited about my promotion!' → joy (0.94)
+'I can't stop crying, everything feels hopeless.' → sadness (0.91)
+'The project deadline is in 2 hours and nothing works.' → fear (0.78), anger (0.15)
+Chapter 11: Conclusion and Future Work
+11.1 Summary of Contributions
+This capstone project successfully designed and implemented a production-grade backend for an AI companion with persistent memory, real-time emotion and entity extraction, identity tracking, and ML-powered memory ranking. The key contributions of this work are:
+A complete FastAPI backend with 10 REST API endpoints, JWT authentication, rate limiting, and Swagger documentation.
+A Data Science service layer that runs emotion detection (7-class DistilRoBERTa), NER (spaCy), and sentence embedding (all-MiniLM-L6-v2) inference concurrently with LLM calls, with no blocking of the async event loop.
+An emotion analytics system computing mood score, volatility, trend, entropy, and dominant emotions from longitudinal message data.
+An identity analytics system computing stability score, semantic drift, index volatility, and version timeline from versioned identity records.
+A synthetic training data pipeline generating 500 labelled (message, memory, relevance_score) triplets for ML model training.
+An XGBoost memory ranking model achieving RMSE 0.054, NDCG@5 0.99, and Recall@5 0.72.
+A fully containerized Docker Compose deployment with 7 services including PostgreSQL, Redis, Celery, and the FastAPI backend.
+11.2 Limitations
+The current system has several limitations that should be acknowledged:
+The memory ranking model is trained on synthetic data. Performance on real user data may differ and will need to be validated once the system has real users.
+The identity model update logic currently relies on heuristic triggers rather than a learned classifier for detecting significant belief shifts.
+The DS service loads models into memory at startup, which requires approximately 2GB of RAM. This limits deployment on resource-constrained infrastructure.
+The emotion detection model was trained on English text and may underperform on code-switched or non-English input.
+11.3 Future Work
+Several directions for future development have been identified:
+Re-train the memory ranking model on real user interaction data as the system accumulates users, replacing the synthetic training set with ground-truth relevance labels collected through implicit feedback.
+Implement a learned identity shift detector that uses the DS service's NER and embedding outputs to automatically trigger identity version creation when semantic drift exceeds a learned threshold.
+Add multi-modal memory support: allow users to store images, voice notes, and documents as memories, with corresponding embedding models for each modality.
+Deploy the system to Render cloud platform for production availability, enabling real user testing and data collection.
+Implement the User A vs User B comparative drift visualisation as an interactive frontend dashboard component.
+Explore transformer-based neural ranking models (e.g., cross-encoders) as a replacement for XGBoost, potentially improving ranking quality at the cost of higher inference latency.
+References
+[1] Packer, C., Wooders, S., Lin, K., Fang, V., Patil, S. G., Stoica, I., & Gonzalez, J. E. (2023). MemGPT: Towards LLMs as Operating Systems. arXiv preprint arXiv:2310.08560.
+[2] Hartmann, J. (2022). emotion-english-distilroberta-base. Hugging Face. https://huggingface.co/j-hartmann/emotion-english-distilroberta-base
+[3] Reimers, N., & Gurevych, I. (2019). Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks. Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing (EMNLP).
+[4] Honnibal, M., & Montani, I. (2017). spaCy 2: Natural language understanding with Bloom embeddings, convolutional neural networks and incremental parsing.
+[5] Chen, T., & Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System. Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD).
+[6] Demszky, D., Movshovitz-Attias, D., Ko, J., Cowen, A., Nemade, G., & Ravi, S. (2020). GoEmotions: A Dataset of Fine-Grained Emotions. Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics (ACL).
+[7] Johnson, J., Douze, M., & Jégou, H. (2019). Billion-scale similarity search with GPUs. IEEE Transactions on Big Data.
+[8] FastAPI Documentation. https://fastapi.tiangolo.com
+[9] pgvector: Open-source vector similarity search for Postgres. https://github.com/pgvector/pgvector
+[10] Docker Documentation: Docker Compose. https://docs.docker.com/compose/
+Appendix A: Sample Training Data
+The following is a sample of the synthetic training data generated by app/services/generate_training_data.py:
+{"current_message": "Struggling with the project deadline at work", "memory": "User mentioned interviewing at Google last week", "days_ago": 9, "emotional_intensity": 0.76, "entity_overlap": 2, "identity_alignment": 1, "relevance_score": 0.54}
+{"current_message": "I'm feeling anxious about my job interview tomorrow", "memory": "User has anxiety and sees a therapist", "days_ago": 45, "emotional_intensity": 0.88, "entity_overlap": 0, "identity_alignment": 1, "relevance_score": 0.71}
+{"current_message": "Had a great workout today, feeling energized", "memory": "User likes Italian food", "days_ago": 45, "emotional_intensity": 0.21, "entity_overlap": 0, "identity_alignment": 0, "relevance_score": 0.11}
+Appendix B: Evaluation Script Output
+Complete output of app/services/evaluate_model.py:
+Loading model and data...=============================================  MEMORY RANKING MODEL — EVALUATION RESULTS============================================= Precision@1  : 0.6200 Precision@3  : 0.3600 Precision@5  : 0.2400 Recall@1     : 0.4333 Recall@3     : 0.6783 Recall@5     : 0.7200 NDCG@3       : 0.9800 NDCG@5       : 0.9855=============================================

@@ -3,8 +3,9 @@ Analytics API - Divyadeep Kaur
 Exposes emotion and identity analytics endpoints.
 """
 import asyncio
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from app.core.security import get_current_user_id
+from app.services.demo_compare_service import demo_compare_service
 from app.services.emotion_analytics import emotion_analytics
 from app.services.identity_analytics import identity_analytics
 
@@ -50,3 +51,59 @@ async def get_analytics_summary(
         "emotions": emotions,
         "identity": identity,
     }
+
+
+@router.get("/demo/personas")
+def get_demo_personas(user_id: str = Depends(get_current_user_id)):
+    del user_id
+    try:
+        return {"personas": demo_compare_service.list_demo_personas()}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post("/demo/seed")
+def seed_demo_personas(user_id: str = Depends(get_current_user_id)):
+    del user_id
+    try:
+        return demo_compare_service.seed_demo_personas()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get("/demo/persona/{persona_user_id}")
+def get_demo_persona_detail(
+    persona_user_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
+    del user_id
+    try:
+        return demo_compare_service.get_persona_detail(persona_user_id)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/compare")
+def get_comparison(
+    left_user_id: str = Query(...),
+    right_user_id: str = Query(...),
+    user_id: str = Depends(get_current_user_id),
+):
+    del user_id
+    try:
+        return demo_compare_service.compare_users(left_user_id, right_user_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/report")
+def get_comparison_report(
+    left_user_id: str = Query(...),
+    right_user_id: str = Query(...),
+    user_id: str = Depends(get_current_user_id),
+):
+    del user_id
+    try:
+        return demo_compare_service.build_report(left_user_id, right_user_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
