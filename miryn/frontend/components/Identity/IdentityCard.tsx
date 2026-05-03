@@ -25,35 +25,50 @@ export default function IdentityCard() {
   }
 
   return (
-    <div className="max-w-2xl border border-white/10 rounded-2xl p-6 bg-white/5">
-      <h1 className="text-3xl font-serif font-light">Identity</h1>
-      <div className="mt-4 text-sm text-secondary">Version {identity.version}</div>
+    <div className="max-w-4xl bg-card border border-white/[0.06] rounded-[32px] p-10 shadow-sm relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-40 h-40 bg-accent/5 rounded-full blur-3xl -z-10" />
+      
+      <header className="mb-10">
+        <h1 className="text-4xl font-bold tracking-tight text-primary">Identity</h1>
+        <div className="mt-2 text-sm text-muted font-bold uppercase tracking-widest">Version {identity.version}</div>
+      </header>
 
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-        <div>
-          <div className="text-white">Traits</div>
-          <pre className="mt-2 text-secondary whitespace-pre-wrap">
-            {JSON.stringify(identity.traits, null, 2)}
-          </pre>
-        </div>
-        <div>
-          <div className="text-white">Values</div>
-          <pre className="mt-2 text-secondary whitespace-pre-wrap">
-            {JSON.stringify(identity.values, null, 2)}
-          </pre>
-        </div>
-        <div>
-          <div className="text-white">Beliefs</div>
-          <pre className="mt-2 text-secondary whitespace-pre-wrap">
-            {JSON.stringify(identity.beliefs, null, 2)}
-          </pre>
-        </div>
-        <div>
-          <div className="text-white">Open Loops</div>
-          <pre className="mt-2 text-secondary whitespace-pre-wrap">
-            {JSON.stringify(identity.open_loops, null, 2)}
-          </pre>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <section className="space-y-4">
+          <div className="text-primary font-bold uppercase tracking-widest text-xs">Traits Architecture</div>
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
+            <pre className="text-sm text-muted whitespace-pre-wrap font-mono">
+              {JSON.stringify(identity.traits, null, 2)}
+            </pre>
+          </div>
+        </section>
+        
+        <section className="space-y-4">
+          <div className="text-primary font-bold uppercase tracking-widest text-xs">Core Values</div>
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
+            <pre className="text-sm text-muted whitespace-pre-wrap font-mono">
+              {JSON.stringify(identity.values, null, 2)}
+            </pre>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="text-primary font-bold uppercase tracking-widest text-xs">Epistemic Beliefs</div>
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
+            <pre className="text-sm text-muted whitespace-pre-wrap font-mono">
+              {JSON.stringify(identity.beliefs, null, 2)}
+            </pre>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="text-primary font-bold uppercase tracking-widest text-xs">Open Loops</div>
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
+            <pre className="text-sm text-muted whitespace-pre-wrap font-mono">
+              {JSON.stringify(identity.open_loops, null, 2)}
+            </pre>
+          </div>
+        </section>
       </div>
     </div>
   );

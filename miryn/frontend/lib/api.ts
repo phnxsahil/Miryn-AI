@@ -27,6 +27,7 @@ class ApiClient {
   private token: string | null = null;
   private refreshTokenValue: string | null = null;
   private refreshRequest: Promise<AuthSession> | null = null;
+  private requestCache = new Map<string, { expiresAt: number; value: unknown }>();
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -418,6 +419,20 @@ class ApiClient {
     return this.request("/memory/") as Promise<MemorySnapshot>;
   }
 
+  private getCached<T>(key: string): T | null {
+    const hit = this.requestCache.get(key);
+    if (!hit) return null;
+    if (Date.now() > hit.expiresAt) {
+      this.requestCache.delete(key);
+      return null;
+    }
+    return hit.value as T;
+  }
+
+  private setCached(key: string, value: unknown, ttlMs = 20000) {
+    this.requestCache.set(key, { value, expiresAt: Date.now() + ttlMs });
+  }
+
   async getDemoPersonas(): Promise<DemoPersonaCard[]> {
     const response = await this.request("/analytics/demo/personas") as { personas?: DemoPersonaCard[] };
     return response.personas || [];
@@ -429,18 +444,46 @@ class ApiClient {
     }) as Promise<{ seeded_at: string; demo_password: string; personas: DemoPersonaCard[] }>;
   }
 
+  async quickDemoLogin(email: string, password: string) {
+    const session = await this.login(email, password);
+    this.setSession(session);
+    return session;
+  }
+
+  async createConversation() {
+    return this.request("/chat/conversations", {
+      method: "POST",
+      body: JSON.stringify({ title: "New Reflection" }),
+    }) as Promise<{ id: string; title: string }>;
+  }
+
   async getDemoPersonaDetail(userId: string): Promise<DemoPersonaDetail> {
-    return this.request(`/analytics/demo/persona/${userId}`) as Promise<DemoPersonaDetail>;
+    const key = `persona:${userId}`;
+    const cached = this.getCached<DemoPersonaDetail>(key);
+    if (cached) return cached;
+    const detail = await (this.request(`/analytics/demo/persona/${userId}`) as Promise<DemoPersonaDetail>);
+    this.setCached(key, detail, 30000);
+    return detail;
   }
 
   async compareUsers(leftUserId: string, rightUserId: string): Promise<ComparePayload> {
     const params = new URLSearchParams({ left_user_id: leftUserId, right_user_id: rightUserId }).toString();
-    return this.request(`/analytics/compare?${params}`) as Promise<ComparePayload>;
+    const key = `compare:${params}`;
+    const cached = this.getCached<ComparePayload>(key);
+    if (cached) return cached;
+    const payload = await (this.request(`/analytics/compare?${params}`) as Promise<ComparePayload>);
+    this.setCached(key, payload, 15000);
+    return payload;
   }
 
   async getComparisonReport(leftUserId: string, rightUserId: string): Promise<CompareReport> {
     const params = new URLSearchParams({ left_user_id: leftUserId, right_user_id: rightUserId }).toString();
-    return this.request(`/analytics/report?${params}`) as Promise<CompareReport>;
+    const key = `report:${params}`;
+    const cached = this.getCached<CompareReport>(key);
+    if (cached) return cached;
+    const report = await (this.request(`/analytics/report?${params}`) as Promise<CompareReport>);
+    this.setCached(key, report, 30000);
+    return report;
   }
 
   async deleteMemory(id: string) {

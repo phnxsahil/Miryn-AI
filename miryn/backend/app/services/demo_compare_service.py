@@ -293,25 +293,33 @@ def _build_demo_personas() -> list[DemoPersonaConfig]:
     return [
         DemoPersonaConfig(
             key="alpha",
-            label="Persona Alpha",
+            label="Aditya Verma",
             subtitle="Creative / associative / emotionally expansive",
             email=DEMO_PERSONA_EMAILS["alpha"],
             goal="Explore identity-first interaction through sensory, emotional, and artistic prompts.",
             report_summary="Persona Alpha expands quickly across emotional and creative domains, producing higher semantic drift and more varied open loops.",
             current_state="expressive",
             identities=alpha_identities,
-            conversations=[{"title": "Creative reflection lab", "messages": alpha_messages}],
+            conversations=[
+                {"title": "Creative reflection lab", "messages": alpha_messages},
+                {"title": "Project narrative planning", "messages": alpha_messages},
+                {"title": "Demo execution notes", "messages": alpha_messages},
+            ],
         ),
         DemoPersonaConfig(
             key="beta",
-            label="Persona Beta",
+            label="Priya Sharma",
             subtitle="Technical / convergent / optimization-driven",
             email=DEMO_PERSONA_EMAILS["beta"],
             goal="Probe technical identity tracking through optimization, benchmarking, and observability discussions.",
             report_summary="Persona Beta stays tightly convergent around system performance, resulting in lower drift and more stable identity evolution.",
             current_state="analytical",
             identities=beta_identities,
-            conversations=[{"title": "Systems benchmarking notebook", "messages": beta_messages}],
+            conversations=[
+                {"title": "Systems benchmarking notebook", "messages": beta_messages},
+                {"title": "Health-check planning", "messages": beta_messages},
+                {"title": "Operational readiness log", "messages": beta_messages},
+            ],
         ),
     ]
 

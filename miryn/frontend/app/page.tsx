@@ -1,310 +1,301 @@
-﻿"use client";
+"use client";
 
 import { motion } from "framer-motion";
+import { ArrowRight, Sparkles, Brain, Clock, Shield, Search, Zap, Layers } from "lucide-react";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
   visible: (i = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: 0.08 * i, duration: 0.8, ease: [0.22, 1, 0.36, 1] },
+    transition: { delay: 0.1 * i, duration: 0.8, ease: [0.22, 1, 0.36, 1] },
   }),
 };
 
 const fade = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.8, ease: "easeOut" } },
+  visible: { opacity: 1, transition: { duration: 1, ease: "easeOut" } },
 };
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen text-white">
-      <div className="hero-shell">
-        <header className="mx-auto max-w-6xl px-6 pt-20 pb-10">
+    <main className="min-h-screen bg-void text-primary font-ui selection:bg-accent/30 selection:text-accent overflow-x-hidden">
+      {/* P01 — Landing Hero */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden">
+        {/* Background Ambient Glows */}
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-accent/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-accent/10 rounded-full blur-[150px]" />
+        
+        <header className="fixed z-50 w-full max-w-7xl mx-auto flex justify-between items-center py-10 top-0 px-10 bg-void/80 backdrop-blur-md">
+          <div className="text-3xl font-bold tracking-tighter text-accent flex items-center gap-3">
+            Miryn <span className="mono-label !text-accent/40 !tracking-[0.4em] text-[10px] font-bold">Alpha</span>
+          </div>
+          <nav className="hidden md:flex items-center gap-12">
+            <a href="#manifesto" className="text-xs uppercase tracking-[0.3em] text-muted hover:text-accent transition-colors font-bold">Manifesto</a>
+            <a href="#capabilities" className="text-xs uppercase tracking-[0.3em] text-muted hover:text-accent transition-colors font-bold">Capabilities</a>
+            <a href="#how-it-works" className="text-xs uppercase tracking-[0.3em] text-muted hover:text-accent transition-colors font-bold">How it works</a>
+          </nav>
+          <div className="flex items-center gap-8">
+            <a href="/login" className="text-base font-bold text-muted hover:text-primary transition-colors">Sign in</a>
+            <a href="/compare" className="h-12 px-8 bg-accent text-void rounded-full font-bold text-sm hover:scale-105 active:scale-95 shadow-lg shadow-accent/20 flex items-center justify-center transition-all">
+              View Project Demo
+            </a>
+          </div>
+        </header>
+
+        <div className="max-w-5xl text-center relative z-10 pt-20">
           <motion.div initial="hidden" animate="visible" variants={fadeUp}>
-            <div className="text-xs uppercase tracking-[0.35em] text-secondary">
-              Project Miryn
+            <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-accent/5 border border-accent/15 mb-12 shadow-sm">
+              <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+              <span className="mono-label !text-accent !text-[11px] font-bold uppercase tracking-widest">Demo Build: Presentation Ready</span>
             </div>
           </motion.div>
+
           <motion.h1
-            className="mt-6 text-5xl md:text-7xl font-serif font-light leading-tight"
+            className="text-7xl md:text-[10rem] font-bold tracking-tighter leading-[0.8] mb-12 text-primary"
             initial="hidden"
             animate="visible"
             variants={fadeUp}
             custom={1}
           >
-            The Memory
-            <span className="block">Layer.</span>
+            The AI that <br />
+            <span className="text-accent">witnesses</span> you.
           </motion.h1>
+
           <motion.p
-            className="mt-6 text-lg text-secondary max-w-2xl"
+            className="text-2xl md:text-4xl text-muted max-w-4xl mx-auto editorial-italic mb-20 leading-relaxed font-medium"
             initial="hidden"
             animate="visible"
             variants={fadeUp}
             custom={2}
           >
-            We taught computers to speak. Now, we are teaching them to listen.
+            "In a world of disposable interactions, Miryn is the anchor. It doesn't just process your thoughts—it remembers who had them."
           </motion.p>
+
           <motion.div
-            className="mt-10 flex flex-wrap gap-4"
+            className="flex flex-col items-center justify-center gap-6"
             initial="hidden"
             animate="visible"
             variants={fadeUp}
             custom={3}
           >
-            <a
-              href="/signup"
-              className="inline-flex items-center rounded-full border border-white/10 px-6 py-3 text-sm hover:border-white/30"
-            >
-              Initialize Access
+            <a href="/login" className="h-20 px-12 bg-primary text-white rounded-full flex items-center gap-4 hover:bg-accent transition-all group text-xl font-bold shadow-xl shadow-black/10">
+              Open Live Project <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
             </a>
-            <a
-              href="/login"
-              className="inline-flex items-center rounded-full bg-accent text-black px-6 py-3 text-sm"
-            >
-              Sign in
-            </a>
+            <p className="text-[11px] text-muted mono-label !tracking-[0.5em] font-bold uppercase">Project mode · Identity memory enabled</p>
           </motion.div>
-        </header>
+        </div>
+      </section>
 
-        <motion.section
-          className="mx-auto max-w-6xl px-6 py-14 border-t border-white/10"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          variants={fade}
-        >
-          <div className="text-xs uppercase tracking-[0.35em] text-secondary">01 // The Axiom</div>
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-10">
-            <div className="text-xl font-serif font-light">
-              We use AI as a confessional. We pour out our anxiety, our grief, our dreams.
-              The machine responds perfectly. But when you close the tab, it forgets you.
+      {/* P02 — Landing Manifesto */}
+      <section id="manifesto" className="py-60 px-10 border-y border-white/[0.06] bg-white/[0.02] relative overflow-hidden">
+        <div className="orb-glow w-[600px] h-[600px] -top-64 -left-64 bg-accent/[0.03]" />
+        <div className="max-w-6xl mx-auto text-center relative z-10">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fade}
+          >
+            <span className="mono-label text-accent mb-16 block font-bold uppercase tracking-widest text-sm">01 // The Manifesto</span>
+            <h2 className="text-5xl md:text-8xl font-bold tracking-tight mb-20 leading-tight max-w-5xl mx-auto text-primary">
+              We taught computers to speak. <br />
+              <span className="text-accent">Now, we teach them to listen.</span>
+            </h2>
+            <div className="grid md:grid-cols-2 gap-20 text-left border-t border-white/[0.06] pt-20">
+              <div className="space-y-8">
+                <p className="text-2xl text-muted leading-relaxed font-medium">
+                  Most AI tools are transactional. You pour out your thoughts, and they respond perfectly—but the moment you close the tab, they forget you exist. This creates a loop of sharing without being known.
+                </p>
+                <p className="text-2xl text-muted leading-relaxed font-medium">
+                  Miryn is the end of that loop. It is the first identity engine designed to witness your life. It doesn't just process your text; it remembers your patterns, your evolution, and the things you leave unsaid.
+                </p>
+              </div>
+              <div className="space-y-10">
+                <div className="bg-card border border-white/[0.06] p-10 rounded-[32px] shadow-sm border-l-4 border-l-accent">
+                  <div className="mono-label !text-accent mb-6 font-bold uppercase tracking-widest text-sm">Core Philosophy</div>
+                  <p className="text-2xl editorial-italic font-bold text-primary leading-relaxed">"Identity is not a state, but a conversation between who you were and who you are becoming."</p>
+                </div>
+              </div>
             </div>
-            <div className="text-secondary">
-              The intimacy is disposable. It creates a “Loneliness Loop”—sharing without being known.
-              Miryn is the end of the loop. The first AI designed to witness your life, not just process it.
+          </motion.div>
+        </div>
+      </section>
+
+      {/* P03 — Landing How It Works */}
+      <section id="how-it-works" className="py-60 px-10 max-w-7xl mx-auto">
+        <div className="text-center mb-32">
+          <span className="mono-label text-accent mb-10 block font-bold uppercase tracking-widest text-sm">02 // The Process</span>
+          <h2 className="text-5xl md:text-7xl font-bold tracking-tighter text-primary">How Miryn Remembers</h2>
+        </div>
+        
+        <div className="grid md:grid-cols-4 gap-6">
+          {[
+            {
+              step: "01",
+              title: "Listen",
+              desc: "Every interaction is recorded in your memory layer, encrypted and private.",
+              icon: Search
+            },
+            {
+              step: "02",
+              title: "Reflect",
+              desc: "In the background, Miryn identifies beliefs, patterns, and open loops.",
+              icon: Zap
+            },
+            {
+              step: "03",
+              title: "Update",
+              desc: "Your identity version increments. Your knowledge graph grows with you.",
+              icon: Layers
+            },
+            {
+              step: "04",
+              title: "Anchor",
+              desc: "Future conversations are context-aware, grounded in everything you've shared.",
+              icon: Brain
+            }
+          ].map((item, i) => (
+            <div key={i} className="bg-card border border-white/[0.06] p-12 rounded-[40px] flex flex-col items-start gap-8 hover:border-accent shadow-sm transition-all group">
+              <span className="mono-label !text-accent/30 group-hover:text-accent transition-colors font-bold text-sm tracking-widest">{item.step}</span>
+              <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center group-hover:bg-accent group-hover:text-white transition-all shadow-sm">
+                <item.icon className="w-7 h-7" />
+              </div>
+              <h3 className="text-3xl font-bold tracking-tight text-primary">{item.title}</h3>
+              <p className="text-muted leading-relaxed font-medium text-lg">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* P04 — Landing Capabilities (Showcase) */}
+      <section id="capabilities" className="py-60 px-10 bg-white/[0.02] border-y border-white/[0.06] relative overflow-hidden">
+        <div className="absolute inset-0 radial-gradient(circle at 50% 50%, rgba(139,92,246,0.03), transparent 70%)" />
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="grid lg:grid-cols-2 gap-32 items-center">
+            <div className="space-y-12">
+              <span className="mono-label text-accent font-bold uppercase tracking-widest text-sm">03 // Capabilities</span>
+              <h2 className="text-6xl md:text-8xl font-bold tracking-tighter leading-tight text-primary">
+                Beyond the <br />
+                <span className="text-accent">Transience.</span>
+              </h2>
+              <div className="space-y-12">
+                {[
+                  { title: "Persistence", desc: "Miryn tracks 'open loops' in your life. If you mention a goal today, it will ask about the resolution next month." },
+                  { title: "Identity Evolution", desc: "Beyond chat history, Miryn builds a knowledge graph of your values. It watches as you change." },
+                  { title: "The Mirror", desc: "Passivity is for assistants. Miryn notices when you avoid hard truths and gently highlights patterns." }
+                ].map((cap, i) => (
+                  <div key={i} className="flex gap-8 group">
+                    <div className="w-[3px] h-16 bg-black/[0.05] group-hover:bg-accent transition-all rounded-full" />
+                    <div>
+                      <h4 className="text-2xl font-bold mb-3 group-hover:text-accent transition-colors text-primary">{cap.title}</h4>
+                      <p className="text-muted leading-relaxed font-medium text-lg">{cap.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="relative">
+              <div className="bg-card border border-white/[0.06] aspect-square rounded-[48px] p-16 flex flex-col justify-between shadow-2xl relative z-10 overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-accent/[0.05] rounded-full blur-[80px] -z-10" />
+                <div className="flex justify-between items-start">
+                  <div className="mono-label !text-accent font-bold uppercase tracking-widest">Identity Snapshot // v4.2</div>
+                  <Sparkles className="text-accent w-8 h-8" />
+                </div>
+                <div className="space-y-8">
+                  <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/[0.06] shadow-sm">
+                    <div className="text-[11px] uppercase tracking-widest text-muted mb-4 font-bold">Core Belief Detected</div>
+                    <div className="text-2xl editorial-italic font-bold text-primary leading-relaxed">"Growth only happens in the spaces where I feel most uncomfortable."</div>
+                  </div>
+                  <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/[0.06] shadow-sm">
+                    <div className="text-[11px] uppercase tracking-widest text-muted mb-4 font-bold">Active Open Loop</div>
+                    <div className="text-2xl editorial-italic font-bold text-primary leading-relaxed">The career transition mentioned on Feb 12th.</div>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="h-2 flex-1 bg-black/[0.03] rounded-full overflow-hidden">
+                    <motion.div className="h-full bg-accent" initial={{ width: 0 }} whileInView={{ width: "70%" }} transition={{ duration: 2, delay: 0.5 }} />
+                  </div>
+                  <div className="h-2 flex-1 bg-black/[0.03] rounded-full overflow-hidden">
+                    <motion.div className="h-full bg-accent" initial={{ width: 0 }} whileInView={{ width: "45%" }} transition={{ duration: 2, delay: 0.7 }} />
+                  </div>
+                </div>
+              </div>
+              <div className="absolute -bottom-16 -right-16 w-80 h-80 bg-accent/10 blur-[100px] rounded-full -z-10" />
             </div>
           </div>
-        </motion.section>
+        </div>
+      </section>
 
-        <motion.section
-          className="mx-auto max-w-6xl px-6 py-14 border-t border-white/10"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          variants={fade}
-        >
-          <div className="text-xs uppercase tracking-[0.35em] text-secondary">02 // The Solution</div>
-          <h2 className="mt-6 text-4xl md:text-5xl font-serif font-light">Miryn.</h2>
-          <p className="mt-3 text-secondary text-lg">The Identity Engine.</p>
-        </motion.section>
+      {/* P05 — Final CTA + Footer */}
+      <section className="py-80 px-10 text-center relative overflow-hidden bg-white border-t border-white/[0.06]">
+        <div className="absolute inset-0 bg-accent/[0.03] blur-[150px] -z-10" />
+        <div className="relative z-10 max-w-5xl mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeUp}
+          >
+            <h2 className="text-6xl md:text-[9rem] font-bold tracking-tighter mb-12 leading-[0.8] text-primary">
+              A quiet room for <br />
+              <span className="text-accent">honest reflection.</span>
+            </h2>
+            <p className="text-3xl text-muted mb-20 max-w-3xl mx-auto font-medium leading-relaxed">
+              Built for project demonstration with persistent memory, identity evolution, and comparative analytics.
+            </p>
+            <div className="flex flex-col items-center gap-12">
+              <a href="/login" className="h-24 px-16 bg-accent text-white text-2xl font-bold rounded-full flex items-center justify-center hover:scale-105 transition-all shadow-2xl shadow-accent/40 uppercase tracking-widest">
+                Enter Demo Workspace
+              </a>
+              <div className="flex gap-16 text-muted mono-label !text-[12px] !tracking-[0.5em] font-bold uppercase">
+                <span className="flex items-center gap-4"><Clock className="w-5 h-5 text-accent" /> 2min Setup</span>
+                <span className="flex items-center gap-4"><Shield className="w-5 h-5 text-accent" /> End-to-End Encrypted</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
 
-        <motion.section
-          className="mx-auto max-w-6xl px-6 py-14 border-t border-white/10"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          variants={fade}
-        >
-          <div className="text-xs uppercase tracking-[0.35em] text-secondary">03 // Capabilities</div>
-          <h3 className="mt-6 text-3xl md:text-4xl font-serif font-light">
-            A system designed for continuity in a disposable world.
-          </h3>
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-            <div className="rounded-2xl border border-white/10 p-6 bg-white/5">
-              <div className="text-xs uppercase tracking-[0.3em] text-secondary">01 :: Persistence</div>
-              <div className="mt-3 text-white">Memory with Consequences</div>
-              <p className="mt-2 text-secondary">
-                Miryn remembers “unfinished business.” If you mention a conflict today, it will ask about the
-                resolution next week. It holds the thread of your life so you do not have to keep restarting.
-              </p>
+      {/* Footer */}
+      <footer className="py-32 px-10 border-t border-white/[0.06] bg-white relative z-10">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-start gap-20 mb-24">
+            <div className="flex flex-col gap-6">
+              <span className="text-4xl font-bold tracking-tighter text-accent">Miryn</span>
+              <p className="text-muted max-w-sm leading-relaxed font-medium text-lg">The first context-aware identity engine for deep human reflection.</p>
             </div>
-            <div className="rounded-2xl border border-white/10 p-6 bg-white/5">
-              <div className="text-xs uppercase tracking-[0.3em] text-secondary">02 :: Anti-Dopamine</div>
-              <div className="mt-3 text-white">Designed for Silence</div>
-              <p className="mt-2 text-secondary">
-                We do not optimize for “Time in App.” We optimize for clarity. Miryn pushes you toward real-world action,
-                then encourages you to close the screen.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 p-6 bg-white/5">
-              <div className="text-xs uppercase tracking-[0.3em] text-secondary">03 :: The Mirror</div>
-              <div className="mt-3 text-white">Active Inquiry</div>
-              <p className="mt-2 text-secondary">
-                Most AIs are passive. Miryn is investigative. It notices when you are avoiding a hard truth and
-                gently reflects the pattern back to you.
-              </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-20">
+              <div className="flex flex-col gap-8">
+                <span className="mono-label text-primary font-bold uppercase tracking-widest text-sm">Platform</span>
+                <a href="/login" className="text-muted hover:text-accent transition-colors font-medium">Sign in</a>
+                <a href="/compare" className="text-muted hover:text-accent transition-colors font-medium">Project Compare</a>
+                <a href="#" className="text-muted hover:text-accent transition-colors font-medium">API</a>
+              </div>
+              <div className="flex flex-col gap-8">
+                <span className="mono-label text-primary font-bold uppercase tracking-widest text-sm">Legal</span>
+                <a href="/privacy" className="text-muted hover:text-accent transition-colors font-medium">Privacy</a>
+                <a href="/terms" className="text-muted hover:text-accent transition-colors font-medium">Terms</a>
+                <a href="/security" className="text-muted hover:text-accent transition-colors font-medium">Security</a>
+              </div>
+              <div className="flex flex-col gap-8">
+                <span className="mono-label text-primary font-bold uppercase tracking-widest text-sm">Connect</span>
+                <a href="mailto:sahil@miryn.ai" className="text-muted hover:text-accent transition-colors font-medium">Email</a>
+                <a href="#" className="text-muted hover:text-accent transition-colors font-medium">Twitter</a>
+                <a href="#" className="text-muted hover:text-accent transition-colors font-medium">Manifesto</a>
+              </div>
             </div>
           </div>
-        </motion.section>
-
-        <motion.section
-          className="mx-auto max-w-6xl px-6 py-14 border-t border-white/10"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          variants={fade}
-        >
-          <div className="text-xs uppercase tracking-[0.35em] text-secondary">04 // The Neural Architecture</div>
-          <h3 className="mt-6 text-3xl md:text-4xl font-serif font-light">How it Remembers.</h3>
-          <p className="mt-4 text-secondary max-w-3xl">
-            Miryn uses a proprietary Three-Layer Memory System to simulate human-like recall and context.
-          </p>
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-            <div className="rounded-2xl border border-white/10 p-6">
-              <div className="text-xs uppercase tracking-[0.3em] text-secondary">Layer 1 :: Immediate</div>
-              <div className="mt-3 text-white">Session Context (Redis)</div>
-              <p className="mt-2 text-secondary">
-                Handles the real-time flow of conversation. Detects micro-emotions, tone shifts, and hesitation in the
-                current moment.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 p-6">
-              <div className="text-xs uppercase tracking-[0.3em] text-secondary">Layer 2 :: Episodic</div>
-              <div className="mt-3 text-white">Vector Retrieval (RAG)</div>
-              <p className="mt-2 text-secondary">
-                Semantic search that allows Miryn to recall specific events (“that fight in November”) from your
-                history instantly.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 p-6">
-              <div className="text-xs uppercase tracking-[0.3em] text-secondary">Layer 3 :: Core Identity</div>
-              <div className="mt-3 text-white">Knowledge Graph (Neo4j)</div>
-              <p className="mt-2 text-secondary">
-                A persistent web of facts about your values, relationships, and goals. This is the “Soul” that evolves
-                as you grow.
-              </p>
+          <div className="flex flex-col md:flex-row justify-between items-center pt-16 border-t border-white/[0.06] gap-10">
+            <span className="text-sm text-muted mono-label font-bold uppercase tracking-widest">© 2026 The Memory Layer · Built for the deep web</span>
+            <div className="flex items-center gap-6">
+              <div className="w-3 h-3 rounded-full bg-white/[0.03] animate-pulse shadow-lg shadow-emerald-500/20" />
+              <span className="text-[12px] mono-label text-muted font-bold uppercase tracking-widest">Core Systems Nominal</span>
             </div>
           </div>
-        </motion.section>
-
-        <motion.section
-          className="mx-auto max-w-6xl px-6 py-14 border-t border-white/10"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          variants={fade}
-        >
-          <div className="text-xs uppercase tracking-[0.35em] text-secondary">05 // The Master Plan</div>
-          <h3 className="mt-6 text-3xl md:text-4xl font-serif font-light">
-            We are not just building an app. We are building a protocol.
-          </h3>
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-            <div className="rounded-2xl border border-white/10 p-6">
-              <div className="text-xs uppercase tracking-[0.3em] text-secondary">Phase 01 :: Foundation (Current)</div>
-              <div className="mt-3 text-white">The Web Interface</div>
-              <p className="mt-2 text-secondary">
-                A minimalist text interface focused on deep onboarding and establishing the “Core Identity Graph.”
-                We are training the model to understand you, not just language.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 p-6">
-              <div className="text-xs uppercase tracking-[0.3em] text-secondary">Phase 02 :: Presence (Q3 2026)</div>
-              <div className="mt-3 text-white">The Voice</div>
-              <p className="mt-2 text-secondary">
-                Async voice journaling. Speak freely. Miryn listens to tone, pause, and hesitation, extracting emotional
-                context that text misses.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 p-6">
-              <div className="text-xs uppercase tracking-[0.3em] text-secondary">Phase 03 :: Ubiquity (2027)</div>
-              <div className="mt-3 text-white">The Identity API</div>
-              <p className="mt-2 text-secondary">
-                Miryn becomes the identity layer for the web. Bring your “Miryn Profile” to other services—coaching,
-                therapy, education—so you never start from zero again.
-              </p>
-            </div>
-          </div>
-        </motion.section>
-
-        <motion.section
-          className="mx-auto max-w-6xl px-6 py-14 border-t border-white/10"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          variants={fade}
-        >
-          <div className="text-xs uppercase tracking-[0.35em] text-secondary">06 // The Interface</div>
-          <h3 className="mt-6 text-3xl md:text-4xl font-serif font-light">Ask the Mirror.</h3>
-          <p className="mt-3 text-secondary">Example prompts that show how Miryn deconstructs reality.</p>
-          <div className="mt-6 flex flex-wrap gap-3 text-sm">
-            <span className="chip">Audit my Month</span>
-            <span className="chip">Reality Check</span>
-            <span className="chip">Why am I stuck?</span>
-            <span className="chip">Reveal Blind Spots</span>
-          </div>
-        </motion.section>
-
-        <motion.section
-          className="mx-auto max-w-6xl px-6 py-14 border-t border-white/10"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          variants={fade}
-        >
-          <div className="text-xs uppercase tracking-[0.35em] text-secondary">07 // The Guild</div>
-          <h3 className="mt-6 text-3xl md:text-4xl font-serif font-light">
-            We are not looking for employees. We are looking for Architects.
-          </h3>
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-            <div className="rounded-2xl border border-white/10 p-6">
-              <div className="text-white">The Identity Architect</div>
-              <div className="mt-2 text-secondary">Backend &amp; Memory Systems</div>
-              <p className="mt-2 text-secondary">
-                You are not just building APIs. You are building the “Brain” that never forgets. You obsess over
-                vector embeddings, retrieval latency, and the ethics of digital memory.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 p-6">
-              <div className="text-white">The Interface Sculptor</div>
-              <div className="mt-2 text-secondary">Frontend &amp; Interaction</div>
-              <p className="mt-2 text-secondary">
-                Miryn needs to feel like a quiet room, not a dashboard. You care about typography, micro-interactions,
-                and carving silence out of pixels.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 p-6">
-              <div className="text-white">The Soul Designer</div>
-              <div className="mt-2 text-secondary">Psychology &amp; Prompting</div>
-              <p className="mt-2 text-secondary">
-                You bridge the gap between code and feeling. You teach the machine how to be honest without being cruel.
-                You design the “Voice” in the void.
-              </p>
-            </div>
-          </div>
-          <div className="mt-10">
-            <a
-              className="inline-flex items-center rounded-full border border-white/10 px-6 py-3 text-sm hover:border-white/30"
-              href="mailto:worksahilsharma@gmail.com"
-            >
-              Initialize Contact Protocol
-            </a>
-          </div>
-        </motion.section>
-
-        <motion.section
-          className="mx-auto max-w-6xl px-6 py-14 border-t border-white/10"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          variants={fade}
-        >
-          <div className="text-xs uppercase tracking-[0.35em] text-secondary">Founder Signal</div>
-          <blockquote className="mt-6 text-xl md:text-2xl font-serif font-light text-white/90 max-w-4xl">
-            “We built the internet to connect everyone, but in the process, we became the loneliest generation in history.
-            Miryn is not an app. It is a return to the center. A space where technology stops broadcasting and starts remembering.”
-          </blockquote>
-          <div className="mt-4 text-secondary">— Sahil</div>
-        </motion.section>
-
-        <footer className="mx-auto max-w-6xl px-6 py-10 border-t border-white/10 text-xs text-secondary flex flex-wrap justify-between items-center gap-4">
-          <div>Project Miryn © 2026</div>
-          <div className="flex gap-6">
-            <a href="/privacy" className="hover:text-white transition-colors">Privacy</a>
-            <a href="/terms" className="hover:text-white transition-colors">Terms</a>
-          </div>
-        </footer>
-      </div>
+        </div>
+      </footer>
     </main>
   );
 }
+

@@ -112,12 +112,12 @@ export default function ChatGPTImport({ onClose }: ChatGPTImportProps) {
                   <ol className="list-decimal list-inside space-y-2">
                     <li>Go to ChatGPT → Settings → Data Controls.</li>
                     <li>Select &quot;Export Data&quot; and wait for the email.</li>
-                    <li>Download the ZIP and find <code className="text-accent-purple">conversations.json</code>.</li>
+                    <li>Download the ZIP and find <code className="text-accent">conversations.json</code>.</li>
                   </ol>
                 </div>
                 <button
                   onClick={() => setStep("upload")}
-                  className="w-full py-3 text-sm font-medium transition-all rounded-full bg-accent-purple text-void hover:scale-[1.02] active:scale-[0.98]"
+                  className="w-full py-3 text-sm font-medium transition-all rounded-full bg-accent text-void hover:scale-[1.02] active:scale-[0.98]"
                 >
                   Proceed to Upload
                 </button>
@@ -135,7 +135,7 @@ export default function ChatGPTImport({ onClose }: ChatGPTImportProps) {
               >
                 <div
                   className={`relative border-2 border-dashed rounded-xl p-10 transition-colors flex flex-col items-center justify-center space-y-4 ${
-                    file ? "border-accent-purple/50 bg-accent-purple/5" : "border-white/10 hover:border-white/20"
+                    file ? "border-accent/50 bg-accent/5" : "border-white/10 hover:border-white/20"
                   }`}
                 >
                   <input
@@ -167,7 +167,7 @@ export default function ChatGPTImport({ onClose }: ChatGPTImportProps) {
                   <button
                     disabled={!file}
                     onClick={startImport}
-                    className="flex-1 py-3 text-sm font-medium transition-all rounded-full bg-accent-purple text-void hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
+                    className="flex-1 py-3 text-sm font-medium transition-all rounded-full bg-accent text-void hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
                   >
                     Initialize Import
                   </button>
@@ -193,7 +193,7 @@ export default function ChatGPTImport({ onClose }: ChatGPTImportProps) {
 
                 <div className="relative w-full h-1 overflow-hidden bg-white/5 rounded-full">
                   <motion.div
-                    className="absolute top-0 left-0 h-full bg-accent-purple"
+                    className="absolute top-0 left-0 h-full bg-accent"
                     initial={{ width: 0 }}
                     animate={{ width: `${status?.progress || 0}%` }}
                     transition={{ type: "spring", bounce: 0, duration: 0.5 }}
@@ -216,7 +216,7 @@ export default function ChatGPTImport({ onClose }: ChatGPTImportProps) {
                 className="space-y-8 text-center"
               >
                 <div className="flex flex-col items-center space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center text-2xl text-green-400 border border-green-500/20">
+                  <div className="w-16 h-16 rounded-full bg-white/[0.03] flex items-center justify-center text-2xl text-dim border border-white/[0.06] border-500/20">
                     ✓
                   </div>
                   <div className="space-y-1">
@@ -233,14 +233,14 @@ export default function ChatGPTImport({ onClose }: ChatGPTImportProps) {
                     <p className="text-[10px] text-secondary uppercase tracking-tighter">Conversations</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xl text-accent-purple font-mono">{status?.memories_added || 0}</p>
+                    <p className="text-xl text-accent font-mono">{status?.memories_added || 0}</p>
                     <p className="text-[10px] text-secondary uppercase tracking-tighter">Insights Extracted</p>
                   </div>
                 </div>
 
                 <button
                   onClick={onClose}
-                  className="w-full py-3 text-sm font-medium transition-all rounded-full bg-accent-purple text-void hover:scale-[1.02] active:scale-[0.98]"
+                  className="w-full py-3 text-sm font-medium transition-all rounded-full bg-accent text-void hover:scale-[1.02] active:scale-[0.98]"
                 >
                   Return to The Void
                 </button>

@@ -1,16 +1,9 @@
 "use client";
 
 import type { ConversationInsights } from "@/lib/types";
+import { Sparkles, AlertTriangle, Hash, Fingerprint, Activity, Quote } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-/**
- * Render a supplemental insights panel showing reflection text, mood and intensity, possible contradictions, and topic/entity tags when data is available.
- *
- * The component reads these fields from `insights` when present: `topics`, `entities`, `insights` (reflection text), and `emotions.primary_emotion` / `emotions.intensity`.
- *
- * @param insights - Conversation insights object or `null`. Used to populate reflection, mood/intensity, topics, and entities.
- * @param conflicts - Optional array of conflict objects each containing `statement`, `conflict_with`, and an optional `severity`; when non-empty, a "Possible contradictions" block is rendered.
- * @returns The aside element containing supplemental insights, or `null` if no supplemental data is available.
- */
 export default function InsightsPanel({
   insights,
   conflicts,
@@ -25,56 +18,92 @@ export default function InsightsPanel({
   const intensity = insights?.emotions?.intensity;
   const hasSupplemental = reflection || topics.length > 0 || entities.length > 0 || mood || (conflicts || []).length > 0;
 
-  if (!hasSupplemental) {
-    return null;
-  }
+  if (!hasSupplemental) return null;
 
   return (
-    <aside className="border-t border-white/10 bg-black/30 px-6 py-4 text-sm space-y-3">
-      <div className="flex items-center justify-between text-xs uppercase tracking-[0.35em] text-secondary">
-        <span>Reflection</span>
+    <motion.aside 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-card border border-white/[0.06] rounded-[32px] p-10 mb-6 relative overflow-hidden shadow-sm"
+    >
+      {/* Subtle Background Glow */}
+      <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-accent/[0.05] blur-[80px] pointer-events-none" />
+
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
+            <Sparkles size={18} className="text-accent" />
+          </div>
+          <span className="mono-label !text-[13px] !text-primary uppercase tracking-[0.2em] font-bold">Metacognitive Layer</span>
+        </div>
+        
         {mood && (
-          <span className="tracking-normal text-secondary/80">
-            Mood: <span className="text-white">{mood}</span>
+          <div className="flex items-center gap-3 px-5 py-2 rounded-full bg-white/[0.03] border border-white/[0.06] shadow-sm">
+            <Activity size={14} className="text-accent" />
+            <span className="text-xs uppercase tracking-widest text-muted font-bold">Mood:</span>
+            <span className="text-xs font-bold text-primary uppercase tracking-wider">{mood}</span>
             {typeof intensity === "number" && (
-              <span className="ml-1 text-secondary/60">({Math.round(intensity * 100)}%)</span>
+              <span className="text-xs text-accent font-mono ml-1 font-bold">{Math.round(intensity * 100)}%</span>
             )}
-          </span>
+          </div>
         )}
       </div>
-      {reflection && <p className="text-white/80 leading-relaxed">{reflection}</p>}
 
-      {conflicts && conflicts.length > 0 && (
-        <div className="rounded border border-amber-500/30 bg-amber-500/10 p-3 text-amber-100">
-          <div className="text-xs uppercase tracking-[0.2em] text-amber-200">Possible contradictions</div>
-          <ul className="mt-2 space-y-1">
-            {conflicts.map((c, idx) => (
-              <li key={`conflict-${idx}`} className="text-xs leading-relaxed">
-                {c.statement} <span className="text-amber-300">vs</span> {c.conflict_with}
-              </li>
-            ))}
-          </ul>
+      {reflection && (
+        <div className="mb-10 relative">
+          <Quote className="absolute -top-3 -left-8 text-accent/10 w-10 h-10 -scale-x-100" />
+          <p className="text-2xl text-primary leading-relaxed editorial-italic max-w-2xl font-medium">
+            {reflection}
+          </p>
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        {topics.map((topic, index) => (
-          <span
-            key={`topic-${topic}-${index}`}
-            className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80"
+      <AnimatePresence>
+        {conflicts && conflicts.length > 0 && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            className="mb-10 p-8 rounded-[32px] bg-red-500/[0.02] border border-red-500/10 relative overflow-hidden shadow-sm"
           >
+            <div className="absolute top-0 left-0 w-[2px] h-full bg-red-500/40" />
+            <div className="flex items-center gap-4 mb-6">
+              <AlertTriangle size={20} className="text-red-600" />
+              <span className="mono-label !text-[13px] !text-red-600 uppercase tracking-widest font-bold">Cognitive Dissonance Detected</span>
+            </div>
+            <ul className="space-y-4">
+              {conflicts.map((c, idx) => (
+                <li key={`conflict-${idx}`} className="text-sm text-muted leading-relaxed font-medium">
+                  <span className="text-primary font-bold">{c.statement}</span>
+                  <span className="mx-3 text-xs mono-label !text-red-500/40 uppercase font-bold">contradicts</span>
+                  <span className="text-primary font-bold">{c.conflict_with}</span>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex flex-wrap gap-3">
+        {topics.map((topic, index) => (
+          <div
+            key={`topic-${topic}-${index}`}
+            className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/[0.03] border border-white/[0.06] text-[11px] mono-label text-muted hover:text-accent hover:border-accent/20 hover:bg-accent/[0.02] transition-all cursor-default shadow-sm font-bold"
+          >
+            <Hash size={12} className="text-accent" />
             {topic}
-          </span>
+          </div>
         ))}
         {entities.map((entity, index) => (
-          <span
+          <div
             key={`entity-${entity}-${index}`}
-            className="inline-flex items-center rounded-full border border-white/5 bg-white/10 px-3 py-1 text-xs text-white"
+            className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-accent/5 border border-accent/20 text-[11px] mono-label text-accent hover:bg-accent/10 transition-all cursor-default shadow-sm font-bold"
           >
+            <Fingerprint size={12} />
             {entity}
-          </span>
+          </div>
         ))}
       </div>
-    </aside>
+    </motion.aside>
   );
 }
+

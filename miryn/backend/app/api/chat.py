@@ -173,7 +173,7 @@ async def _prepare_stream_context(
                 conversation_id=conversation_id,
                 sql_session=sql_session,
             ),
-            timeout=1.5,
+            timeout=0.9,
         )
     except asyncio.TimeoutError:
         logger.warning("Context retrieval timed out for user %s", user_id)
@@ -391,7 +391,7 @@ async def stream_events(
                     yield f"data: {json.dumps(event)}\n\n"
             else:
                 yield ": keep-alive\n\n"
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 

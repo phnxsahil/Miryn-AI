@@ -32,6 +32,12 @@ class LLMService:
                 raise ValueError("A Gemini API key is required when LLM_PROVIDER=gemini")
             self.client = genai.Client(api_key=key)
             self.model = settings.GEMINI_MODEL
+            self.gemini_fallback_models = [
+                settings.GEMINI_MODEL,
+                "gemini-2.0-flash",
+                "gemini-2.0-flash-lite",
+                "gemini-1.5-flash-001",
+            ]
         elif self.provider == "vertex":
             from vertexai import init as vertex_init
             from vertexai.generative_models import GenerativeModel
@@ -45,6 +51,7 @@ class LLMService:
             self.model = settings.VERTEX_MODEL
         else:
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
+        self._presets_cache: list[dict[str, Any]] | None = None
 
     async def generate(
         self,
@@ -95,19 +102,33 @@ class LLMService:
                 contents = prompt
                 if system_prompt:
                     contents = f"{system_prompt}\n\n{prompt}"
-                response = await self.client.aio.models.generate_content(
-                    model=self.model,
-                    contents=contents,
-                    config=genai_types.GenerateContentConfig(
-                        max_output_tokens=max_tokens,
-                        temperature=0.7,
-                    ),
-                )
-                try:
-                    return response.text or ""
-                except Exception as exc:
-                    self.logger.warning("Gemini generate_content response.text raised (safety filter or empty): %s", exc)
-                    return ""
+                last_exc: Exception | None = None
+                for candidate_model in dict.fromkeys(self.gemini_fallback_models):
+                    try:
+                        response = await self.client.aio.models.generate_content(
+                            model=candidate_model,
+                            contents=contents,
+                            config=genai_types.GenerateContentConfig(
+                                max_output_tokens=max_tokens,
+                                temperature=0.7,
+                            ),
+                        )
+                        self.model = candidate_model
+                        try:
+                            return response.text or ""
+                        except Exception as exc:
+                            self.logger.warning("Gemini response.text unavailable for model %s: %s", candidate_model, exc)
+                            return ""
+                    except Exception as exc:
+                        last_exc = exc
+                        err = str(exc).lower()
+                        if "not found" in err or "not supported" in err or "404" in err:
+                            self.logger.warning("Gemini model %s unavailable, trying fallback.", candidate_model)
+                            continue
+                        raise
+                if last_exc:
+                    raise last_exc
+                raise RuntimeError("Gemini generation failed without exception")
 
             if self.provider == "vertex":
                 def _run_vertex():
@@ -212,33 +233,38 @@ class LLMService:
             if system_prompt:
                 contents = f"{system_prompt}\n\n{full_prompt}"
             
-            try:
-                # Some versions of the SDK require awaiting the call to get the async iterable,
-                # while others allow async for directly. We'll try to get the iterable correctly.
-                stream_response = self.client.aio.models.generate_content_stream(
-                    model=self.model,
-                    contents=contents,
-                    config=genai_types.GenerateContentConfig(max_output_tokens=500, temperature=0.7),
-                )
-                
-                # If it's a coroutine, we need to await it to get the async iterator
-                if asyncio.iscoroutine(stream_response):
-                    stream_response = await stream_response
-
-                async for chunk in stream_response:
-                    text = None
-                    try:
-                        text = chunk.text
-                    except Exception:
-                        # Safety filter or other non-text chunk
-                        self.logger.warning("Gemini chunk had no text: %s", chunk)
+            last_exc: Exception | None = None
+            for candidate_model in dict.fromkeys(self.gemini_fallback_models):
+                try:
+                    stream_response = self.client.aio.models.generate_content_stream(
+                        model=candidate_model,
+                        contents=contents,
+                        config=genai_types.GenerateContentConfig(max_output_tokens=500, temperature=0.7),
+                    )
+                    if asyncio.iscoroutine(stream_response):
+                        stream_response = await stream_response
+                    self.model = candidate_model
+                    async for chunk in stream_response:
+                        text = None
+                        try:
+                            text = chunk.text
+                        except Exception:
+                            self.logger.warning("Gemini chunk had no text: %s", chunk)
+                            continue
+                        if text:
+                            yield text
+                    return
+                except Exception as exc:
+                    last_exc = exc
+                    err = str(exc).lower()
+                    if "not found" in err or "not supported" in err or "404" in err:
+                        self.logger.warning("Gemini stream model %s unavailable, trying fallback.", candidate_model)
                         continue
-                        
-                    if text:
-                        yield text
-            except Exception as e:
-                self.logger.exception("Gemini streaming failed")
-                raise
+                    self.logger.exception("Gemini streaming failed")
+                    raise
+            if last_exc:
+                self.logger.exception("All Gemini fallback models failed")
+                raise last_exc
             return
 
         if self.provider == "vertex":
@@ -301,9 +327,11 @@ class LLMService:
         preset_modifier = ""
         behaviors = {}
         try:
-            presets_path = Path(__file__).resolve().parent.parent / "config" / "presets.json"
-            with open(presets_path, "r", encoding="utf-8") as handle:
-                presets = json.load(handle)
+            if self._presets_cache is None:
+                presets_path = Path(__file__).resolve().parent.parent / "config" / "presets.json"
+                with open(presets_path, "r", encoding="utf-8") as handle:
+                    self._presets_cache = json.load(handle)
+            presets = self._presets_cache or []
             preset = next((p for p in presets if p.get("id") == preset_id), None)
             if preset:
                 preset_modifier = preset.get("system_prompt_modifier", "")

@@ -1,51 +1,110 @@
-/* Global styles for the Miryn experience */
+/* Global styles for the Miryn AI "Void" experience */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Depth System ────────────────────────────────────────────────────────────
+   Layer 0 — Void:    #0a0a0a  (page background)
+   Layer 1 — Surface: #111116  (content panels, main areas)
+   Layer 2 — Card:    #1a1a22  (cards, modals, floating elements)
+   Pure white (#ffffff) reserved for interactive states: hover, focus, active
+──────────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --void: #000000;
-  --surface: rgba(255, 255, 255, 0.015);
-  --border: rgba(255, 255, 255, 0.05);
-  --accent: #c8b89a;
-  --text-primary: #ffffff;
-  --text-secondary: #888888;
+  --void: #09090e;
+  --surface: #10121a;
+  --card: #151928;
+  --card-border: rgba(255, 255, 255, 0.06);
+  --glass: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.08);
+  --accent: #c8b8ff;
+  --accent-glow: rgba(200, 184, 255, 0.15);
+  --text-primary: #eef2ff;
+  --text-muted: #9ca3bb;
+  --text-dim: #66708b;
+  --text-ghost: #48506a;
+  --error-bg: rgba(226, 75, 74, 0.08);
+  --error-text: #c17070;
+  --error-border: #e24b4a;
 }
 
-body {
-  font-family: var(--font-dm), system-ui, sans-serif;
-  background: radial-gradient(1200px 600px at 10% -10%, rgba(200,184,154,0.05), transparent 60%),
-    radial-gradient(1000px 800px at 90% -20%, rgba(255,255,255,0.03), transparent 55%),
-    var(--void);
-  color: var(--text-primary);
-  min-height: 100vh;
+@layer base {
+  body {
+    @apply bg-void text-primary min-h-screen selection:bg-accent/20 selection:text-accent font-ui antialiased;
+    background-image: 
+      radial-gradient(1200px 600px at 10% -10%, rgba(200, 184, 255, 0.02), transparent 60%),
+      radial-gradient(1000px 800px at 90% -20%, rgba(200, 184, 255, 0.01), transparent 55%);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-ui tracking-tight;
+  }
 }
 
-h1, h2, h3, h4 {
-  font-family: var(--font-cormorant), serif;
+@layer components {
+  /* Card layer — Layer 2 of the depth system */
+  .card {
+    background-color: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+  }
+
+  /* Glass card — floating elements with subtle blur */
+  .glass-card {
+    background: rgba(20, 20, 31, 0.8);
+    border: 0.5px solid rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .accent-glow {
+    box-shadow: 0 0 40px var(--accent-glow);
+  }
+
+  .pill-button {
+    @apply px-8 py-3 rounded-full font-semibold transition-all duration-300;
+  }
+
+  .input-field {
+    @apply w-full rounded-2xl outline-none transition-all;
+    background: #0f0f17;
+    border: 0.5px solid rgba(255, 255, 255, 0.08);
+    padding: 12px 16px;
+    color: var(--text-primary);
+    border-radius: 8px;
+  }
+
+  .input-field::placeholder {
+    color: #3e3d54;
+  }
+
+  .input-field:focus {
+    border: 0.5px solid rgba(200, 184, 255, 0.4);
+    box-shadow: 0 0 0 3px rgba(200, 184, 255, 0.08);
+  }
+
+  .error-surface {
+    @apply p-6 text-sm flex items-center gap-4 rounded-[12px] font-bold;
+    background: rgba(226, 75, 74, 0.08);
+    border-left: 2px solid #e24b4a;
+    border-radius: 0 8px 8px 0;
+    color: #c17070;
+  }
+
+  .error-surface svg {
+    color: #e24b4a;
+  }
+
+  .orb-glow {
+    @apply absolute rounded-full blur-[100px] opacity-20 animate-pulse;
+    background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+  }
 }
 
-.hero-shell {
-  background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.0) 30%);
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.5rem 0.9rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.04);
-  color: #ffffff;
-}
-
-::selection {
-  background: rgba(200, 184, 154, 0.35);
-}
-
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -53,10 +112,28 @@ h1, h2, h3, h4 {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
+  @apply bg-white/5 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
+  @apply bg-accent/20;
+}
+
+/* Typography Utilities */
+.editorial-italic {
+  @apply font-editorial italic;
+}
+
+.mono-label {
+  @apply font-mono text-[10px] uppercase tracking-[0.3em];
+  color: #4a4868;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
 }
