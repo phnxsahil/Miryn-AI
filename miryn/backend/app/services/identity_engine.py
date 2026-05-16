@@ -191,13 +191,25 @@ class IdentityEngine:
 
     def _log_identity_evolution_sql(self, session: Any, user_id: str, identity_id: str, previous: Dict, current: Dict, trigger_type: str) -> None:
         fields = ["state", "traits", "values", "beliefs", "open_loops", "patterns", "emotions", "conflicts", "preset", "memory_weights"]
+        params = []
         for field in fields:
             old_val = previous.get(field)
             new_val = current.get(field)
             if old_val == new_val: continue
+            params.append({
+                "id": str(uuid4()),
+                "uid": user_id,
+                "iid": identity_id,
+                "f": field,
+                "o": json.dumps(old_val, default=str),
+                "n": json.dumps(new_val, default=str),
+                "t": trigger_type
+            })
+
+        if params:
             session.execute(
                 text("INSERT INTO identity_evolution_log (id, user_id, identity_id, field_changed, old_value, new_value, trigger_type) VALUES (:id, :uid, :iid, :f, :o, :n, :t)"),
-                {"id": str(uuid4()), "uid": user_id, "iid": identity_id, "f": field, "o": json.dumps(old_val, default=str), "n": json.dumps(new_val, default=str), "t": trigger_type}
+                params
             )
 
     def _hydrate_identity(self, identity: Dict, sql_session: Optional[Any] = None) -> Dict:
