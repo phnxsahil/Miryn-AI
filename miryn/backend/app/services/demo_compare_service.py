@@ -12,7 +12,6 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import text
-from sqlalchemy.sql import quoted_name
 
 from app.core.database import get_sql_session, has_sql
 from app.core.encryption import decrypt_text
@@ -639,15 +638,9 @@ class DemoCompareService:
 
         for user_id in user_ids:
             for table, field in self.CLEANUP_TABLE_PAIRS:
-                # Security: validate against allowlist and use quoted_name to prevent SQL injection
-                if (table, field) not in self.CLEANUP_TABLE_PAIRS:
-                    continue
-
                 try:
-                    safe_table = quoted_name(table, True)
-                    safe_field = quoted_name(field, True)
                     session.execute(
-                        text(f"DELETE FROM {safe_table} WHERE {safe_field} = :user_id"),
+                        text(f"DELETE FROM {table} WHERE {field} = :user_id"),
                         {"user_id": user_id},
                     )
                 except Exception:
