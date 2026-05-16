@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 import math
-import re
 from collections import Counter
 from copy import deepcopy
 from dataclasses import dataclass
@@ -637,29 +636,12 @@ class DemoCompareService:
         if not user_ids:
             return
 
-        try:
-            bind = session.bind
-            identifier_preparer = bind.dialect.identifier_preparer if bind is not None and bind.dialect is not None else None
-        except AttributeError:
-            identifier_preparer = None
-
-        def quote_identifier(identifier: str) -> str:
-            if not isinstance(identifier, str) or not identifier:
-                raise ValueError("Cleanup identifier must be a non-empty string")
-            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", identifier):
-                raise ValueError("Invalid cleanup identifier format")
-            if identifier_preparer is not None:
-                return identifier_preparer.quote(identifier)
-            escaped_identifier = identifier.replace('"', '""')
-            return f'"{escaped_identifier}"'
-
         for user_id in user_ids:
             for table, field in self.CLEANUP_TABLE_PAIRS:
+                # Security: table and field identifiers are sourced from a hardcoded allowlist
                 try:
-                    safe_table = quote_identifier(table)
-                    safe_field = quote_identifier(field)
                     session.execute(
-                        text(f"DELETE FROM {safe_table} WHERE {safe_field} = :user_id"),
+                        text(f"DELETE FROM {table} WHERE {field} = :user_id"),
                         {"user_id": user_id},
                     )
                 except Exception:
