@@ -325,6 +325,25 @@ def _build_demo_personas() -> list[DemoPersonaConfig]:
 
 
 class DemoCompareService:
+    CLEANUP_TABLE_PAIRS = [
+        ("identity_beliefs", "user_id"),
+        ("identity_conflicts", "user_id"),
+        ("identity_emotions", "user_id"),
+        ("identity_open_loops", "user_id"),
+        ("identity_patterns", "user_id"),
+        ("identity_evolution_log", "user_id"),
+        ("messages", "user_id"),
+        ("conversations", "user_id"),
+        ("onboarding_responses", "user_id"),
+        ("audit_logs", "user_id"),
+        ("notifications", "user_id"),
+        ("tool_runs", "user_id"),
+        ("memory_summaries", "user_id"),
+        ("identities", "user_id"),
+        ("user_profiles", "user_id"),
+        ("users", "id"),
+    ]
+
     def __init__(self) -> None:
         self.identity_engine = IdentityEngine()
         self.personas = _build_demo_personas()
@@ -617,28 +636,14 @@ class DemoCompareService:
         if not user_ids:
             return
 
-        table_pairs = [
-            ("identity_beliefs", "user_id"),
-            ("identity_conflicts", "user_id"),
-            ("identity_emotions", "user_id"),
-            ("identity_open_loops", "user_id"),
-            ("identity_patterns", "user_id"),
-            ("identity_evolution_log", "user_id"),
-            ("messages", "user_id"),
-            ("conversations", "user_id"),
-            ("onboarding_responses", "user_id"),
-            ("audit_logs", "user_id"),
-            ("notifications", "user_id"),
-            ("tool_runs", "user_id"),
-            ("memory_summaries", "user_id"),
-            ("identities", "user_id"),
-            ("user_profiles", "user_id"),
-            ("users", "id"),
-        ]
         for user_id in user_ids:
-            for table, field in table_pairs:
+            for table, field in self.CLEANUP_TABLE_PAIRS:
+                # Security: table and field identifiers are sourced from a hardcoded allowlist
                 try:
-                    session.execute(text(f"DELETE FROM {table} WHERE {field} = :user_id"), {"user_id": user_id})
+                    session.execute(
+                        text(f"DELETE FROM {table} WHERE {field} = :user_id"),
+                        {"user_id": user_id},
+                    )
                 except Exception:
                     logger.debug("Skipping optional cleanup table=%s field=%s", table, field, exc_info=True)
 
