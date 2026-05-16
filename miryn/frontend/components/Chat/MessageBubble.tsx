@@ -3,6 +3,10 @@
 import { memo } from "react";
 import type { Message } from "@/lib/types";
 import { motion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
+import "highlight.js/styles/github-dark.css";
 
 function ThinkingDots() {
   return (
@@ -50,7 +54,7 @@ function MessageBubble({
       transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
       className={`flex w-full ${isUser ? "justify-end" : "justify-start"} group mb-8`}
     >
-      <div className={`flex gap-6 max-w-[90%] md:max-w-[75%] ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+      <div className={`flex gap-6 w-full ${isUser ? "max-w-[85%] md:max-w-[75%] flex-row-reverse" : "max-w-full flex-row"}`}>
         {/* Identity Marker */}
         <div className="shrink-0 pt-1">
           <div className={`w-2 h-10 rounded-full transition-all duration-500 ${
@@ -61,7 +65,7 @@ function MessageBubble({
         </div>
 
         {/* Content Area */}
-        <div className={`flex flex-col ${isUser ? "items-end" : "items-start"} space-y-2`}>
+        <div className={`flex flex-col min-w-0 flex-1 ${isUser ? "items-end" : "items-start"} space-y-2`}>
           {/* Role Label */}
           <div className="flex items-center gap-3 px-1 mb-1">
             <span className="mono-label !text-[11px] !text-muted uppercase tracking-[0.2em] font-bold">
@@ -75,22 +79,24 @@ function MessageBubble({
           </div>
 
           <div className={`
-            relative leading-relaxed transition-all max-w-full
-            ${isUser ? "text-primary font-ui text-[18px] pr-2 text-right" : 
+            relative leading-relaxed transition-all w-full
+            ${isUser ? "text-primary font-ui text-[16px] md:text-[18px] text-right bg-white/[0.03] px-6 py-4 rounded-[24px] rounded-tr-sm inline-block w-auto max-w-full" :
               isSystem ? "text-red-300 font-mono text-[14px] bg-red-500/[0.06] border border-red-500/10 px-6 py-4 rounded-[20px]" : 
-              "text-primary/90 text-[17px] md:text-[18px] editorial-italic leading-[1.65]"}
+              "text-primary/90 text-[16px] md:text-[17px] font-ui leading-[1.7]"}
           `}>
             {showThinking ? (
               <ThinkingDots />
             ) : (
-              <div className="whitespace-pre-wrap">
-                {message.content}
-                {isStreaming && isAssistant && (
-                  <motion.span 
-                    animate={{ opacity: [0, 1, 0] }}
-                    transition={{ duration: 0.8, repeat: Infinity }}
-                    className="inline-block w-2 h-6 ml-2 bg-accent/30 align-middle rounded-full" 
-                  />
+              <div className={`prose prose-invert max-w-none ${isUser ? "whitespace-pre-wrap" : "prose-p:leading-relaxed prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10 prose-headings:text-primary prose-a:text-accent prose-strong:text-white"}`}>
+                {isUser ? (
+                   message.content
+                ) : (
+                   <ReactMarkdown
+                     remarkPlugins={[remarkGfm]}
+                     rehypePlugins={[rehypeHighlight]}
+                   >
+                     {message.content + (isStreaming && isAssistant ? " ▍" : "")}
+                   </ReactMarkdown>
                 )}
               </div>
             )}

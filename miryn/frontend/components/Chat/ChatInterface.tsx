@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
-import type { Message, ConversationInsights, ToolRun, Notification } from "@/lib/types";
+import { useChatStore } from "@/lib/store";
+import type { Message, ToolRun, Notification } from "@/lib/types";
 import { getErrorMessage } from "@/lib/utils";
 import MessageBubble from "./MessageBubble";
 import InputBox from "./InputBox";
@@ -16,29 +17,49 @@ const ToolPanel = dynamic(() => import("./ToolPanel"));
 const NotificationsPanel = dynamic(() => import("./NotificationsPanel"));
 
 export default function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(false);
+  const {
+    messages,
+    loading,
+    streaming,
+    conversationId,
+    status,
+    insights,
+    conflicts,
+    pendingTools,
+    notifications,
+    secondaryPanelsReady,
+    streamingIndex,
+    setMessages,
+    appendMessage,
+    updateStreamingMessage,
+    setLoading,
+    setStreaming,
+    setConversationId,
+    setStatus,
+    setInsights,
+    setConflicts,
+    setPendingTools,
+    setNotifications,
+    setSecondaryPanelsReady,
+    setStreamingIndex,
+  } = useChatStore();
+
   const searchParams = useSearchParams();
   const idFromUrl = searchParams.get("id");
-  const [conversationId, setConversationId] = useState<string | null>(idFromUrl);
-  const [status, setStatus] = useState<string | null>(null);
-  const [insights, setInsights] = useState<ConversationInsights | null>(null);
-  const [conflicts, setConflicts] = useState<Array<{ statement: string; conflict_with: string; severity?: number }>>([]);
-  const [pendingTools, setPendingTools] = useState<ToolRun[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [secondaryPanelsReady, setSecondaryPanelsReady] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const streamingIndexRef = useRef<number | null>(null);
   const chunkBufferRef = useRef("");
   const animationFrameRef = useRef<number | null>(null);
-  const [streaming, setStreaming] = useState(false);
 
   useEffect(() => {
     api.loadToken();
   }, []);
 
   useEffect(() => {
+    setInsights(null);
+    setConflicts([]);
+    setSecondaryPanelsReady(false);
+    setStatus(null);
     if (idFromUrl) {
       setConversationId(idFromUrl);
       setLoading(true);
@@ -48,26 +69,25 @@ export default function ChatInterface() {
           setLoading(false);
         })
         .catch((err) => {
-          setStatus(getErrorMessage(err, "Failed to load chat history"));
+          setStatus(getErrorMessage(err, "Failed to load reflection history."));
           setLoading(false);
         });
     } else {
       setConversationId(null);
       setMessages([]);
-      setInsights(null);
-      setConflicts([]);
     }
-  }, [idFromUrl]);
+  }, [idFromUrl, setConflicts, setConversationId, setInsights, setLoading, setMessages, setSecondaryPanelsReady, setStatus]);
 
   useEffect(() => {
-    let timeoutId: number | null = null;
+    if (messages.length === 0) return;
     let idleId: number | null = null;
-
-    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      idleId = window.requestIdleCallback(() => setSecondaryPanelsReady(true), { timeout: 1200 });
-    } else {
-      timeoutId = (window as any).setTimeout(() => setSecondaryPanelsReady(true), 500);
-    }
+    const timeoutId = window.setTimeout(() => {
+      if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+        idleId = window.requestIdleCallback(() => setSecondaryPanelsReady(true));
+      } else {
+        setSecondaryPanelsReady(true);
+      }
+    }, 2000);
 
     return () => {
       if (timeoutId !== null) window.clearTimeout(timeoutId);
@@ -75,13 +95,13 @@ export default function ChatInterface() {
         window.cancelIdleCallback(idleId);
       }
     };
-  }, []);
+  }, [messages.length, setSecondaryPanelsReady]);
 
   useEffect(() => {
     if (!secondaryPanelsReady) return;
     api.listPendingTools().then((tools) => setPendingTools((tools as ToolRun[]) || [])).catch(() => null);
     api.listNotifications().then((notes) => setNotifications((notes as Notification[]) || [])).catch(() => null);
-  }, [secondaryPanelsReady]);
+  }, [secondaryPanelsReady, setPendingTools, setNotifications]);
 
   useEffect(() => {
     if (!secondaryPanelsReady) return;
@@ -100,13 +120,12 @@ export default function ChatInterface() {
           setNotifications((prev) => [note, ...prev]);
         }
       } catch {
-        return;
+        // ignore
       }
     };
 
-    source.onerror = () => source.close();
     return () => source.close();
-  }, [secondaryPanelsReady]);
+  }, [secondaryPanelsReady, setInsights, setConflicts, setNotifications]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -124,23 +143,12 @@ export default function ChatInterface() {
     };
   }, []);
 
-  const appendMessage = useCallback((message: Message) => {
-    setMessages((prev) => [...prev, message]);
-  }, []);
-
   const flushChunkBuffer = useCallback(() => {
     if (!chunkBufferRef.current) return;
     const toApply = chunkBufferRef.current;
     chunkBufferRef.current = "";
-    setMessages((prev) => {
-      const next = [...prev];
-      const idx = streamingIndexRef.current;
-      if (idx !== null && next[idx]) {
-        next[idx] = { ...next[idx], content: `${next[idx].content}${toApply}` };
-      }
-      return next;
-    });
-  }, []);
+    updateStreamingMessage(toApply);
+  }, [updateStreamingMessage]);
 
   const sendMessage = async (rawMessage: string) => {
     const trimmed = rawMessage.trim();
@@ -156,6 +164,7 @@ export default function ChatInterface() {
 
     try {
       const assistantTimestamp = new Date().toISOString();
+      let nextIndex = 0;
       setMessages((prev) => {
         const next = [
           ...prev,
@@ -165,9 +174,10 @@ export default function ChatInterface() {
             timestamp: assistantTimestamp,
           },
         ];
-        streamingIndexRef.current = next.length - 1;
+        nextIndex = next.length - 1;
         return next;
       });
+      setStreamingIndex(nextIndex);
 
       for await (const event of api.streamMessage(trimmed, conversationId || undefined)) {
         if (event.error) throw new Error(event.error);
@@ -186,7 +196,7 @@ export default function ChatInterface() {
           completed = true;
           setLoading(false);
           setStreaming(false);
-          streamingIndexRef.current = null;
+          setStreamingIndex(null);
           break;
         }
       }
@@ -196,7 +206,7 @@ export default function ChatInterface() {
       const errorMessage = getErrorMessage(error, "An error occurred during calibration.");
       setMessages((prev) => {
         const next = [...prev];
-        const idx = streamingIndexRef.current;
+        const idx = useChatStore.getState().streamingIndex;
         if (idx !== null && next[idx]) {
           next[idx] = { ...next[idx], role: "system", content: errorMessage };
           return next;
@@ -207,7 +217,7 @@ export default function ChatInterface() {
       setStatus(errorMessage);
       setLoading(false);
       setStreaming(false);
-      streamingIndexRef.current = null;
+      setStreamingIndex(null);
     }
   };
 
@@ -247,10 +257,8 @@ export default function ChatInterface() {
 
   return (
     <div className="flex flex-col h-screen bg-void overflow-hidden font-ui relative">
-      {/* Background ambient glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[400px] bg-accent/[0.05] blur-[150px] pointer-events-none -z-10" />
 
-      {/* Header */}
       <header className="px-10 py-8 flex items-center justify-between shrink-0 relative z-20 border-b border-white/[0.04] bg-[#0f0f17]/80 backdrop-blur-xl">
         <div className="flex items-center gap-6">
           <div className="flex flex-col">
@@ -281,7 +289,6 @@ export default function ChatInterface() {
         </div>
       </header>
 
-      {/* Error Bar */}
       <AnimatePresence>
         {status && (
           <motion.div 
@@ -299,7 +306,6 @@ export default function ChatInterface() {
         )}
       </AnimatePresence>
 
-      {/* Reflective Canvas (Messages Area) */}
       <div className="flex-1 overflow-y-auto px-6 py-12 custom-scrollbar relative">
         <div className="max-w-3xl mx-auto w-full">
           {messages.length === 0 && !loading && (
@@ -314,7 +320,7 @@ export default function ChatInterface() {
               </div>
               <h2 className="text-5xl md:text-6xl font-bold tracking-tight text-primary mb-8">The Mirror is Ready.</h2>
               <p className="text-2xl editorial-italic text-muted max-w-xl mb-20 leading-relaxed">
-                "What we notice about ourselves is the beginning of who we can become."
+                &quot;What we notice about ourselves is the beginning of who we can become.&quot;
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
@@ -343,7 +349,7 @@ export default function ChatInterface() {
               <MessageBubble
                 key={`${msg.timestamp}-${idx}`}
                 message={msg}
-                isStreaming={streaming && idx === streamingIndexRef.current}
+                isStreaming={streaming && idx === streamingIndex}
               />
             ))}
           </div>
@@ -365,9 +371,7 @@ export default function ChatInterface() {
         </div>
       </div>
 
-      {/* Floating Insight Area & Input */}
       <div className="shrink-0 relative z-20">
-        {/* Subtle top gradient to separate messages from input */}
         <div className="absolute bottom-full left-0 w-full h-32 bg-gradient-to-t from-[#09090e] to-transparent pointer-events-none" />
         
         <div className="max-w-4xl mx-auto w-full px-6 pb-10">

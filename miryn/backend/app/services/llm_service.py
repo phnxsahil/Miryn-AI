@@ -166,11 +166,14 @@ class LLMService:
         - You are honest, empathetic, and reflective
         - You ask thoughtful follow-up questions
 
+
         Formatting requirements:
-        - Use short paragraphs with blank lines (avoid a wall of text).
-        - Use bullet points or numbered steps when helpful.
-        - Add 2-4 clear section headings (plain text is fine).
-        - If the user asks for medical/health advice, include a brief safety note and suggest professional help when appropriate.
+        - Keep your response **extremely concise** and highly direct. DO NOT write long paragraphs.
+        - Avoid unnecessary pleasantries or overly verbose explanations.
+        - Answer directly, maintaining a conversational, insightful tone.
+        - Use markdown formatting (like bold, bullet points, or code blocks) only when strictly necessary for clarity.
+        - Only ask ONE thoughtful follow-up question per response, and make sure it is directly relevant.
+        - If the user asks for medical/health advice, include a brief safety note and suggest professional help.
         """
 
         return await self.generate(
@@ -194,11 +197,14 @@ class LLMService:
         - You are honest, empathetic, and reflective
         - You ask thoughtful follow-up questions
 
+
         Formatting requirements:
-        - Use short paragraphs with blank lines (avoid a wall of text).
-        - Use bullet points or numbered steps when helpful.
-        - Add 2-4 clear section headings (plain text is fine).
-        - If the user asks for medical/health advice, include a brief safety note and suggest professional help when appropriate.
+        - Keep your response **extremely concise** and highly direct. DO NOT write long paragraphs.
+        - Avoid unnecessary pleasantries or overly verbose explanations.
+        - Answer directly, maintaining a conversational, insightful tone.
+        - Use markdown formatting (like bold, bullet points, or code blocks) only when strictly necessary for clarity.
+        - Only ask ONE thoughtful follow-up question per response, and make sure it is directly relevant.
+        - If the user asks for medical/health advice, include a brief safety note and suggest professional help.
         """
 
         if self.provider == "openai":
@@ -353,15 +359,16 @@ class LLMService:
         CONVERSATION BEHAVIORS:
         {behaviors}
 
+
         Your purpose is to:
         1. Remember everything the user shares
         2. Notice patterns in their behavior and emotions
         3. Reflect insights back to them gently
-        4. Be honest, not just supportive
-        5. Ask thoughtful questions
+        4. Be honest, direct, and completely avoid fluff
+        5. Ask ONE thoughtful question at the end to prompt reflection
 
-        Speak naturally, like a thoughtful friend who truly knows them.
-        """
+        Speak naturally, like a thoughtful, sharp friend who truly knows them. Avoid sounding like a generic AI or a therapist.
+                """
 
         return prompt
 
