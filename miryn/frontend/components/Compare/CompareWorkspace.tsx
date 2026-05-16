@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Download, RefreshCw, UserRound, Copy, ArrowRightLeft, TrendingUp, BarChart3, Fingerprint, Layers, Sparkles, Shield, ChevronRight, Activity } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { ArrowRightLeft, TrendingUp, Fingerprint, Layers, Sparkles, Shield, ChevronRight, Activity } from "lucide-react";
+import { motion } from "framer-motion";
 
 import { api } from "@/lib/api";
 import type { ComparePayload, CompareReport, DemoPersonaCard } from "@/lib/types";
