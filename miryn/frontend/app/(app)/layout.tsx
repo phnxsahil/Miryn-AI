@@ -17,6 +17,7 @@ export default function AppLayout({
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [user, setUser] = useState<{ email?: string; first_name?: string } | null>(null);
 
@@ -58,6 +59,14 @@ export default function AppLayout({
       mounted = false;
     };
   }, [router]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const updateViewport = () => setIsMobile(mediaQuery.matches);
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
 
   if (!authChecked) {
     return (
@@ -110,8 +119,8 @@ export default function AppLayout({
       <motion.aside
         initial={false}
         animate={{
-          width: isMenuOpen ? 260 : isDesktopSidebarOpen ? 260 : 0,
-          x: isMenuOpen ? 0 : isDesktopSidebarOpen ? 0 : -260
+          width: isMobile ? 260 : isDesktopSidebarOpen ? 260 : 0,
+          x: isMobile ? (isMenuOpen ? 0 : -260) : 0,
         }}
         transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
         className={`

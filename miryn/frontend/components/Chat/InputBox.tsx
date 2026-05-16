@@ -39,8 +39,10 @@ export default function InputBox({
       >
         <button
           type="button"
-          className="p-2 ml-1 text-dim hover:text-primary transition-colors rounded-full"
-          disabled={disabled}
+          className="p-2 ml-1 text-dim/50 rounded-full cursor-not-allowed"
+          disabled
+          aria-label="Attachments coming soon"
+          title="Attachments coming soon"
         >
           <Paperclip size={20} />
         </button>

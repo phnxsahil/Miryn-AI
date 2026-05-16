@@ -56,6 +56,10 @@ export default function ChatInterface() {
   }, []);
 
   useEffect(() => {
+    setInsights(null);
+    setConflicts([]);
+    setSecondaryPanelsReady(false);
+    setStatus(null);
     if (idFromUrl) {
       setConversationId(idFromUrl);
       setLoading(true);
@@ -72,7 +76,7 @@ export default function ChatInterface() {
       setConversationId(null);
       setMessages([]);
     }
-  }, [idFromUrl, setConversationId, setLoading, setMessages, setStatus]);
+  }, [idFromUrl, setConflicts, setConversationId, setInsights, setLoading, setMessages, setSecondaryPanelsReady, setStatus]);
 
   useEffect(() => {
     if (messages.length === 0) return;

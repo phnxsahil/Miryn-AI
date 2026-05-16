@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import typography from "@tailwindcss/typography";
 
 const config: Config = {
   content: [
@@ -11,7 +12,11 @@ const config: Config = {
       colors: {
         void: "#0a0a0f",
         card: "#12121a",
-        accent: "#c8b8ff",
+        surface: "#0f0f17",
+        accent: {
+          DEFAULT: "#c8b8ff",
+          beta: "#5c5280",
+        },
         primary: "#ede9ff",
         dim: "#8b89a3",
         muted: "#4a4868",
@@ -32,7 +37,7 @@ const config: Config = {
     },
   },
   plugins: [
-    require('@tailwindcss/typography'),
+    typography,
   ],
 };
 
