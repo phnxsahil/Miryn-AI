@@ -249,8 +249,6 @@ class IdentityEngine:
         else:
             with get_sql_session() as new_session: yield new_session
 
-    # ... rest of methods (omitted for brevity in this rewrite, but I'll add them if needed)
-    # Actually I should include all methods to avoid breaking things.
     def record_belief(self, user_id: str, topic: str, belief: str, confidence: float):
         current = self.get_identity(user_id)
         beliefs = current.get("beliefs", [])
@@ -296,6 +294,95 @@ class IdentityEngine:
             "base_version": current.get("version", 0),
         }
 
-    def _insert_identity_supabase(self, user_id, merged, updates):
-        # Implementation omitted for brevity, assuming Supabase is not used in demo
-        pass
+    def _log_identity_evolution_supabase(
+        self,
+        user_id: str,
+        identity_id: str,
+        previous: Dict,
+        current: Dict,
+        trigger_type: str,
+    ) -> None:
+        if not self.supabase:
+            return
+
+        fields = [
+            "state", "traits", "values", "beliefs", "open_loops",
+            "patterns", "emotions", "conflicts", "preset", "memory_weights",
+        ]
+
+        logs = []
+        for field in fields:
+            old_value = previous.get(field)
+            new_value = current.get(field)
+            if old_value == new_value:
+                continue
+            logs.append({
+                "user_id": user_id,
+                "identity_id": identity_id,
+                "field_changed": field,
+                "old_value": json.dumps(old_value, default=str),
+                "new_value": json.dumps(new_value, default=str),
+                "trigger_type": trigger_type,
+            })
+
+        if logs:
+            self.supabase.table("identity_evolution_log").insert(logs).execute()
+
+    def _insert_identity_supabase(self, user_id: str, merged: Dict, updates: Dict) -> Dict:
+        if not self.supabase:
+            raise RuntimeError("Supabase client is not configured")
+        attempts = 0
+        while attempts < 3:
+            attempts += 1
+            version = merged.get("base_version", 0) + 1
+
+            previous_response = (
+                self.supabase.table("identities")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("version", desc=True)
+                .limit(1)
+                .execute()
+            )
+            previous_identity = self._hydrate_identity(previous_response.data[0]) if previous_response.data else {}
+
+            payload = {
+                "user_id": user_id,
+                "version": version,
+                "state": merged["state"],
+                "traits": merged["traits"],
+                "values": merged["values"],
+                "beliefs": merged["beliefs"],
+                "open_loops": merged["open_loops"],
+                "preset": merged.get("preset"),
+                "memory_weights": merged.get("memory_weights", {}),
+            }
+            try:
+                response = self.supabase.table("identities").insert(payload).execute()
+                if not response.data:
+                    raise RuntimeError("Supabase response missing identity data")
+                identity = response.data[0]
+                identity_id = identity.get("id")
+                if identity_id:
+                    self.beliefs.replace(user_id, identity_id, merged.get("beliefs", []))
+                    self.open_loops.replace(user_id, identity_id, merged.get("open_loops", []))
+                    self.patterns.replace(user_id, identity_id, merged.get("patterns", []))
+                    self.emotions.replace(user_id, identity_id, merged.get("emotions", []))
+                    self.conflicts.replace(user_id, identity_id, merged.get("conflicts", []))
+
+                    self._log_identity_evolution_supabase(
+                        user_id=user_id,
+                        identity_id=identity_id,
+                        previous=previous_identity,
+                        current=merged,
+                        trigger_type="update_identity",
+                    )
+                return self._hydrate_identity(identity)
+            except Exception as exc:
+                message = str(exc).lower()
+                if "duplicate" not in message or attempts >= 3:
+                    raise
+                current = self.get_identity(user_id)
+                merged = self._merge_identity(current, updates)
+
+        raise RuntimeError("Failed to insert identity after retries")

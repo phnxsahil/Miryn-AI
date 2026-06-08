@@ -14,6 +14,7 @@ from app.core.cache import redis_client
 from app.services.ds_service import ds_service
 from app.api import auth, chat, identity, onboarding, llm, notifications, tools, memory, import_data
 from app.api.analytics import router as analytics_router
+from app.api.memory_ranking import router as memory_ranking_router
 from app.core.rate_limit import RateLimitMiddleware
 
 logging.basicConfig(
@@ -44,6 +45,7 @@ if settings.FRONTEND_URL and settings.FRONTEND_URL.strip():
 if settings.BACKEND_URL and settings.BACKEND_URL.strip():
     allow_origins.append(settings.BACKEND_URL.strip().rstrip("/"))
 
+
 allow_origins.extend([
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -55,7 +57,6 @@ allow_origins.extend([
 allow_origins = list(dict.fromkeys(allow_origins))
 
 app.add_middleware(RateLimitMiddleware)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
@@ -74,6 +75,7 @@ app.include_router(tools.router)
 app.include_router(memory.router)
 app.include_router(import_data.router)
 app.include_router(analytics_router)
+app.include_router(memory_ranking_router)
 
 
 @app.on_event("startup")
@@ -120,13 +122,6 @@ async def request_logging_middleware(request: Request, call_next):
 async def unhandled_exception_handler(request: Request, exc: Exception):
     """
     Handle uncaught exceptions by returning a 500 JSON response and preserve CORS headers when the request origin is allowed.
-
-    Parameters:
-        request (Request): The incoming HTTP request; its Origin header is inspected to determine CORS headers.
-        exc (Exception): The exception instance that was raised.
-
-    Returns:
-        JSONResponse: HTTP response with status code 500 and body {"detail": "Internal server error"}. If the request Origin is in the application's allowed origins, the response includes `Access-Control-Allow-Origin` and `Access-Control-Allow-Credentials` headers.
     """
     logger.exception(
         "Unhandled exception request_id=%s method=%s path=%s",
