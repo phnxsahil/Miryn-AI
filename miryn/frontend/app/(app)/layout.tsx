@@ -19,9 +19,8 @@ export default function AppLayout({
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const [user, setUser] = useState<{ email?: string; first_name?: string } | null>(null);
+  const [user, setUser] = useState<{ email?: string; full_name?: string | null } | null>(null);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const chatLoading = useChatStore((state) => state.loading);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
@@ -91,14 +90,6 @@ export default function AppLayout({
     };
   }, []);
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 767px)");
-    const updateViewport = () => setIsMobile(mediaQuery.matches);
-    updateViewport();
-    mediaQuery.addEventListener("change", updateViewport);
-    return () => mediaQuery.removeEventListener("change", updateViewport);
-  }, []);
-
   if (!authChecked) {
     return <LoadingState label="Initializing your account..." />;
   }
@@ -106,7 +97,7 @@ export default function AppLayout({
   return (
     <div className="h-[100dvh] bg-[color:var(--theme-bg)] text-[color:var(--theme-text)] flex flex-col md:flex-row font-ui overflow-hidden">
       {/* Mobile Header */}
-      <header className="md:hidden border-b border-[color:var(--theme-border)] p-4 flex items-center justify-between sticky top-0 bg-[color-mix(in_srgb,var(--theme-bg)_90%,transparent)] backdrop-blur-xl z-40">
+      <header className="md:hidden border-b border-[color:var(--theme-border)] px-3 py-2 flex items-center justify-between bg-[color:var(--theme-bg)] z-40">
         <button
           onClick={toggleMenu}
           className="p-2 text-[color:var(--theme-dim)] hover:text-[color:var(--theme-text)] transition-colors"
@@ -114,7 +105,7 @@ export default function AppLayout({
         >
           {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
-        <div className="text-lg font-semibold tracking-tight text-[color:var(--theme-accent-strong)]">Miryn</div>
+        <div className="text-base font-semibold tracking-tight text-[color:var(--theme-text)]">Miryn</div>
         <button
           onClick={createConversation}
           disabled={chatLoading}
@@ -137,19 +128,12 @@ export default function AppLayout({
       )}
 
       {/* Sidebar */}
-      <motion.aside
-        initial={false}
-        animate={{
-          width: isMobile ? 292 : isDesktopSidebarOpen ? 292 : 0,
-          x: isMobile ? (isMenuOpen ? 0 : -292) : 0,
-        }}
-        transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+      <aside
         className={`
-          fixed inset-y-0 left-0 z-50 flex flex-col
-          bg-[color:var(--theme-sidebar)] border-r border-[color:var(--theme-sidebar-border)]
-          md:relative md:translate-x-0
-          ${isMenuOpen ? "translate-x-0 w-[292px]" : "-translate-x-full md:translate-x-0"}
-          ${!isDesktopSidebarOpen && "md:hidden"}
+          fixed inset-y-0 left-0 z-50 flex w-[292px] flex-col bg-[color:var(--theme-sidebar)] transition-transform duration-200
+          md:relative md:translate-x-0 md:transition-none
+          ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}
+          ${!isDesktopSidebarOpen ? "md:hidden" : "md:flex"}
         `}
       >
         {/* Top Actions Area */}
@@ -182,10 +166,10 @@ export default function AppLayout({
           <nav className="space-y-1 mt-2">
             {[
               { href: "/chat", icon: MessageSquare, label: "Chat" },
-              { href: "/identity", icon: Fingerprint, label: "Identity Layer" },
-              { href: "/memory", icon: Archive, label: "Memory Bank" },
-              { href: "/sanctuary", icon: HeartPulse, label: "Mind Sanctuary" },
-              { href: "/onboarding", icon: Layers, label: "Calibration" },
+              { href: "/identity", icon: Fingerprint, label: "Identity" },
+              { href: "/memory", icon: Archive, label: "Memory" },
+              { href: "/sanctuary", icon: HeartPulse, label: "Sanctuary" },
+              { href: "/onboarding", icon: Layers, label: "Getting started" },
               { href: "/settings", icon: Settings, label: "Settings" },
             ].map((item) => (
               <Link key={item.href} href={item.href} onClick={closeMenu} className={navLinkClass(item.href)}>
@@ -220,16 +204,16 @@ export default function AppLayout({
           )}
           <button type="button" aria-label="Account menu" aria-expanded={isAccountMenuOpen} onClick={() => setIsAccountMenuOpen((open) => !open)} className="group flex w-full items-center gap-3 rounded-lg p-2 text-left transition-all hover:bg-[color:var(--theme-overlay)]">
             <div className="flex h-8 w-8 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-sm font-bold text-accent">
-              {user?.first_name?.trim()?.[0] || user?.email?.trim()?.[0]?.toUpperCase() || "M"}
+              {user?.full_name?.trim()?.[0]?.toUpperCase() || user?.email?.trim()?.[0]?.toUpperCase() || "M"}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-primary">{user?.first_name || "User"}</div>
+              <div className="truncate text-sm font-medium text-primary">{user?.full_name || user?.email || "Account"}</div>
               <div className="truncate text-[11px] text-[color:var(--theme-dim)]">Account</div>
             </div>
             <User size={16} className="text-[color:var(--theme-dim)] transition-colors group-hover:text-[color:var(--theme-text)]" />
           </button>
         </div>
-      </motion.aside>
+      </aside>
 
       {/* Mobile Backdrop */}
       <AnimatePresence>
@@ -245,8 +229,8 @@ export default function AppLayout({
       </AnimatePresence>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-w-0 relative flex flex-col h-screen overflow-hidden bg-[color:var(--theme-bg)]">
-        <div className="flex-1 overflow-y-auto relative z-10 w-full h-full">
+      <main className="flex-1 min-h-0 min-w-0 relative flex flex-col overflow-hidden bg-[color:var(--theme-bg)]">
+        <div className="flex-1 min-h-0 overflow-y-auto relative z-10 w-full">
           {children}
         </div>
       </main>
