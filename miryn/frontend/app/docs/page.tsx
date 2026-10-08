@@ -81,25 +81,25 @@ const FEATURES = [
 
 export default function DocsPage() {
   return (
-    <div className="min-h-screen bg-[#0d0d11] text-[#e8e8ec] font-sans antialiased selection:bg-[#D69155]/20 selection:text-[#D69155]">
+    <div className="min-h-screen bg-[color:var(--theme-bg)] text-[color:var(--theme-text)] font-ui antialiased selection:bg-[color:var(--theme-accent)]/20 selection:text-[color:var(--theme-accent)]">
       {/* Top Navbar */}
-      <nav className="sticky top-0 z-20 border-b border-white/[0.06] bg-[#0d0d11]/90 backdrop-blur-md">
+      <nav className="sticky top-0 z-20 border-b border-[color:var(--theme-border)] bg-[color-mix(in_srgb,var(--theme-bg)_90%,transparent)] backdrop-blur-md">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-[#707080] hover:text-[#e8e8ec] transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--theme-muted)] hover:text-[color:var(--theme-text)] transition-colors"
             >
               <ArrowLeft size={13} />
               <span>Landing</span>
             </Link>
-            <span className="text-[#303040]">/</span>
-            <span className="text-xs font-semibold text-[#e8e8ec] tracking-wide">Documentation</span>
+            <span className="text-[color:var(--theme-dim)]">/</span>
+            <span className="text-xs font-semibold text-[color:var(--theme-text)] tracking-wide">Documentation</span>
           </div>
           <div className="flex items-center gap-3">
             <Link
               href="/chat"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#D69155] hover:bg-[#E8A870] text-[#0d0d11] font-semibold text-xs rounded-xl transition-all shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[color:var(--theme-accent)] hover:bg-[color:var(--theme-accent-strong)] text-[color:var(--theme-accent-contrast)] font-semibold text-xs rounded-full transition-all shadow-sm"
             >
               <span>Launch App</span>
               <ArrowRight size={13} />
@@ -112,14 +112,14 @@ export default function DocsPage() {
       <div className="max-w-5xl mx-auto px-6 py-12 flex flex-col lg:flex-row gap-12">
         {/* Sidebar TOC */}
         <aside className="hidden lg:flex flex-col gap-1 w-52 shrink-0 sticky top-24 self-start">
-          <p className="text-[10px] font-mono uppercase tracking-widest text-[#505060] mb-3">Sections</p>
+          <p className="text-[10px] font-mono uppercase tracking-widest text-[color:var(--theme-dim)] mb-3">Sections</p>
           {FEATURES.map((f) => {
             const Icon = f.icon;
             return (
               <a
                 key={f.slug}
                 href={`#${f.slug}`}
-                className="flex items-center gap-2.5 text-xs text-[#707080] hover:text-[#D69155] transition-colors py-2 px-2.5 rounded-lg hover:bg-white/[0.03]"
+                className="flex items-center gap-2.5 text-xs text-[color:var(--theme-muted)] hover:text-[color:var(--theme-accent)] transition-colors py-2 px-2.5 rounded-lg hover:bg-[color:var(--theme-overlay)]"
               >
                 <Icon size={14} className="shrink-0" />
                 <span className="truncate">{f.name}</span>
@@ -132,13 +132,13 @@ export default function DocsPage() {
         <main className="flex-1 space-y-16">
           {/* Header */}
           <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#D69155]/10 border border-[#D69155]/20 text-[#D69155] text-[11px] font-mono">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[color:var(--theme-accent)]/10 border border-[color:var(--theme-accent)]/20 text-[color:var(--theme-accent)] text-[11px] font-mono">
               <span>Miryn AI Documentation</span>
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-[#f0f0f4]">
+            <h1 className="text-3xl font-normal tracking-tight text-[color:var(--theme-text)]">
               How Miryn Works
             </h1>
-            <p className="text-sm text-[#808090] leading-relaxed max-w-2xl">
+            <p className="text-sm text-[color:var(--theme-muted)] leading-relaxed max-w-2xl">
               Miryn is an AI companion built on persistent memory and an evolving identity model. 
               Unlike conventional stateless chat interfaces, Miryn constructs a longitudinal understanding 
               of your goals, values, patterns, and conversations with end-to-end user data sovereignty.
@@ -146,35 +146,35 @@ export default function DocsPage() {
           </div>
 
           {/* Architecture Cards */}
-          <div className="bg-[#121219] border border-white/[0.07] rounded-2xl p-6 space-y-5">
-            <h2 className="text-xs font-mono uppercase tracking-widest text-[#505060]">Architecture Foundations</h2>
+          <div className="bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-2xl p-6 space-y-5">
+            <h2 className="text-xs font-mono uppercase tracking-widest text-[color:var(--theme-dim)]">Architecture Foundations</h2>
             <div className="grid sm:grid-cols-3 gap-4">
-              <div className="space-y-2 p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                <div className="flex items-center gap-2 text-[#D69155]">
+              <div className="space-y-2 p-3.5 rounded-xl bg-[color:var(--theme-overlay)] border border-[color:var(--theme-border)]">
+                <div className="flex items-center gap-2 text-[color:var(--theme-accent)]">
                   <Database size={15} />
-                  <p className="text-xs font-semibold text-[#e8e8ec]">3-Tier Memory</p>
+                  <p className="text-xs font-semibold text-[color:var(--theme-text)]">3-Tier Memory</p>
                 </div>
-                <p className="text-xs text-[#606070] leading-relaxed">
+                <p className="text-xs text-[color:var(--theme-muted)] leading-relaxed">
                   Transient (session) → Episodic (7-day rolling) → Core (permanent). Context is curated automatically.
                 </p>
               </div>
 
-              <div className="space-y-2 p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                <div className="flex items-center gap-2 text-[#2dd4bf]">
+              <div className="space-y-2 p-3.5 rounded-xl bg-[color:var(--theme-overlay)] border border-[color:var(--theme-border)]">
+                <div className="flex items-center gap-2 text-[color:var(--theme-accent)]">
                   <Cpu size={15} />
-                  <p className="text-xs font-semibold text-[#e8e8ec]">Identity Engine</p>
+                  <p className="text-xs font-semibold text-[color:var(--theme-text)]">Identity Engine</p>
                 </div>
-                <p className="text-xs text-[#606070] leading-relaxed">
+                <p className="text-xs text-[color:var(--theme-muted)] leading-relaxed">
                   Immutable, versioned identity states track core beliefs, open loops, and cognitive habits over time.
                 </p>
               </div>
 
-              <div className="space-y-2 p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                <div className="flex items-center gap-2 text-[#a78bfa]">
+              <div className="space-y-2 p-3.5 rounded-xl bg-[color:var(--theme-overlay)] border border-[color:var(--theme-border)]">
+                <div className="flex items-center gap-2 text-[color:var(--theme-accent)]">
                   <ShieldCheck size={15} />
-                  <p className="text-xs font-semibold text-[#e8e8ec]">Encrypted at Rest</p>
+                  <p className="text-xs font-semibold text-[color:var(--theme-text)]">Encrypted at Rest</p>
                 </div>
-                <p className="text-xs text-[#606070] leading-relaxed">
+                <p className="text-xs text-[color:var(--theme-muted)] leading-relaxed">
                   Fernet encryption secures user messages. Full JSON data exports and account purge on demand.
                 </p>
               </div>
@@ -188,29 +188,29 @@ export default function DocsPage() {
               return (
                 <section key={feature.slug} id={feature.slug} className="scroll-mt-24 space-y-5">
                   <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-[#D69155]/10 border border-[#D69155]/20 flex items-center justify-center shrink-0 text-[#D69155] mt-1">
+                    <div className="w-10 h-10 rounded-xl bg-[color:var(--theme-accent)]/10 border border-[color:var(--theme-accent)]/20 flex items-center justify-center shrink-0 text-[color:var(--theme-accent)] mt-1">
                       <Icon size={18} />
                     </div>
                     <div>
-                      <span className="text-[10px] font-mono uppercase tracking-widest text-[#505060]">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-[color:var(--theme-dim)]">
                         0{index + 1} / 0{FEATURES.length}
                       </span>
-                      <h2 className="text-lg font-semibold text-[#e8e8ec] mt-0.5">{feature.name}</h2>
-                      <p className="text-xs text-[#D69155] mt-0.5">{feature.tagline}</p>
+                      <h2 className="text-lg font-normal text-[color:var(--theme-text)] mt-0.5">{feature.name}</h2>
+                      <p className="text-xs text-[color:var(--theme-accent)] mt-0.5">{feature.tagline}</p>
                     </div>
                   </div>
 
-                  <p className="text-sm text-[#808090] leading-relaxed max-w-2xl">{feature.desc}</p>
+                  <p className="text-sm text-[color:var(--theme-muted)] leading-relaxed max-w-2xl">{feature.desc}</p>
 
-                  <div className="bg-[#121219] border border-white/[0.07] rounded-2xl p-5 space-y-3">
-                    <p className="text-[11px] font-mono uppercase tracking-wider text-[#505060]">Workflow Guide</p>
+                  <div className="bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-2xl p-5 space-y-3">
+                    <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)]">Workflow Guide</p>
                     <ol className="space-y-2.5">
                       {feature.steps.map((step, i) => (
                         <li key={i} className="flex items-start gap-3">
-                          <span className="w-5 h-5 rounded-full bg-[#D69155]/10 border border-[#D69155]/20 text-[#D69155] text-[10px] font-mono flex items-center justify-center shrink-0 mt-0.5">
+                          <span className="w-5 h-5 rounded-full bg-[color:var(--theme-accent)]/10 border border-[color:var(--theme-accent)]/20 text-[color:var(--theme-accent)] text-[10px] font-mono flex items-center justify-center shrink-0 mt-0.5">
                             {i + 1}
                           </span>
-                          <p className="text-xs text-[#c0c0c8] leading-relaxed">{step}</p>
+                          <p className="text-xs text-[color:var(--theme-muted)] leading-relaxed">{step}</p>
                         </li>
                       ))}
                     </ol>
@@ -221,11 +221,11 @@ export default function DocsPage() {
           </div>
 
           {/* Bottom CTA */}
-          <div className="text-center py-12 border-t border-white/[0.06] space-y-4">
-            <p className="text-sm text-[#808090]">Ready to experience companion AI with real memory?</p>
+          <div className="text-center py-12 border-t border-[color:var(--theme-border)] space-y-4">
+                  <p className="text-sm text-[color:var(--theme-muted)]">Ready to experience companion AI with real memory?</p>
             <Link
               href="/chat"
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#D69155] hover:bg-[#E8A870] text-[#0d0d11] font-semibold text-xs rounded-xl transition-all shadow-md"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-[color:var(--theme-accent)] hover:bg-[color:var(--theme-accent-strong)] text-[color:var(--theme-accent-contrast)] font-semibold text-xs rounded-full transition-all shadow-md"
             >
               <span>Open Miryn Workspace</span>
               <ArrowRight size={14} />

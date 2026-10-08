@@ -82,7 +82,7 @@ export default function ChatGPTImport({ onClose }: ChatGPTImportProps) {
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-lg overflow-hidden border bg-surface border-white/10 rounded-2xl shadow-2xl"
+        className="w-full max-w-lg overflow-hidden border bg-surface border-[color:var(--theme-border)] rounded-2xl shadow-2xl"
       >
         <div className="p-6 border-b border-white/5 flex justify-between items-center">
           <h2 className="text-xl font-light text-white">ChatGPT Data Import</h2>
@@ -135,7 +135,7 @@ export default function ChatGPTImport({ onClose }: ChatGPTImportProps) {
               >
                 <div
                   className={`relative border-2 border-dashed rounded-xl p-10 transition-colors flex flex-col items-center justify-center space-y-4 ${
-                    file ? "border-accent/50 bg-accent/5" : "border-white/10 hover:border-white/20"
+                    file ? "border-accent/50 bg-accent/5" : "border-[color:var(--theme-border)] hover:border-[color:var(--theme-border)]"
                   }`}
                 >
                   <input
@@ -160,7 +160,7 @@ export default function ChatGPTImport({ onClose }: ChatGPTImportProps) {
                 <div className="flex space-x-3">
                   <button
                     onClick={() => setStep("instructions")}
-                    className="flex-1 py-3 text-sm font-medium transition-all border rounded-full border-white/10 text-white hover:bg-white/5"
+                    className="flex-1 py-3 text-sm font-medium transition-all border rounded-full border-[color:var(--theme-border)] text-white hover:bg-white/5"
                   >
                     Back
                   </button>
@@ -216,7 +216,7 @@ export default function ChatGPTImport({ onClose }: ChatGPTImportProps) {
                 className="space-y-8 text-center"
               >
                 <div className="flex flex-col items-center space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-white/[0.03] flex items-center justify-center text-2xl text-dim border border-white/[0.06] border-500/20">
+                  <div className="w-16 h-16 rounded-full bg-[color:var(--theme-overlay)] flex items-center justify-center text-2xl text-dim border border-[color:var(--theme-border)] border-500/20">
                     ✓
                   </div>
                   <div className="space-y-1">

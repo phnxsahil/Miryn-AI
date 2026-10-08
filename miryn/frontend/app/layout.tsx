@@ -27,7 +27,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-[#0a0a0a] text-[#f5f5f5] font-sans antialiased selection:bg-[#a8bb94] selection:text-[#0a0a0a]">
+      <body className="font-ui antialiased selection:bg-[color:var(--theme-accent)] selection:text-[color:var(--theme-accent-contrast)]">
         <ThemeProvider>
           <PostHogProvider>{children}</PostHogProvider>
         </ThemeProvider>

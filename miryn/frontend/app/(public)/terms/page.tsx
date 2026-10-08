@@ -101,12 +101,12 @@ type Term = {
 
 export default function TermsOfService() {
   return (
-    <div className="min-h-dvh bg-[var(--miryn-warm-black)] font-ui text-[var(--text-primary)] antialiased">
-      <nav className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[var(--miryn-card-border)] bg-[rgba(11,12,9,0.9)] px-6 backdrop-blur lg:px-12">
+    <div className="min-h-dvh bg-[color:var(--miryn-warm-black)] font-ui text-[color:var(--text-primary)] antialiased">
+      <nav className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[color:var(--miryn-card-border)] bg-[rgba(11,12,9,0.9)] px-6 backdrop-blur lg:px-12">
         <Link href="/" className="rounded-sm transition-opacity hover:opacity-80">
           <MirynLogo size={22} showText isDark />
         </Link>
-        <Link href="/" className="text-[13px] text-[var(--miryn-parchment-muted)] transition-colors hover:text-[var(--miryn-parchment)]">
+        <Link href="/" className="text-[13px] text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">
           ← Back to home
         </Link>
       </nav>
@@ -115,18 +115,18 @@ export default function TermsOfService() {
         <header className="mb-12">
           <div className="mb-5 flex items-center gap-3">
             <span className="miryn-fragment">Legal</span>
-            <span aria-hidden="true" className="text-[var(--miryn-card-border)]">·</span>
+            <span aria-hidden="true" className="text-[color:var(--miryn-card-border)]">·</span>
             <span className="miryn-fragment">Terms of service</span>
           </div>
           <h1 className="text-[clamp(2rem,5vw,2.75rem)] leading-[1.1] tracking-tight" style={{ fontFamily: "var(--font-editorial)" }}>
             Clear terms.
             <br />
-            <span className="italic text-[var(--miryn-moss)]">No surprises.</span>
+            <span className="italic text-[color:var(--miryn-moss)]">No surprises.</span>
           </h1>
-          <p className="mt-4 max-w-[62ch] text-[15px] leading-relaxed text-[var(--miryn-parchment-muted)]">
+          <p className="mt-4 max-w-[62ch] text-[15px] leading-relaxed text-[color:var(--miryn-parchment-muted)]">
             By using Miryn, you agree to these terms. We&apos;ve written them in plain language, because clarity is respect.
           </p>
-          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[12px] text-[var(--text-dim)] font-mono">
+          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[12px] text-[color:var(--text-dim)] font-mono">
             {["Last updated: September 20, 2026", "Effective: September 20, 2026"].map((t) => (
               <span key={t}>{t}</span>
             ))}
@@ -135,25 +135,25 @@ export default function TermsOfService() {
 
         <div className="space-y-10">
           {(TERMS as Term[]).map((s) => (
-            <section key={s.id} className="border-t border-[var(--miryn-card-border)] pt-7">
+            <section key={s.id} className="border-t border-[color:var(--miryn-card-border)] pt-7">
               <div className="mb-4 flex items-baseline gap-4">
-                <span className="font-mono text-[11px] font-semibold text-[var(--miryn-moss)]">{s.id}</span>
-                <h2 className="text-[1.15rem] font-medium tracking-tight text-[var(--text-primary)]">{s.title}</h2>
+                <span className="font-mono text-[11px] font-semibold text-[color:var(--miryn-moss)]">{s.id}</span>
+                <h2 className="text-[1.15rem] font-medium tracking-tight text-[color:var(--text-primary)]">{s.title}</h2>
               </div>
 
               {s.content && (
                 <div className={`space-y-4 ${s.bullets ? "mb-4" : ""}`}>
                   {s.content.map((p, i) => (
-                    <p key={i} className="max-w-[68ch] text-[14.5px] leading-[1.8] text-[var(--miryn-parchment-muted)]">{p}</p>
+                    <p key={i} className="max-w-[68ch] text-[14.5px] leading-[1.8] text-[color:var(--miryn-parchment-muted)]">{p}</p>
                   ))}
                 </div>
               )}
 
               {s.callout && (
-                <div className="my-4 rounded-xl border border-[rgba(226,192,141,0.28)] bg-[rgba(226,192,141,0.07)] px-5 py-4">
-                  <p className="text-[14.5px] italic leading-[1.7] text-[#e2c08d]">&ldquo;{s.callout}&rdquo;</p>
+                <div className="my-4 rounded-xl border border-[color-mix(in_srgb,var(--theme-accent)_28%,transparent)] bg-[color-mix(in_srgb,var(--theme-accent)_7%,transparent)] px-5 py-4">
+                  <p className="text-[14.5px] italic leading-[1.7] text-[color:var(--theme-accent)]">&ldquo;{s.callout}&rdquo;</p>
                   {s.crisis && (
-                    <p className="mt-3 font-mono text-[12px] leading-relaxed text-[var(--miryn-parchment-muted)]">{s.crisis}</p>
+                    <p className="mt-3 font-mono text-[12px] leading-relaxed text-[color:var(--miryn-parchment-muted)]">{s.crisis}</p>
                   )}
                 </div>
               )}
@@ -161,8 +161,8 @@ export default function TermsOfService() {
               {s.bullets && (
                 <ul className="space-y-2">
                   {s.bullets.map((b) => (
-                    <li key={b} className="flex gap-3 text-[14.5px] leading-[1.7] text-[var(--miryn-parchment-muted)]">
-                      <span aria-hidden="true" className="shrink-0 text-[var(--miryn-card-border)]">—</span>
+                    <li key={b} className="flex gap-3 text-[14.5px] leading-[1.7] text-[color:var(--miryn-parchment-muted)]">
+                      <span aria-hidden="true" className="shrink-0 text-[color:var(--miryn-card-border)]">—</span>
                       {b}
                     </li>
                   ))}
@@ -174,21 +174,21 @@ export default function TermsOfService() {
 
         <div className="miryn-wall-card mt-14 p-6 sm:p-8">
           <p className="miryn-fragment mb-3">Agreement</p>
-          <p className="mb-2 text-[16px] font-medium text-[var(--text-primary)]">By using Miryn, you agree to these terms.</p>
-          <p className="text-[14px] leading-relaxed text-[var(--miryn-parchment-muted)]">
+          <p className="mb-2 text-[16px] font-medium text-[color:var(--text-primary)]">By using Miryn, you agree to these terms.</p>
+          <p className="text-[14px] leading-relaxed text-[color:var(--miryn-parchment-muted)]">
             Questions about these terms? Contact{" "}
-            <a href="mailto:legal@miryn.ai" className="text-[var(--miryn-moss)] underline underline-offset-4 hover:text-[var(--miryn-parchment)]">
+            <a href="mailto:legal@miryn.ai" className="text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
               legal@miryn.ai
             </a>
             . We respond within 5 business days.
           </p>
         </div>
 
-        <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--miryn-card-border)] pt-6">
-          <span className="text-[12px] text-[var(--text-dim)]">© 2026 Miryn Technologies, Inc.</span>
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--miryn-card-border)] pt-6">
+          <span className="text-[12px] text-[color:var(--text-dim)]">© 2026 Miryn Technologies, Inc.</span>
           <div className="flex gap-5 text-[12px]">
-            <Link href="/privacy" className="text-[var(--miryn-parchment-muted)] transition-colors hover:text-[var(--miryn-parchment)]">Privacy Policy</Link>
-            <Link href="/" className="text-[var(--miryn-parchment-muted)] transition-colors hover:text-[var(--miryn-parchment)]">Home</Link>
+            <Link href="/privacy" className="text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">Privacy Policy</Link>
+            <Link href="/" className="text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">Home</Link>
           </div>
         </div>
       </div>

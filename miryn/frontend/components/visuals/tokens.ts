@@ -12,20 +12,20 @@ export type VisualTone = "dark" | "light";
 
 /** Stroke color for the background-plane drawings. */
 export const INK: Record<VisualTone, string> = {
-  dark: "text-[var(--miryn-moss)]",
-  light: "text-[var(--miryn-olive)]",
+  dark: "text-[color:var(--miryn-moss)]",
+  light: "text-[color:var(--miryn-olive)]",
 };
 
 /** The surface the drawings sit on. */
 export const GROUND: Record<VisualTone, string> = {
-  dark: "bg-[var(--miryn-warm-black)]",
-  light: "bg-[var(--theme-bg)]",
+  dark: "bg-[color:var(--miryn-warm-black)]",
+  light: "bg-[color:var(--theme-bg)]",
 };
 
 /** Text color that belongs on that surface. */
 export const FOREGROUND: Record<VisualTone, string> = {
-  dark: "text-[var(--miryn-parchment)]",
-  light: "text-[var(--miryn-ink)]",
+  dark: "text-[color:var(--miryn-parchment)]",
+  light: "text-[color:var(--miryn-ink)]",
 };
 
 /**

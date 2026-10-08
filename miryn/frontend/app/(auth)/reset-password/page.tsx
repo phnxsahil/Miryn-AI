@@ -51,7 +51,7 @@ function ResetPasswordForm() {
     return (
       <div className="text-center space-y-4">
         <AuthError message="This reset link is incomplete or invalid." />
-        <Link href="/forgot-password" className="text-[var(--miryn-parchment)] hover:underline text-xs inline-block">
+        <Link href="/forgot-password" className="text-[color:var(--miryn-parchment)] hover:underline text-xs inline-block">
           Request a new reset link →
         </Link>
       </div>
@@ -61,14 +61,14 @@ function ResetPasswordForm() {
   if (success) {
     return (
       <div className="space-y-4 text-center" role="status" aria-live="polite">
-        <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-[var(--miryn-card-border)] bg-[var(--miryn-surface)] text-[var(--miryn-moss)]">
+        <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full border border-[color:var(--miryn-card-border)] bg-[color:var(--miryn-surface)] text-[color:var(--miryn-moss)]">
           <CheckCircle size={22} aria-hidden="true" />
         </div>
-        <p className="text-sm text-[var(--miryn-parchment-muted)]">Your password has been updated. Sign in with the new one.</p>
+        <p className="text-sm text-[color:var(--miryn-parchment-muted)]">Your password has been updated. Sign in with the new one.</p>
         <div className="pt-3">
           <button
             onClick={() => router.push("/login")}
-            className="w-full h-11 bg-[var(--miryn-parchment)] text-[var(--miryn-warm-black)] rounded-full font-semibold text-sm hover:opacity-90 transition-colors"
+            className="w-full h-11 bg-[color:var(--miryn-parchment)] text-[color:var(--miryn-warm-black)] rounded-full font-semibold text-sm hover:opacity-90 transition-colors"
           >
             Log in with new password
           </button>
@@ -81,7 +81,7 @@ function ResetPasswordForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <AuthError id="reset-password-error" message={error} />}
       <div>
-        <label className="text-xs font-medium text-[var(--miryn-parchment)] mb-1.5 block" htmlFor="new-pass">
+        <label className="text-xs font-medium text-[color:var(--miryn-parchment)] mb-1.5 block" htmlFor="new-pass">
           New password
         </label>
         <input
@@ -100,7 +100,7 @@ function ResetPasswordForm() {
         />
       </div>
       <div>
-        <label className="text-xs font-medium text-[var(--miryn-parchment)] mb-1.5 block" htmlFor="confirm-pass">
+        <label className="text-xs font-medium text-[color:var(--miryn-parchment)] mb-1.5 block" htmlFor="confirm-pass">
           Confirm password
         </label>
         <input
@@ -120,7 +120,7 @@ function ResetPasswordForm() {
       </div>
       <button
         type="submit"
-        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--miryn-parchment)] text-sm font-semibold text-[var(--miryn-warm-black)] transition-opacity hover:opacity-90 disabled:opacity-60"
+        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[color:var(--miryn-parchment)] text-sm font-semibold text-[color:var(--miryn-warm-black)] transition-opacity hover:opacity-90 disabled:opacity-60"
         disabled={loading}
         aria-busy={loading}
       >
@@ -133,12 +133,12 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <AuthShell mode="centered" title="Set new password" subtitle="Choose a secure password for your account">
-      <Suspense fallback={<div className="text-center text-sm text-[var(--miryn-parchment-muted)] py-4">Loading...</div>}>
+      <Suspense fallback={<div className="text-center text-sm text-[color:var(--miryn-parchment-muted)] py-4">Loading...</div>}>
         <ResetPasswordForm />
       </Suspense>
 
       <div className="text-center mt-6">
-        <Link href="/login" className="text-xs text-[var(--miryn-parchment-muted)] hover:text-[var(--miryn-parchment)] transition-colors inline-flex items-center gap-1.5">
+        <Link href="/login" className="text-xs text-[color:var(--miryn-parchment-muted)] hover:text-[color:var(--miryn-parchment)] transition-colors inline-flex items-center gap-1.5">
           <ArrowLeft size={13} /> Back to log in
         </Link>
       </div>

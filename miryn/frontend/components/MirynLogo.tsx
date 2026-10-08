@@ -26,7 +26,7 @@ export default function MirynLogo({
           <div
             className="absolute inset-0 rounded-full blur-md opacity-40 -z-10"
             style={{
-              background: "radial-gradient(circle, #fee435 0%, #a8bb94 60%, transparent 100%)",
+              background: "radial-gradient(circle, color-mix(in srgb, var(--theme-accent) 42%, transparent) 0%, var(--theme-accent) 60%, transparent 100%)",
             }}
           />
         )}
@@ -42,14 +42,14 @@ export default function MirynLogo({
 
       {showText && (
         <span
-          className="font-medium tracking-tight text-white flex items-center gap-1.5"
+          className="font-medium tracking-tight text-[color:var(--theme-text)] flex items-center gap-1.5"
           style={{
             fontSize: Math.max(16, Math.round(size * 0.6)),
             letterSpacing: "-0.02em",
           }}
         >
           Miryn
-          <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-white/[0.08] text-[#a8bb94] font-semibold tracking-wider">
+          <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[color:var(--theme-overlay)] text-[color:var(--theme-accent)] font-semibold tracking-wider">
             AI
           </span>
         </span>

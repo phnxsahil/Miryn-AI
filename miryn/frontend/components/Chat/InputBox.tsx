@@ -20,12 +20,12 @@ function formatFileSize(bytes: number): string {
 
 function getFileIcon(filename: string, type: string) {
   if (type.startsWith("image/") || filename.match(/\.(png|jpe?g|webp|svg|gif)$/i)) {
-    return <ImageIcon size={13} className="text-[#D69155] shrink-0" />;
+    return <ImageIcon size={13} className="text-[color:var(--theme-accent)] shrink-0" />;
   }
   if (filename.match(/\.(ts|tsx|js|jsx|py|sql|json|html|css|yaml|yml|sh|env)$/i)) {
     return <FileCode size={13} className="text-[#2dd4bf] shrink-0" />;
   }
-  return <FileText size={13} className="text-[#D69155] shrink-0" />;
+  return <FileText size={13} className="text-[color:var(--theme-accent)] shrink-0" />;
 }
 
 export default function InputBox({
@@ -160,17 +160,17 @@ export default function InputBox({
             void processFiles(e.dataTransfer.files);
           }
         }}
-        className={`relative flex flex-col bg-[#17171d] rounded-[26px] border transition-all duration-200 shadow-sm ${
+        className={`relative flex flex-col bg-[color:var(--theme-surface)] rounded-[26px] border transition-all duration-200 shadow-sm ${
           isDragging
-            ? "border-[#D69155] bg-[#1a1a24] shadow-[0_0_25px_rgba(214,145,85,0.15)]"
-            : "border-white/[0.08] focus-within:border-white/[0.18]"
+            ? "border-[color:var(--theme-accent)] bg-[color:var(--theme-card)] shadow-[0_0_25px_rgba(214,145,85,0.15)]"
+            : "border-[color:var(--theme-border)] focus-within:border-[color:var(--theme-border)]"
         }`}
       >
         {/* Drag Overlay */}
         {isDragging && (
-          <div className="absolute inset-0 z-30 bg-[#14141c]/90 border-2 border-dashed border-[#D69155] rounded-[26px] flex items-center justify-center gap-2 backdrop-blur-sm pointer-events-none">
-            <Paperclip size={16} className="text-[#D69155] animate-bounce" />
-            <span className="text-xs font-mono text-[#D69155] uppercase tracking-wider font-semibold">
+          <div className="absolute inset-0 z-30 bg-[color:var(--theme-surface)]/90 border-2 border-dashed border-[color:var(--theme-accent)] rounded-[26px] flex items-center justify-center gap-2 backdrop-blur-sm pointer-events-none">
+            <Paperclip size={16} className="text-[color:var(--theme-accent)] animate-bounce" />
+            <span className="text-xs font-mono text-[color:var(--theme-accent)] uppercase tracking-wider font-semibold">
               Drop files to attach to Miryn
             </span>
           </div>
@@ -178,23 +178,23 @@ export default function InputBox({
 
         {/* Attached Files Tray */}
         {attachedFiles.length > 0 && (
-          <div className="flex flex-wrap gap-2 px-3.5 pt-3 pb-1 border-b border-white/[0.05]">
+          <div className="flex flex-wrap gap-2 px-3.5 pt-3 pb-1 border-b border-[color:var(--theme-border)]">
             {attachedFiles.map((file) => (
               <div
                 key={file.id}
-                className="flex items-center gap-2 bg-[#20202a] border border-white/[0.08] rounded-xl px-2.5 py-1.5 text-xs text-[#f0f0f4] transition-all group"
+                className="flex items-center gap-2 bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-xl px-2.5 py-1.5 text-xs text-[color:var(--theme-text)] transition-all group"
               >
                 {getFileIcon(file.name, file.type)}
-                <span className="font-mono text-[11.5px] truncate max-w-[140px] text-[#e0e0e6]">
+                <span className="font-mono text-[11.5px] truncate max-w-[140px] text-[color:var(--theme-text)]">
                   {file.name}
                 </span>
-                <span className="text-[10px] font-mono text-[#787884]">
+                <span className="text-[10px] font-mono text-[color:var(--theme-dim)]">
                   {formatFileSize(file.size)}
                 </span>
                 <button
                   type="button"
                   onClick={() => removeFile(file.id)}
-                  className="text-[#787884] hover:text-white transition-colors p-0.5"
+                  className="text-[color:var(--theme-dim)] hover:text-white transition-colors p-0.5"
                   title="Remove attachment"
                 >
                   <X size={12} />
@@ -217,7 +217,7 @@ export default function InputBox({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled}
-            className="p-2 mb-0.5 text-[#888892] hover:text-[#f0f0f4] hover:bg-white/[0.06] rounded-full transition-all shrink-0"
+            className="p-2 mb-0.5 text-[color:var(--theme-dim)] hover:text-[color:var(--theme-text)] hover:bg-[color:var(--theme-overlay)] rounded-full transition-all shrink-0"
             title="Attach documents, code, or data files"
             aria-label="Attach files"
           >
@@ -226,7 +226,7 @@ export default function InputBox({
 
           <textarea
             ref={textareaRef}
-            className="flex-1 bg-transparent border-none px-2 py-2 text-[15px] leading-relaxed placeholder:text-[#6a6a74] focus:outline-none focus:ring-0 resize-none max-h-[200px] overflow-y-auto custom-scrollbar text-[#f3f3f6] min-h-[44px]"
+            className="flex-1 bg-transparent border-none px-2 py-2 text-[15px] leading-relaxed placeholder:text-[color:var(--theme-dim)] focus:outline-none focus:ring-0 resize-none max-h-[200px] overflow-y-auto custom-scrollbar text-[color:var(--theme-text)] min-h-[44px]"
             placeholder="Message Miryn or drop files..."
             aria-label="Message Miryn"
             value={value}
@@ -245,19 +245,19 @@ export default function InputBox({
             type="submit"
             className={`p-2 mb-0.5 mr-0.5 rounded-full flex items-center justify-center transition-all h-8 w-8 shrink-0 ${
               canSend
-                ? "bg-gradient-to-tr from-[#D69155] to-[#F2B271] text-[#0d0d11] hover:brightness-105 shadow-[0_0_15px_rgba(214,145,85,0.25)] active:scale-95"
-                : "bg-white/[0.06] text-[#555560] cursor-not-allowed"
+                ? "bg-gradient-to-tr from-[color:var(--theme-accent)] to-[color:var(--theme-accent-strong)] text-[color:var(--theme-accent-contrast)] hover:brightness-105 shadow-[0_0_15px_rgba(214,145,85,0.25)] active:scale-95"
+                : "bg-[color:var(--theme-overlay)] text-[color:var(--theme-dim)] cursor-not-allowed"
             }`}
             disabled={!canSend}
             aria-label="Send message"
           >
-            {disabled ? <Loader2 size={16} className="animate-spin text-[#D69155]" /> : <ArrowUp size={16} strokeWidth={2.5} />}
+            {disabled ? <Loader2 size={16} className="animate-spin text-[color:var(--theme-accent)]" /> : <ArrowUp size={16} strokeWidth={2.5} />}
           </button>
         </form>
       </div>
 
       <div className="mt-2 text-center">
-        <p className="text-[11px] font-mono tracking-tight text-[#62626e]">
+        <p className="text-[11px] font-mono tracking-tight text-[color:var(--theme-dim)]">
           Miryn v0.1 • 384-dim continuous memory • End-to-end Fernet encrypted
         </p>
       </div>

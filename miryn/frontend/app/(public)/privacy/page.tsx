@@ -100,12 +100,12 @@ type Section = {
 
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-dvh bg-[var(--miryn-warm-black)] font-ui text-[var(--text-primary)] antialiased">
-      <nav className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[var(--miryn-card-border)] bg-[rgba(11,12,9,0.9)] px-6 backdrop-blur lg:px-12">
+    <div className="min-h-dvh bg-[color:var(--miryn-warm-black)] font-ui text-[color:var(--text-primary)] antialiased">
+      <nav className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[color:var(--miryn-card-border)] bg-[rgba(11,12,9,0.9)] px-6 backdrop-blur lg:px-12">
         <Link href="/" className="rounded-sm transition-opacity hover:opacity-80">
           <MirynLogo size={22} showText isDark />
         </Link>
-        <Link href="/" className="text-[13px] text-[var(--miryn-parchment-muted)] transition-colors hover:text-[var(--miryn-parchment)]">
+        <Link href="/" className="text-[13px] text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">
           ← Back to home
         </Link>
       </nav>
@@ -114,18 +114,18 @@ export default function PrivacyPolicy() {
         <header className="mb-12">
           <div className="mb-5 flex items-center gap-3">
             <span className="miryn-fragment">Legal</span>
-            <span aria-hidden="true" className="text-[var(--miryn-card-border)]">·</span>
+            <span aria-hidden="true" className="text-[color:var(--miryn-card-border)]">·</span>
             <span className="miryn-fragment">Privacy policy</span>
           </div>
           <h1 className="text-[clamp(2rem,5vw,2.75rem)] leading-[1.1] tracking-tight" style={{ fontFamily: "var(--font-editorial)" }}>
             Your privacy is not a feature.
             <br />
-            <span className="italic text-[var(--miryn-moss)]">It&apos;s the foundation.</span>
+            <span className="italic text-[color:var(--miryn-moss)]">It&apos;s the foundation.</span>
           </h1>
-          <p className="mt-4 max-w-[62ch] text-[15px] leading-relaxed text-[var(--miryn-parchment-muted)]">
+          <p className="mt-4 max-w-[62ch] text-[15px] leading-relaxed text-[color:var(--miryn-parchment-muted)]">
             Miryn is built for honest, private reflection. Here&apos;s exactly what we collect, how we use it, and how you stay in control.
           </p>
-          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[12px] text-[var(--text-dim)] font-mono">
+          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[12px] text-[color:var(--text-dim)] font-mono">
             {["Last updated: September 20, 2026", "Effective: September 20, 2026"].map((t) => (
               <span key={t}>{t}</span>
             ))}
@@ -136,8 +136,8 @@ export default function PrivacyPolicy() {
           <p className="miryn-fragment mb-4">TL;DR</p>
           <ul className="space-y-2">
             {TLDR.map((item) => (
-              <li key={item} className="flex items-start gap-3 text-[14.5px] leading-relaxed text-[var(--text-primary)]">
-                <span aria-hidden="true" className="mt-0.5 shrink-0 text-[var(--miryn-moss)]">✓</span>
+              <li key={item} className="flex items-start gap-3 text-[14.5px] leading-relaxed text-[color:var(--text-primary)]">
+                <span aria-hidden="true" className="mt-0.5 shrink-0 text-[color:var(--miryn-moss)]">✓</span>
                 {item}
               </li>
             ))}
@@ -146,23 +146,23 @@ export default function PrivacyPolicy() {
 
         <div className="space-y-10">
           {(SECTIONS as Section[]).map((s) => (
-            <section key={s.id} className="border-t border-[var(--miryn-card-border)] pt-7">
+            <section key={s.id} className="border-t border-[color:var(--miryn-card-border)] pt-7">
               <div className="mb-4 flex items-baseline gap-4">
-                <span className="font-mono text-[11px] font-semibold text-[var(--miryn-moss)]">{s.id}</span>
-                <h2 className="text-[1.15rem] font-medium tracking-tight text-[var(--text-primary)]">{s.title}</h2>
+                <span className="font-mono text-[11px] font-semibold text-[color:var(--miryn-moss)]">{s.id}</span>
+                <h2 className="text-[1.15rem] font-medium tracking-tight text-[color:var(--text-primary)]">{s.title}</h2>
               </div>
               {s.content && (
                 <div className="space-y-4">
                   {s.content.map((p, i) => (
-                    <p key={i} className="max-w-[68ch] text-[14.5px] leading-[1.8] text-[var(--miryn-parchment-muted)]">{p}</p>
+                    <p key={i} className="max-w-[68ch] text-[14.5px] leading-[1.8] text-[color:var(--miryn-parchment-muted)]">{p}</p>
                   ))}
                 </div>
               )}
               {s.bullets && (
                 <ul className="space-y-2">
                   {s.bullets.map((b) => (
-                    <li key={b} className="flex gap-3 text-[14.5px] leading-[1.7] text-[var(--miryn-parchment-muted)]">
-                      <span aria-hidden="true" className="shrink-0 text-[var(--miryn-card-border)]">—</span>
+                    <li key={b} className="flex gap-3 text-[14.5px] leading-[1.7] text-[color:var(--miryn-parchment-muted)]">
+                      <span aria-hidden="true" className="shrink-0 text-[color:var(--miryn-card-border)]">—</span>
                       {b}
                     </li>
                   ))}
@@ -171,9 +171,9 @@ export default function PrivacyPolicy() {
               {s.providers && (
                 <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
                   {s.providers.map((p) => (
-                    <div key={p.name} className="rounded-xl border border-[var(--miryn-card-border)] bg-[var(--miryn-surface)] px-4 py-3">
-                      <p className="mb-1 text-[13px] font-medium text-[var(--text-primary)]">{p.name}</p>
-                      <p className="font-mono text-[11px] text-[var(--text-dim)]">{p.role}</p>
+                    <div key={p.name} className="rounded-xl border border-[color:var(--miryn-card-border)] bg-[color:var(--miryn-surface)] px-4 py-3">
+                      <p className="mb-1 text-[13px] font-medium text-[color:var(--text-primary)]">{p.name}</p>
+                      <p className="font-mono text-[11px] text-[color:var(--text-dim)]">{p.role}</p>
                     </div>
                   ))}
                 </div>
@@ -184,21 +184,21 @@ export default function PrivacyPolicy() {
 
         <div className="miryn-wall-card mt-14 p-6 sm:p-8">
           <p className="miryn-fragment mb-3">Questions</p>
-          <p className="mb-2 text-[16px] font-medium text-[var(--text-primary)]">We&apos;re here to help</p>
-          <p className="text-[14px] leading-relaxed text-[var(--miryn-parchment-muted)]">
+          <p className="mb-2 text-[16px] font-medium text-[color:var(--text-primary)]">We&apos;re here to help</p>
+          <p className="text-[14px] leading-relaxed text-[color:var(--miryn-parchment-muted)]">
             For any questions about this policy or your data, reach out to{" "}
-            <a href="mailto:privacy@miryn.ai" className="text-[var(--miryn-moss)] underline underline-offset-4 hover:text-[var(--miryn-parchment)]">
+            <a href="mailto:privacy@miryn.ai" className="text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
               privacy@miryn.ai
             </a>
             . We typically respond within 2 business days.
           </p>
         </div>
 
-        <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--miryn-card-border)] pt-6">
-          <span className="text-[12px] text-[var(--text-dim)]">© 2026 Miryn Technologies, Inc.</span>
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--miryn-card-border)] pt-6">
+          <span className="text-[12px] text-[color:var(--text-dim)]">© 2026 Miryn Technologies, Inc.</span>
           <div className="flex gap-5 text-[12px]">
-            <Link href="/terms" className="text-[var(--miryn-parchment-muted)] transition-colors hover:text-[var(--miryn-parchment)]">Terms of Service</Link>
-            <Link href="/" className="text-[var(--miryn-parchment-muted)] transition-colors hover:text-[var(--miryn-parchment)]">Home</Link>
+            <Link href="/terms" className="text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">Terms of Service</Link>
+            <Link href="/" className="text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">Home</Link>
           </div>
         </div>
       </div>

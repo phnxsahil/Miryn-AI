@@ -139,13 +139,13 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
           onClick={onItemClick}
           className={`conversation-item flex flex-1 min-w-0 items-center justify-between rounded-lg px-2.5 py-2 pe-8 text-left transition-colors ${
             isActive
-              ? "conversation-item-active text-[var(--theme-text)] font-medium bg-[var(--theme-overlay)]"
-              : "text-[var(--theme-muted)] hover:bg-[var(--theme-overlay)] hover:text-[var(--theme-text)]"
+              ? "conversation-item-active text-[color:var(--theme-text)] font-medium bg-[color:var(--theme-overlay)]"
+              : "text-[color:var(--theme-muted)] hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)]"
           }`}
         >
           <span className="min-w-0 truncate text-[13px]">{conversation.title || "New Chat"}</span>
           {Boolean(conversation.is_pinned) && (
-            <Pin size={12} className="ms-1 shrink-0 text-[var(--theme-accent)]" aria-label="Pinned" />
+            <Pin size={12} className="ms-1 shrink-0 text-[color:var(--theme-accent)]" aria-label="Pinned" />
           )}
         </Link>
 
@@ -163,7 +163,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
                 : { id: conversation.id, top: rect.bottom + 4, right: Math.max(12, window.innerWidth - rect.right) }
             );
           }}
-          className="absolute end-1.5 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded text-[var(--theme-dim)] opacity-40 transition-all hover:bg-[var(--theme-overlay)] hover:text-[var(--theme-text)] hover:opacity-100 group-hover:opacity-100 focus:opacity-100"
+          className="absolute end-1.5 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded text-[color:var(--theme-dim)] opacity-40 transition-all hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)] hover:opacity-100 group-hover:opacity-100 focus:opacity-100"
         >
           <MoreVertical size={14} strokeWidth={2} aria-hidden="true" />
         </button>
@@ -175,7 +175,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
     return (
       <div className="space-y-2 px-3 py-2">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-8 w-full animate-pulse rounded-lg bg-[var(--theme-overlay)]" />
+          <div key={i} className="h-8 w-full animate-pulse rounded-lg bg-[color:var(--theme-overlay)]" />
         ))}
       </div>
     );
@@ -183,9 +183,9 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
 
   if (error) {
     return (
-      <div className="px-3 py-4 text-xs leading-relaxed text-[var(--theme-dim)]">
+      <div className="px-3 py-4 text-xs leading-relaxed text-[color:var(--theme-dim)]">
         <p>Couldn&apos;t load your chats.</p>
-        <button type="button" onClick={loadConversations} className="mt-2 text-[var(--theme-text)] hover:underline">
+        <button type="button" onClick={loadConversations} className="mt-2 text-[color:var(--theme-text)] hover:underline">
           Try again
         </button>
       </div>
@@ -194,8 +194,8 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
 
   if (conversations.length === 0) {
     return (
-      <div className="px-3 py-4 text-xs leading-relaxed text-[var(--theme-dim)] flex flex-col items-center justify-center text-center gap-2">
-        <CheckCircle2 size={16} className="text-[var(--miryn-moss)] opacity-60" />
+      <div className="px-3 py-4 text-xs leading-relaxed text-[color:var(--theme-dim)] flex flex-col items-center justify-center text-center gap-2">
+        <CheckCircle2 size={16} className="text-[color:var(--miryn-moss)] opacity-60" />
         <span>No active threads. Start a new reflection anytime.</span>
       </div>
     );
@@ -204,18 +204,18 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
   return (
     <div className="space-y-3 px-2 pb-4 font-ui">
       {actionError && (
-        <div role="alert" className="mx-2 rounded-lg bg-[var(--theme-danger-bg)] px-3 py-2 text-xs text-[var(--theme-danger-text)]">
+        <div role="alert" className="mx-2 rounded-lg bg-[color:var(--theme-danger-bg)] px-3 py-2 text-xs text-[color:var(--theme-danger-text)]">
           {actionError}
         </div>
       )}
 
       {/* Header bar with total count and Clear All option */}
-      <div className="flex items-center justify-between px-2.5 py-1 text-[11px] font-semibold tracking-normal text-[var(--theme-dim)]">
+      <div className="flex items-center justify-between px-2.5 py-1 text-[11px] font-semibold tracking-normal text-[color:var(--theme-dim)]">
         <span>CHATS ({conversations.length})</span>
         <button
           type="button"
           onClick={() => setConfirmClearAll(true)}
-          className="text-[10px] uppercase tracking-wider text-[var(--theme-dim)] hover:text-red-400 transition-colors"
+          className="text-[10px] uppercase tracking-wider text-[color:var(--theme-dim)] hover:text-red-400 transition-colors"
           title="Clear all past chats"
         >
           Clear all
@@ -225,7 +225,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
       <AnimatePresence>
         {pinned.length > 0 && (
           <div className="space-y-0.5">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold tracking-normal text-[var(--theme-dim)]">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold tracking-normal text-[color:var(--theme-dim)]">
               <Pin size={12} /> Pinned
             </div>
             {pinned.map(renderConversation)}
@@ -233,7 +233,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
         )}
         {grouped.map((section) => (
           <div key={section.title} className="space-y-0.5">
-            <div className="px-2.5 py-1 text-[11px] font-semibold tracking-normal text-[var(--theme-dim)]">{section.title}</div>
+            <div className="px-2.5 py-1 text-[11px] font-semibold tracking-normal text-[color:var(--theme-dim)]">{section.title}</div>
             {section.items.map(renderConversation)}
           </div>
         ))}
@@ -246,20 +246,20 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
         return (
           <div
             ref={menuRef}
-            className="fixed z-[100] w-40 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-1.5 shadow-xl backdrop-blur-md"
+            className="fixed z-[100] w-40 rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] p-1.5 shadow-xl backdrop-blur-md"
             style={{ top: menu.top, right: menu.right }}
           >
             <button
               type="button"
               onClick={() => rename(conversation)}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-[var(--theme-text)] hover:bg-[var(--theme-overlay)] transition-colors"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-[color:var(--theme-text)] hover:bg-[color:var(--theme-overlay)] transition-colors"
             >
               <Pencil size={14} /> Rename
             </button>
             <button
               type="button"
               onClick={() => togglePin(conversation)}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-[var(--theme-text)] hover:bg-[var(--theme-overlay)] transition-colors"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-[color:var(--theme-text)] hover:bg-[color:var(--theme-overlay)] transition-colors"
             >
               <Pin size={14} /> {conversation.is_pinned ? "Unpin" : "Pin"}
             </button>
@@ -285,18 +285,18 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
           aria-modal="true"
           aria-labelledby="delete-conversation-title"
         >
-          <div className="w-full max-w-sm rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-5 shadow-2xl">
-            <h2 id="delete-conversation-title" className="text-sm font-semibold text-[var(--theme-text)]">
+          <div className="w-full max-w-sm rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] p-5 shadow-2xl">
+            <h2 id="delete-conversation-title" className="text-sm font-semibold text-[color:var(--theme-text)]">
               Delete conversation?
             </h2>
-            <p className="mt-2 text-xs leading-relaxed text-[var(--theme-muted)]">
+            <p className="mt-2 text-xs leading-relaxed text-[color:var(--theme-muted)]">
               This will remove this chat thread from your history. Memory insights already formed remain safe.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setConfirmDelete(null)}
-                className="rounded-lg px-3 py-2 text-xs text-[var(--theme-muted)] hover:bg-[var(--theme-overlay)]"
+                className="rounded-lg px-3 py-2 text-xs text-[color:var(--theme-muted)] hover:bg-[color:var(--theme-overlay)]"
               >
                 Cancel
               </button>
@@ -323,18 +323,18 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
           aria-modal="true"
           aria-labelledby="clear-all-title"
         >
-          <div className="w-full max-w-sm rounded-2xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-5 shadow-2xl">
-            <h2 id="clear-all-title" className="text-sm font-semibold text-[var(--theme-text)]">
+          <div className="w-full max-w-sm rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] p-5 shadow-2xl">
+            <h2 id="clear-all-title" className="text-sm font-semibold text-[color:var(--theme-text)]">
               Clear all chat history?
             </h2>
-            <p className="mt-2 text-xs leading-relaxed text-[var(--theme-muted)]">
+            <p className="mt-2 text-xs leading-relaxed text-[color:var(--theme-muted)]">
               This will clear all past conversation threads from your sidebar. Your core memory bank and calibrated identity model will stay preserved.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setConfirmClearAll(false)}
-                className="rounded-lg px-3 py-2 text-xs text-[var(--theme-muted)] hover:bg-[var(--theme-overlay)]"
+                className="rounded-lg px-3 py-2 text-xs text-[color:var(--theme-muted)] hover:bg-[color:var(--theme-overlay)]"
               >
                 Cancel
               </button>

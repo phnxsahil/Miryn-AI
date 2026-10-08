@@ -17,7 +17,7 @@ export default function GlobalError({
     <html lang="en">
       <body className="min-h-screen bg-void text-white flex items-center justify-center px-6">
         <div className="max-w-md text-center space-y-4">
-          <h2 className="text-3xl font-serif font-light">Something broke.</h2>
+          <h2 className="text-3xl font-editorial font-light">Something broke.</h2>
           <p className="text-secondary text-sm">
             The error has been captured. Try again.
           </p>

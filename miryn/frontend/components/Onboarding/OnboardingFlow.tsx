@@ -112,22 +112,22 @@ export default function OnboardingFlow() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--miryn-warm-black)] text-[var(--text-primary)] p-6 md:p-14 relative overflow-x-hidden font-ui">
+    <div className="min-h-screen bg-[color:var(--miryn-warm-black)] text-[color:var(--text-primary)] p-6 md:p-14 relative overflow-x-hidden font-ui">
       <ThoughtWall preset="onboarding" className="opacity-30" />
 
       <div className="max-w-4xl mx-auto relative z-10 space-y-10">
         {/* Header */}
-        <header className="space-y-4 pb-6 border-b border-[var(--miryn-card-border)]">
-          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[rgba(168,187,148,0.08)] border border-[rgba(168,187,148,0.25)] text-xs text-[var(--miryn-moss)] font-medium">
+        <header className="space-y-4 pb-6 border-b border-[color:var(--miryn-card-border)]">
+          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[rgba(168,187,148,0.08)] border border-[rgba(168,187,148,0.25)] text-xs text-[color:var(--miryn-moss)] font-medium">
             <Sliders size={14} />
             <span>Companion Dynamic Tuning</span>
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-[var(--miryn-parchment)]">
-            Companion <span className="text-[var(--miryn-moss)]">Calibration</span>
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-[color:var(--miryn-parchment)]">
+            Companion <span className="text-[color:var(--miryn-moss)]">Calibration</span>
           </h1>
 
-          <p className="text-base md:text-lg text-[var(--miryn-parchment-muted)] editorial-italic leading-relaxed">
+          <p className="text-base md:text-lg text-[color:var(--miryn-parchment-muted)] editorial-italic leading-relaxed">
             Fine-tune how Miryn listens, reflects, and attunes to your emotional and cognitive rhythms.
           </p>
         </header>
@@ -139,13 +139,13 @@ export default function OnboardingFlow() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="p-4 rounded-2xl bg-[rgba(168,187,148,0.15)] border border-[var(--miryn-moss)]/40 text-xs text-[var(--miryn-parchment)] flex items-center justify-between"
+              className="p-4 rounded-2xl bg-[rgba(168,187,148,0.15)] border border-[color:var(--miryn-moss)]/40 text-xs text-[color:var(--miryn-parchment)] flex items-center justify-between"
             >
               <div className="flex items-center gap-2.5">
-                <CheckCircle2 size={16} className="text-[var(--miryn-moss)]" />
+                <CheckCircle2 size={16} className="text-[color:var(--miryn-moss)]" />
                 <span>Companion calibration saved. Miryn is now tuned to this conversational dynamic.</span>
               </div>
-              <Link href="/chat" className="text-[var(--miryn-moss)] hover:underline font-semibold">
+              <Link href="/chat" className="text-[color:var(--miryn-moss)] hover:underline font-semibold">
                 Go to Chat →
               </Link>
             </motion.div>
@@ -165,7 +165,7 @@ export default function OnboardingFlow() {
 
         {/* 1. Dynamic Stance Selection */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[var(--theme-dim)]">
+          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[color:var(--theme-dim)]">
             <span>1. Conversational Stance &amp; Tone</span>
           </div>
 
@@ -177,24 +177,24 @@ export default function OnboardingFlow() {
                 onClick={() => setSelectedPreset(preset.id)}
                 className={`p-6 rounded-3xl border text-left transition-all space-y-3 relative group ${
                   selectedPreset === preset.id
-                    ? "bg-[rgba(168,187,148,0.08)] border-[var(--miryn-moss)] shadow-[0_0_30px_rgba(168,187,148,0.12)]"
-                    : "bg-[var(--miryn-card)] border-[var(--miryn-card-border)] hover:border-[rgba(168,187,148,0.3)]"
+                    ? "bg-[rgba(168,187,148,0.08)] border-[color:var(--miryn-moss)] shadow-[0_0_30px_rgba(168,187,148,0.12)]"
+                    : "bg-[color:var(--miryn-card)] border-[color:var(--miryn-card-border)] hover:border-[rgba(168,187,148,0.3)]"
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-base text-[var(--miryn-parchment)]">{preset.display_name}</span>
+                  <span className="font-bold text-base text-[color:var(--miryn-parchment)]">{preset.display_name}</span>
                   {selectedPreset === preset.id && (
-                    <div className="w-5 h-5 rounded-full bg-[var(--miryn-moss)] flex items-center justify-center text-black">
+                    <div className="w-5 h-5 rounded-full bg-[color:var(--miryn-moss)] flex items-center justify-center text-black">
                       <Check size={12} strokeWidth={3} />
                     </div>
                   )}
                 </div>
 
-                <p className="text-xs text-[var(--miryn-parchment-muted)] leading-relaxed">
+                <p className="text-xs text-[color:var(--miryn-parchment-muted)] leading-relaxed">
                   {preset.tagline}
                 </p>
 
-                <div className="pt-2 text-[11px] font-mono text-[var(--miryn-moss)] opacity-80 border-t border-[var(--miryn-card-border)]">
+                <div className="pt-2 text-[11px] font-mono text-[color:var(--miryn-moss)] opacity-80 border-t border-[color:var(--miryn-card-border)]">
                   &ldquo;{preset.example_response}&rdquo;
                 </div>
               </button>
@@ -204,7 +204,7 @@ export default function OnboardingFlow() {
 
         {/* 2. Mental Health & Focus Intentions */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[var(--theme-dim)]">
+          <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[color:var(--theme-dim)]">
             <span>2. Focus &amp; Psychological Intentions</span>
           </div>
 
@@ -219,11 +219,11 @@ export default function OnboardingFlow() {
                   onClick={() => toggleGoal(goal.label)}
                   className={`p-4 rounded-2xl border text-left transition-all flex items-center gap-3 ${
                     active
-                      ? "bg-[rgba(168,187,148,0.12)] border-[var(--miryn-moss)] text-[var(--miryn-parchment)]"
-                      : "bg-[var(--miryn-surface)] border-[var(--miryn-card-border)] text-[var(--miryn-parchment-muted)] hover:border-[rgba(168,187,148,0.3)]"
+                      ? "bg-[rgba(168,187,148,0.12)] border-[color:var(--miryn-moss)] text-[color:var(--miryn-parchment)]"
+                      : "bg-[color:var(--miryn-surface)] border-[color:var(--miryn-card-border)] text-[color:var(--miryn-parchment-muted)] hover:border-[rgba(168,187,148,0.3)]"
                   }`}
                 >
-                  <Icon size={16} className={active ? "text-[var(--miryn-moss)]" : "text-[var(--theme-dim)]"} />
+                  <Icon size={16} className={active ? "text-[color:var(--miryn-moss)]" : "text-[color:var(--theme-dim)]"} />
                   <span className="text-xs font-medium">{goal.label}</span>
                 </button>
               );
@@ -234,8 +234,8 @@ export default function OnboardingFlow() {
         {/* 3. Philosophical Anchor / Seed Belief */}
         <section className="miryn-wall-card p-7 rounded-3xl space-y-4">
           <div className="space-y-1">
-            <h3 className="text-base font-semibold text-[var(--miryn-parchment)]">3. Core Philosophical Anchor (Seed Belief)</h3>
-            <p className="text-xs text-[var(--miryn-parchment-muted)]">
+            <h3 className="text-base font-semibold text-[color:var(--miryn-parchment)]">3. Core Philosophical Anchor (Seed Belief)</h3>
+            <p className="text-xs text-[color:var(--miryn-parchment-muted)]">
               An unshakeable value or worldview you want Miryn to hold in context during all discussions.
             </p>
           </div>
@@ -245,12 +245,12 @@ export default function OnboardingFlow() {
             onChange={(e) => setSeedBelief(e.target.value)}
             placeholder="e.g. Authenticity and sustainable pace matter more to me than artificial urgency. I want to build deep, meaningful work."
             rows={3}
-            className="w-full rounded-2xl bg-[var(--miryn-surface)] border border-[var(--miryn-card-border)] p-4 text-xs text-[var(--miryn-parchment)] placeholder:text-[var(--theme-dim)] focus:outline-none focus:border-[var(--miryn-moss)] transition-colors resize-none"
+            className="w-full rounded-2xl bg-[color:var(--miryn-surface)] border border-[color:var(--miryn-card-border)] p-4 text-xs text-[color:var(--miryn-parchment)] placeholder:text-[color:var(--theme-dim)] focus:outline-none focus:border-[color:var(--miryn-moss)] transition-colors resize-none"
           />
 
           <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center gap-2 text-xs text-[var(--theme-dim)]">
-              <Shield size={12} className="text-[var(--miryn-moss)]" />
+            <div className="flex items-center gap-2 text-xs text-[color:var(--theme-dim)]">
+              <Shield size={12} className="text-[color:var(--miryn-moss)]" />
               <span>Zero-knowledge client-encrypted calibration</span>
             </div>
 
@@ -258,7 +258,7 @@ export default function OnboardingFlow() {
               type="button"
               onClick={handleSaveCalibration}
               disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-xl bg-[var(--miryn-parchment)] text-[var(--miryn-warm-black)] font-semibold text-xs hover:bg-[var(--miryn-moss)] hover:text-black transition-all shadow-md disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-[color:var(--miryn-parchment)] text-[color:var(--miryn-warm-black)] font-semibold text-xs hover:bg-[color:var(--miryn-moss)] hover:text-black transition-all shadow-md disabled:opacity-50"
             >
               {isSubmitting ? "Calibrating..." : "Apply Calibration"}
             </button>

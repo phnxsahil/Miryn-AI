@@ -2,23 +2,21 @@ import type { Config } from "tailwindcss";
 import typography from "@tailwindcss/typography";
 
 /**
- * Miryn palette matching Framer design:
- * Dark background #0a0a0a, card #171717 / #141414, surface #1f1f1f, border rgba(255,255,255,0.08)
- * Yellow accent #fee435 (primary CTA), Moss green #a8bb94 / #65bf72 (memory/identity tags), Parchment #ece4d0
+ * Miryn's shared UI palette follows the Framer landing page in both themes.
  */
 const miryn = {
-  warmBlack: "#0a0a0a",
-  ink: "#f5f5f5",
-  surface: "#141414",
-  card: "#171717",
-  border: "rgba(255, 255, 255, 0.08)",
-  moss: "#a8bb94",
-  mossLight: "#65bf72",
+  warmBlack: "rgb(var(--theme-bg-rgb) / <alpha-value>)",
+  ink: "rgb(var(--theme-text-rgb) / <alpha-value>)",
+  surface: "rgb(var(--theme-surface-rgb) / <alpha-value>)",
+  card: "rgb(var(--theme-card-rgb) / <alpha-value>)",
+  border: "rgb(var(--theme-border-rgb) / <alpha-value>)",
+  moss: "rgb(var(--theme-accent-rgb) / <alpha-value>)",
+  mossLight: "rgb(var(--theme-accent-strong-rgb) / <alpha-value>)",
   yellow: "#fee435",
   lavender: "#c8d4b6",
   olive: "#61724f",
-  parchment: "#ece4d0",
-  parchmentMuted: "#a3a3a3",
+  parchment: "rgb(var(--theme-text-rgb) / <alpha-value>)",
+  parchmentMuted: "rgb(var(--theme-muted-rgb) / <alpha-value>)",
 };
 
 const config: Config = {
@@ -41,8 +39,8 @@ const config: Config = {
         },
         lavender: miryn.lavender,
         primary: miryn.parchment,
-        dim: "#737373",
-        muted: "#a3a3a3",
+        dim: "rgb(var(--theme-dim-rgb) / <alpha-value>)",
+        muted: "rgb(var(--theme-muted-rgb) / <alpha-value>)",
         success: "#a3d9a5",
         warning: "#fee435",
         danger: "#e24b4a",
@@ -58,15 +56,8 @@ const config: Config = {
         wallCard: miryn.card,
       },
       fontFamily: {
-        ui: [
-          '"Inter"',
-          "-apple-system",
-          "BlinkMacSystemFont",
-          '"SF Pro Display"',
-          "system-ui",
-          "sans-serif",
-        ],
-        editorial: ["Georgia", '"Times New Roman"', "serif"],
+        ui: ["Onest", "system-ui", "sans-serif"],
+        editorial: ["Gambarino", "Georgia", '"Times New Roman"', "serif"],
         mono: ['"Fragment Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       backgroundImage: {

@@ -119,13 +119,13 @@ export default function LoginPage() {
       {showGoogle && (
         <div className="relative my-6 flex items-center justify-center">
           <div className="w-full miryn-rule" />
-          <span className="absolute bg-[var(--miryn-warm-black)] px-3 text-[11px] uppercase tracking-wider text-[var(--miryn-parchment-muted)]">OR</span>
+          <span className="absolute bg-[color:var(--miryn-warm-black)] px-3 text-[11px] uppercase tracking-wider text-[color:var(--miryn-parchment-muted)]">OR</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="text-[13px] text-[var(--miryn-parchment-muted)] mb-2 block pl-1" htmlFor="email">
+          <label className="text-[13px] text-[color:var(--miryn-parchment-muted)] mb-2 block pl-1" htmlFor="email">
             Email
           </label>
           <input
@@ -144,10 +144,10 @@ export default function LoginPage() {
 
         <div>
           <div className="flex justify-between items-center mb-2 pl-1 pr-2">
-            <label className="text-[13px] text-[var(--miryn-parchment-muted)]" htmlFor="password">
+            <label className="text-[13px] text-[color:var(--miryn-parchment-muted)]" htmlFor="password">
               Password
             </label>
-            <Link href="/forgot-password" className="text-[12px] text-[var(--miryn-parchment-muted)] hover:text-[var(--miryn-parchment)] transition-colors">
+            <Link href="/forgot-password" className="text-[12px] text-[color:var(--miryn-parchment-muted)] hover:text-[color:var(--miryn-parchment)] transition-colors">
               Forgot password?
             </Link>
           </div>
@@ -166,7 +166,7 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          className="w-full h-[50px] bg-[#fee435] text-[#0a0a0a] rounded-full flex items-center justify-center font-semibold text-[15px] hover:bg-[#ffe74d] active:scale-[0.98] transition-all mt-4 disabled:opacity-50 shadow-md shadow-[#fee435]/10"
+          className="w-full h-[50px] bg-[color:var(--theme-accent)] text-[color:var(--theme-accent-contrast)] rounded-full flex items-center justify-center font-semibold text-[15px] hover:bg-[color:var(--theme-accent-strong)] active:scale-[0.98] transition-all mt-4 disabled:opacity-50 shadow-md shadow-[0_4px_16px_var(--theme-ember-glow)]"
           disabled={loading}
           aria-busy={loading}
         >
@@ -174,15 +174,15 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <p className="text-center md:text-left text-[13px] text-[var(--miryn-parchment-muted)] mt-8 pl-1">
+      <p className="text-center md:text-left text-[13px] text-[color:var(--miryn-parchment-muted)] mt-8 pl-1">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="text-[var(--miryn-moss)] font-medium hover:underline">
+        <Link href="/signup" className="text-[color:var(--miryn-moss)] font-medium hover:underline">
           Sign up
         </Link>
       </p>
 
-      <details className="mt-7 border-t border-[var(--miryn-card-border)] pt-4">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm text-[var(--miryn-parchment-muted)] marker:hidden focus-visible:outline-offset-4">
+      <details className="mt-7 border-t border-[color:var(--miryn-card-border)] pt-4">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm text-[color:var(--miryn-parchment-muted)] marker:hidden focus-visible:outline-offset-4">
           <Zap size={14} aria-hidden="true" style={{ color: "var(--miryn-moss)" }} />
           Explore a demo account
         </summary>
@@ -191,12 +191,12 @@ export default function LoginPage() {
             type="button"
             onClick={handleDemoLogin}
             disabled={!!demoLoading || loading}
-            className="flex min-h-11 w-full flex-col justify-center rounded-xl border border-[var(--miryn-card-border)] bg-[var(--miryn-surface)] p-3 text-start transition-colors hover:bg-[var(--miryn-card)] disabled:opacity-60"
+            className="flex min-h-11 w-full flex-col justify-center rounded-xl border border-[color:var(--miryn-card-border)] bg-[color:var(--miryn-surface)] p-3 text-start transition-colors hover:bg-[color:var(--miryn-card)] disabled:opacity-60"
           >
-            <span className="truncate text-[13px] font-medium text-[var(--miryn-parchment)]">
+            <span className="truncate text-[13px] font-medium text-[color:var(--miryn-parchment)]">
               {demoLoading ? <><Loader2 size={13} className="me-1 inline animate-spin" aria-hidden="true" /> Opening demo</> : DEMO_ACCOUNT.name}
             </span>
-            <span className="mt-0.5 text-[11px] text-[var(--miryn-parchment-muted)]">{DEMO_ACCOUNT.role}</span>
+            <span className="mt-0.5 text-[11px] text-[color:var(--miryn-parchment-muted)]">{DEMO_ACCOUNT.role}</span>
           </button>
         </div>
       </details>

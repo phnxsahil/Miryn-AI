@@ -24,7 +24,7 @@ export default function InsightsPanel({
     <motion.aside 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card border border-[var(--miryn-card-border)] rounded-[32px] p-10 mb-6 relative overflow-hidden shadow-sm"
+      className="bg-card border border-[color:var(--miryn-card-border)] rounded-[32px] p-10 mb-6 relative overflow-hidden shadow-sm"
     >
       {/* Subtle Background Glow */}
       <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-accent/[0.05] blur-[80px] pointer-events-none" />
@@ -38,7 +38,7 @@ export default function InsightsPanel({
         </div>
         
         {mood && (
-          <div className="flex items-center gap-3 px-5 py-2 rounded-full bg-white/[0.03] border border-[var(--miryn-card-border)] shadow-sm">
+          <div className="flex items-center gap-3 px-5 py-2 rounded-full bg-[color:var(--theme-overlay)] border border-[color:var(--miryn-card-border)] shadow-sm">
             <Activity size={14} className="text-accent" />
             <span className="text-xs uppercase tracking-widest text-muted font-bold">Mood:</span>
             <span className="text-xs font-bold text-primary uppercase tracking-wider">{mood}</span>
@@ -87,7 +87,7 @@ export default function InsightsPanel({
         {topics.map((topic, index) => (
           <div
             key={`topic-${topic}-${index}`}
-            className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/[0.03] border border-[var(--miryn-card-border)] text-[11px] mono-label text-muted hover:text-accent hover:border-accent/20 hover:bg-accent/[0.02] transition-all cursor-default shadow-sm font-bold"
+            className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[color:var(--theme-overlay)] border border-[color:var(--miryn-card-border)] text-[11px] mono-label text-muted hover:text-accent hover:border-accent/20 hover:bg-accent/[0.02] transition-all cursor-default shadow-sm font-bold"
           >
             <Hash size={12} className="text-accent" />
             {topic}

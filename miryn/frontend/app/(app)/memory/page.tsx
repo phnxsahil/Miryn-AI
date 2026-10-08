@@ -14,22 +14,22 @@ function MemoryCard({ item, onForget }: { item: MemoryItem; onForget: (id: strin
   const date = item.created_at ? new Date(item.created_at).toLocaleDateString([], { month: "short", day: "numeric" }) : "";
   const isCore = tier === "core";
   return (
-    <div className="group bg-[#121219] border border-white/[0.07] hover:border-white/[0.14] rounded-2xl p-5 flex flex-col gap-3 transition-all">
+    <div className="group bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] hover:border-[color:var(--theme-border)] rounded-2xl p-5 flex flex-col gap-3 transition-all">
       <div className="flex items-center justify-between gap-2">
-        <span className={`text-[10.5px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-full border ${isCore ? "border-[#D69155]/25 bg-[#D69155]/08 text-[#D69155]" : "border-white/[0.08] bg-white/[0.04] text-[#505060]"}`}>
+        <span className={`text-[10.5px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-full border ${isCore ? "border-[color:var(--theme-accent)]/25 bg-[color:var(--theme-accent)]/08 text-[color:var(--theme-accent)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-overlay)] text-[color:var(--theme-dim)]"}`}>
           {isCore ? "Core" : "Episodic"}
         </span>
-        <span className="text-xs text-[#404050]">{date}</span>
+        <span className="text-xs text-[color:var(--theme-dim)]">{date}</span>
       </div>
-      <p className="text-sm text-[#c0c0c8] leading-relaxed line-clamp-3 flex-1">
+      <p className="text-sm text-[color:var(--theme-muted)] leading-relaxed line-clamp-3 flex-1">
         {item.content || "Memory fragment"}
       </p>
-      <div className="flex items-center justify-between pt-3 border-t border-white/[0.05]">
-        <div className="flex items-center gap-1.5 text-[#404050]">
+      <div className="flex items-center justify-between pt-3 border-t border-[color:var(--theme-border)]">
+        <div className="flex items-center gap-1.5 text-[color:var(--theme-dim)]">
           <Lock size={11} />
           <span className="text-[11px]">Encrypted</span>
         </div>
-        <button onClick={() => onForget(item.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[#505060] hover:text-red-400 hover:bg-red-500/10 transition-all" title="Forget this memory">
+        <button onClick={() => onForget(item.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[color:var(--theme-dim)] hover:text-red-400 hover:bg-red-500/10 transition-all" title="Forget this memory">
           <Trash2 size={13} />
         </button>
       </div>
@@ -91,24 +91,24 @@ export default function MemoryPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-[11px] font-mono uppercase tracking-wider text-[#505060] mb-0.5">Memory Bank</p>
-          <h1 className="text-xl font-semibold text-[#e8e8ec]">Your Memories</h1>
-          <p className="text-xs text-[#505060] mt-0.5">Miryn remembers what matters — review and curate your stored context</p>
+          <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)] mb-0.5">Memory Bank</p>
+          <h1 className="text-xl font-semibold text-[color:var(--theme-text)]">Your Memories</h1>
+          <p className="text-xs text-[color:var(--theme-dim)] mt-0.5">Miryn remembers what matters — review and curate your stored context</p>
         </div>
-        <button onClick={() => setShowAdd(v => !v)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#0d0d11] bg-[#D69155] hover:bg-[#E8A870] rounded-xl transition-colors">
+        <button onClick={() => setShowAdd(v => !v)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[color:var(--theme-accent-contrast)] bg-[color:var(--theme-accent)] hover:bg-[color:var(--theme-accent-strong)] rounded-xl transition-colors">
           <Plus size={15} />Add Memory
         </button>
       </div>
 
       {/* Add memory panel */}
       {showAdd && (
-        <div className="bg-[#121219] border border-[#D69155]/20 rounded-2xl p-5 space-y-3 animate-in fade-in duration-200">
+        <div className="bg-[color:var(--theme-card)] border border-[color:var(--theme-accent)]/20 rounded-2xl p-5 space-y-3 animate-in fade-in duration-200">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-[#e8e8ec]">Add a memory</p>
-            <button onClick={() => setShowAdd(false)} className="text-[#505060] hover:text-[#c0c0c8]"><X size={15} /></button>
+            <p className="text-sm font-medium text-[color:var(--theme-text)]">Add a memory</p>
+            <button onClick={() => setShowAdd(false)} className="text-[color:var(--theme-dim)] hover:text-[color:var(--theme-muted)]"><X size={15} /></button>
           </div>
-          <textarea value={newMemory} onChange={e => setNewMemory(e.target.value)} placeholder="Something you want Miryn to remember about you..." rows={3} className="w-full bg-[#1e1e28] border border-white/[0.07] rounded-xl px-4 py-3 text-sm text-[#e8e8ec] outline-none focus:border-[#D69155]/30 resize-none placeholder:text-[#404050]" />
-          <button onClick={handleAdd} disabled={adding || !newMemory.trim()} className="px-5 py-2 text-sm font-semibold text-[#0d0d11] bg-[#D69155] hover:bg-[#E8A870] rounded-xl transition-colors disabled:opacity-50">
+          <textarea value={newMemory} onChange={e => setNewMemory(e.target.value)} placeholder="Something you want Miryn to remember about you..." rows={3} className="w-full bg-[color:var(--theme-input)] border border-[color:var(--theme-border)] rounded-xl px-4 py-3 text-sm text-[color:var(--theme-text)] outline-none focus:border-[color:var(--theme-accent)]/30 resize-none placeholder:text-[color:var(--theme-dim)]" />
+          <button onClick={handleAdd} disabled={adding || !newMemory.trim()} className="px-5 py-2 text-sm font-semibold text-[color:var(--theme-accent-contrast)] bg-[color:var(--theme-accent)] hover:bg-[color:var(--theme-accent-strong)] rounded-xl transition-colors disabled:opacity-50">
             {adding ? "Saving..." : "Save memory"}
           </button>
         </div>
@@ -117,9 +117,9 @@ export default function MemoryPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         {[["Total", stats.total], ["Core", stats.core], ["Episodic", stats.episodic]].map(([l,v]) => (
-          <div key={l} className="bg-[#121219] border border-white/[0.07] rounded-2xl p-4">
-            <p className="text-[11px] font-mono uppercase tracking-wider text-[#505060]">{l}</p>
-            <p className="text-2xl font-semibold text-[#e8e8ec] mt-1">{v}</p>
+          <div key={l} className="bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-2xl p-4">
+            <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)]">{l}</p>
+            <p className="text-2xl font-semibold text-[color:var(--theme-text)] mt-1">{v}</p>
           </div>
         ))}
       </div>
@@ -127,12 +127,12 @@ export default function MemoryPage() {
       {/* Search + filter */}
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-48">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#505060]" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search memories..." className="w-full pl-9 pr-4 py-2.5 bg-[#121219] border border-white/[0.07] rounded-xl text-sm text-[#e8e8ec] outline-none focus:border-[#D69155]/30 placeholder:text-[#404050]" />
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[color:var(--theme-dim)]" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search memories..." className="w-full pl-9 pr-4 py-2.5 bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-xl text-sm text-[color:var(--theme-text)] outline-none focus:border-[color:var(--theme-accent)]/30 placeholder:text-[color:var(--theme-dim)]" />
         </div>
         <div className="flex gap-1.5 flex-wrap">
           {TIERS.map(t => (
-            <button key={t} onClick={() => setTier(t)} className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all capitalize ${tier === t ? "bg-[#D69155]/10 border border-[#D69155]/25 text-[#D69155]" : "bg-[#121219] border border-white/[0.07] text-[#505060] hover:text-[#c0c0c8]"}`}>
+            <button key={t} onClick={() => setTier(t)} className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all capitalize ${tier === t ? "bg-[color:var(--theme-accent)]/10 border border-[color:var(--theme-accent)]/25 text-[color:var(--theme-accent)]" : "bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] text-[color:var(--theme-dim)] hover:text-[color:var(--theme-muted)]"}`}>
               {t === "all" ? `All (${stats.total})` : t === "core" ? `Core (${stats.core})` : t === "episodic" ? `Episodic (${stats.episodic})` : "Emotions"}
             </button>
           ))}
@@ -141,7 +141,7 @@ export default function MemoryPage() {
 
       {/* Grid */}
       {filtered.length === 0
-        ? <div className="text-center py-20 text-[#404050] text-sm">
+        ? <div className="text-center py-20 text-[color:var(--theme-dim)] text-sm">
             {search ? "No memories match your search." : "No memories yet — start chatting with Miryn and they will appear here."}
           </div>
         : <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">

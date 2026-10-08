@@ -253,23 +253,23 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#0d0d11] text-[#f4f4f7] overflow-hidden font-ui relative">
+    <div className="flex flex-col h-screen bg-[color:var(--theme-bg)] text-[color:var(--theme-text)] overflow-hidden font-ui relative">
       {/* Subtle Impeccable Ambient Glow */}
       <div className="absolute top-0 right-1/3 w-[550px] h-[350px] bg-[radial-gradient(ellipse_at_top,_rgba(214,145,85,0.05),transparent_70%)] pointer-events-none" />
 
       {/* Minimalist Claude/ChatGPT Header */}
-      <header className="h-14 px-5 md:px-6 flex items-center justify-between shrink-0 relative z-20 border-b border-white/[0.06] bg-[#0d0d11]/80 backdrop-blur-xl">
+      <header className="h-14 px-5 md:px-6 flex items-center justify-between shrink-0 relative z-20 border-b border-[color:var(--theme-border)] bg-[color:var(--theme-bg)]/80 backdrop-blur-xl">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2.5 px-2 py-1 text-sm font-semibold text-[#f0f0f4]">
-            <div className="w-6 h-6 rounded-lg bg-[#181820] border border-white/[0.08] flex items-center justify-center">
-              <MirynMark state="avatar" className="w-3.5 h-3.5 text-[#D69155]" />
+          <div className="flex items-center gap-2.5 px-2 py-1 text-sm font-semibold text-[color:var(--theme-text)]">
+            <div className="w-6 h-6 rounded-lg bg-[color:var(--theme-surface)] border border-[color:var(--theme-border)] flex items-center justify-center">
+              <MirynMark state="avatar" className="w-3.5 h-3.5 text-[color:var(--theme-accent)]" />
             </div>
             <span className="tracking-tight">Miryn</span>
           </div>
 
           {idFromUrl && (
-            <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-[#8a8a96] pl-3 border-l border-white/[0.08]">
-              <div className={`w-1.5 h-1.5 rounded-full ${loading ? "bg-[#D69155] animate-pulse" : "bg-emerald-400"}`} />
+            <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-[color:var(--theme-muted)] pl-3 border-l border-[color:var(--theme-border)]">
+              <div className={`w-1.5 h-1.5 rounded-full ${loading ? "bg-[color:var(--theme-accent)] animate-pulse" : "bg-emerald-400"}`} />
               <span>{loading ? "Thinking..." : "Continuous Memory Synced"}</span>
             </div>
           )}
@@ -277,10 +277,10 @@ export default function ChatInterface() {
 
         <Link
           href="/sanctuary"
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] hover:border-[#D69155]/40 hover:bg-white/[0.07] text-xs font-mono text-[#e0e0e6] transition-all font-medium"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[color:var(--theme-overlay)] border border-[color:var(--theme-border)] hover:border-[color:var(--theme-accent)]/40 hover:bg-[color:var(--theme-overlay)] text-xs font-mono text-[color:var(--theme-text)] transition-all font-medium"
           title="Open Mind Sanctuary & Emotional Barometer"
         >
-          <HeartPulse size={13} className="text-[#D69155]" />
+          <HeartPulse size={13} className="text-[color:var(--theme-accent)]" />
           <span className="hidden sm:inline">SANCTUARY</span>
         </Link>
       </header>
@@ -325,14 +325,14 @@ export default function ChatInterface() {
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
               className="flex flex-col items-center justify-center min-h-[min(540px,calc(100vh-230px))] py-12 text-center relative"
             >
-              <div className="w-10 h-10 rounded-2xl bg-[#17171e] border border-white/[0.08] flex items-center justify-center text-[#D69155] mb-5 shadow-[0_0_20px_rgba(214,145,85,0.15)]">
-                <MirynMark state="avatar" className="w-5 h-5 text-[#D69155]" />
+              <div className="w-10 h-10 rounded-2xl bg-[color:var(--theme-surface)] border border-[color:var(--theme-border)] flex items-center justify-center text-[color:var(--theme-accent)] mb-5 shadow-[0_0_20px_rgba(214,145,85,0.15)]">
+                <MirynMark state="avatar" className="w-5 h-5 text-[color:var(--theme-accent)]" />
               </div>
 
-              <h2 className="text-3xl md:text-4xl font-serif italic tracking-tight text-[#f4f4f7] mb-2.5">
+              <h2 className="text-3xl md:text-4xl font-editorial italic tracking-tight text-[color:var(--theme-text)] mb-2.5">
                 Where memory meets presence.
               </h2>
-              <p className="text-xs md:text-sm text-[#9494a0] max-w-md mx-auto mb-8 leading-relaxed font-ui">
+              <p className="text-xs md:text-sm text-[color:var(--theme-muted)] max-w-md mx-auto mb-8 leading-relaxed font-ui">
                 An evolving companion with continuous 384-dim recall, versioned identity, and zero-knowledge encryption.
               </p>
               
@@ -346,10 +346,10 @@ export default function ChatInterface() {
                   <button
                     key={s.title}
                     onClick={() => sendMessage(s.prompt)}
-                    className="p-4 rounded-2xl bg-[#16161d] border border-white/[0.07] hover:border-[#D69155]/40 hover:bg-[#1c1c25] transition-all group text-left shadow-sm"
+                    className="p-4 rounded-2xl bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] hover:border-[color:var(--theme-accent)]/40 hover:bg-[color:var(--theme-card-hover)] transition-all group text-left shadow-sm"
                   >
-                    <div className="text-[13.5px] font-medium text-[#f0f0f4] mb-1 group-hover:text-white transition-colors">{s.title}</div>
-                    <div className="text-xs text-[#8c8c98] leading-relaxed">{s.desc}</div>
+                    <div className="text-[13.5px] font-medium text-[color:var(--theme-text)] mb-1 group-hover:text-white transition-colors">{s.title}</div>
+                    <div className="text-xs text-[color:var(--theme-muted)] leading-relaxed">{s.desc}</div>
                   </button>
                 ))}
               </div>
@@ -373,7 +373,7 @@ export default function ChatInterface() {
 
       {/* Floating Bottom Input Area */}
       <div className="shrink-0 relative z-20">
-        <div className="absolute bottom-full left-0 w-full h-20 bg-gradient-to-t from-[#0d0d11] via-[#0d0d11]/80 to-transparent pointer-events-none" />
+        <div className="absolute bottom-full left-0 w-full h-20 bg-gradient-to-t from-[color:var(--theme-bg)] via-[color:var(--theme-bg)]/80 to-transparent pointer-events-none" />
         
         <div className="max-w-3xl mx-auto w-full px-4 md:px-0 pb-6">
           <InputBox onSend={sendMessage} disabled={loading} />

@@ -10,5 +10,21 @@ const answers = [
 ];
 
 export default function FAQPage() {
-  return <main className="landing-faq-page"><Link href="/">← Back to Miryn</Link><h1>Questions about Miryn</h1>{answers.map(([q, a]) => <section key={q}><h2>{q}</h2><p>{a}</p></section>)}<p><Link href="/privacy">Privacy policy</Link> · <Link href="/signup">Try Miryn</Link></p></main>;
+  return (
+    <main className="landing-faq-page">
+      <Link href="/" className="text-sm">← Back to Miryn</Link>
+      <h1>Questions about Miryn</h1>
+      {answers.map(([question, answer]) => (
+        <section key={question}>
+          <h2>{question}</h2>
+          <p>{answer}</p>
+        </section>
+      ))}
+      <p className="flex flex-wrap gap-x-2">
+        <Link href="/privacy">Privacy policy</Link>
+        <span aria-hidden="true">·</span>
+        <Link href="/signup">Try Miryn</Link>
+      </p>
+    </main>
+  );
 }

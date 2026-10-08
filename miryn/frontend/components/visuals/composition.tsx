@@ -135,7 +135,7 @@ export function ThoughtWallPanel({
   return (
     <div className={cn("relative overflow-hidden", GROUND[tone], className)}>
       <ThoughtWall preset={preset} tone={tone} />
-      <div className={cn("relative z-10", tone === "dark" ? "text-[var(--miryn-parchment)]" : "text-[var(--miryn-ink)]")}>
+      <div className={cn("relative z-10", tone === "dark" ? "text-[color:var(--miryn-parchment)]" : "text-[color:var(--miryn-ink)]")}>
         {children}
       </div>
     </div>

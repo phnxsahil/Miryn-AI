@@ -168,14 +168,14 @@ export default function SignupPage() {
       {showGoogle && (
         <div className="relative my-6 flex items-center justify-center">
           <div className="w-full miryn-rule" />
-          <span className="absolute bg-[var(--miryn-warm-black)] px-3 text-[11px] uppercase tracking-wider text-[var(--miryn-parchment-muted)]">OR</span>
+          <span className="absolute bg-[color:var(--miryn-warm-black)] px-3 text-[11px] uppercase tracking-wider text-[color:var(--miryn-parchment-muted)]">OR</span>
         </div>
       )}
 
       {/* Own the validation so the messages, focus move, and aria wiring match. */}
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div>
-          <label className="text-[13px] text-[var(--miryn-parchment-muted)] mb-2 block pl-1" htmlFor="full-name">
+          <label className="text-[13px] text-[color:var(--miryn-parchment-muted)] mb-2 block pl-1" htmlFor="full-name">
             Full name
           </label>
           <input
@@ -196,14 +196,14 @@ export default function SignupPage() {
             required
           />
           {fieldErrors.fullName && (
-            <p id="full-name-error" className="mt-1.5 pl-1 text-[12px] text-[var(--error-text)]">
+            <p id="full-name-error" className="mt-1.5 pl-1 text-[12px] text-[color:var(--error-text)]">
               {fieldErrors.fullName}
             </p>
           )}
         </div>
 
         <div>
-          <label className="text-[13px] text-[var(--miryn-parchment-muted)] mb-2 block pl-1" htmlFor="email">
+          <label className="text-[13px] text-[color:var(--miryn-parchment-muted)] mb-2 block pl-1" htmlFor="email">
             Email
           </label>
           <input
@@ -224,14 +224,14 @@ export default function SignupPage() {
             required
           />
           {fieldErrors.email && (
-            <p id="email-error" className="mt-1.5 pl-1 text-[12px] text-[var(--error-text)]">
+            <p id="email-error" className="mt-1.5 pl-1 text-[12px] text-[color:var(--error-text)]">
               {fieldErrors.email}
             </p>
           )}
         </div>
 
         <div>
-          <label className="text-[13px] text-[var(--miryn-parchment-muted)] mb-2 block pl-1" htmlFor="password">
+          <label className="text-[13px] text-[color:var(--miryn-parchment-muted)] mb-2 block pl-1" htmlFor="password">
             Password
           </label>
           <div className="relative">
@@ -258,17 +258,17 @@ export default function SignupPage() {
               onClick={() => setShowPassword(!showPassword)}
               aria-label={showPassword ? "Hide password" : "Show password"}
               aria-pressed={showPassword}
-              className="absolute end-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-[var(--miryn-parchment-muted)] transition-colors hover:text-[var(--miryn-parchment)]"
+              className="absolute end-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]"
             >
               {showPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
             </button>
           </div>
           {fieldErrors.password ? (
-            <p id="password-error" className="mt-1.5 pl-1 text-[12px] text-[var(--error-text)]">
+            <p id="password-error" className="mt-1.5 pl-1 text-[12px] text-[color:var(--error-text)]">
               {fieldErrors.password}
             </p>
           ) : (
-            <p id="password-hint" className="mt-1.5 pl-1 text-[12px] text-[var(--text-dim)]">
+            <p id="password-hint" className="mt-1.5 pl-1 text-[12px] text-[color:var(--text-dim)]">
               At least 8 characters.
             </p>
           )}
@@ -287,7 +287,7 @@ export default function SignupPage() {
                   />
                 ))}
               </div>
-              <span className="text-[10px] uppercase tracking-wider text-[var(--miryn-parchment-muted)]">
+              <span className="text-[10px] uppercase tracking-wider text-[color:var(--miryn-parchment-muted)]">
                 {password.length > 8 ? "strong" : password.length > 4 ? "fair" : "weak"}
               </span>
             </div>
@@ -295,7 +295,7 @@ export default function SignupPage() {
         </div>
 
         <div>
-          <label className="text-[13px] text-[var(--miryn-parchment-muted)] mb-2 block pl-1" htmlFor="confirm-password">
+          <label className="text-[13px] text-[color:var(--miryn-parchment-muted)] mb-2 block pl-1" htmlFor="confirm-password">
             Confirm password
           </label>
           <input
@@ -316,7 +316,7 @@ export default function SignupPage() {
             required
           />
           {fieldErrors.confirm && (
-            <p id="confirm-password-error" className="mt-1.5 pl-1 text-[12px] text-[var(--error-text)]">
+            <p id="confirm-password-error" className="mt-1.5 pl-1 text-[12px] text-[color:var(--error-text)]">
               {fieldErrors.confirm}
             </p>
           )}
@@ -338,20 +338,20 @@ export default function SignupPage() {
               disabled={loading}
               required
             />
-            <label htmlFor="accept-terms" className="text-[13px] leading-relaxed text-[var(--miryn-parchment-muted)]">
+            <label htmlFor="accept-terms" className="text-[13px] leading-relaxed text-[color:var(--miryn-parchment-muted)]">
               I agree to the{" "}
-              <Link href="/terms" className="text-[var(--miryn-moss)] underline underline-offset-4 hover:text-[var(--miryn-parchment)]">
+              <Link href="/terms" className="text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
                 Terms
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="text-[var(--miryn-moss)] underline underline-offset-4 hover:text-[var(--miryn-parchment)]">
+              <Link href="/privacy" className="text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
                 Privacy Policy
               </Link>
               .
             </label>
           </div>
           {fieldErrors.terms && (
-            <p id="accept-terms-error" className="mt-1.5 pl-1 text-[12px] text-[var(--error-text)]">
+            <p id="accept-terms-error" className="mt-1.5 pl-1 text-[12px] text-[color:var(--error-text)]">
               {fieldErrors.terms}
             </p>
           )}
@@ -359,7 +359,7 @@ export default function SignupPage() {
 
         <button
           type="submit"
-          className="w-full h-[50px] bg-[#fee435] text-[#0a0a0a] rounded-full flex items-center justify-center gap-2 font-semibold text-[15px] hover:bg-[#ffe74d] active:scale-[0.98] transition-all mt-4 disabled:opacity-50 shadow-md shadow-[#fee435]/10"
+          className="w-full h-[50px] bg-[color:var(--theme-accent)] text-[color:var(--theme-accent-contrast)] rounded-full flex items-center justify-center gap-2 font-semibold text-[15px] hover:bg-[color:var(--theme-accent-strong)] active:scale-[0.98] transition-all mt-4 disabled:opacity-50 shadow-md shadow-[0_4px_16px_var(--theme-ember-glow)]"
           disabled={loading}
           aria-busy={loading}
         >
@@ -367,9 +367,9 @@ export default function SignupPage() {
         </button>
       </form>
 
-      <p className="text-center md:text-left text-[13px] text-[var(--miryn-parchment-muted)] mt-8 pl-1">
+      <p className="text-center md:text-left text-[13px] text-[color:var(--miryn-parchment-muted)] mt-8 pl-1">
         Already have an account?{" "}
-        <Link href="/login" className="text-[var(--miryn-moss)] font-medium hover:underline">
+        <Link href="/login" className="text-[color:var(--miryn-moss)] font-medium hover:underline">
           Log in
         </Link>
       </p>

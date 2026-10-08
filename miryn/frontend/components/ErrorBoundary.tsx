@@ -50,7 +50,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           <p className="text-muted text-sm mb-6 max-w-sm">An unexpected error occurred. Try refreshing the page.</p>
           <button
             onClick={() => window.location.reload()}
-            className="h-12 px-8 bg-accent text-[#09090e] rounded-full font-bold hover:scale-105 transition-all"
+            className="h-12 px-8 bg-accent text-[color:var(--theme-accent-contrast)] rounded-full font-bold hover:scale-105 transition-all"
           >
             Refresh
           </button>

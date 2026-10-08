@@ -45,8 +45,8 @@ export default function AppLayout({
     const isActive = pathname.startsWith(href);
     return `group flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 relative ${
       isActive
-        ? "bg-[var(--theme-overlay)] text-[var(--theme-text)] font-medium"
-        : "text-[var(--theme-dim)] hover:bg-[var(--theme-overlay)] hover:text-[var(--theme-text)]"
+        ? "bg-[color:var(--theme-overlay)] text-[color:var(--theme-text)] font-medium"
+        : "text-[color:var(--theme-dim)] hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)]"
     }`;
   };
 
@@ -104,21 +104,21 @@ export default function AppLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--theme-bg)] text-[var(--theme-text)] flex flex-col md:flex-row font-ui overflow-hidden">
+    <div className="h-[100dvh] bg-[color:var(--theme-bg)] text-[color:var(--theme-text)] flex flex-col md:flex-row font-ui overflow-hidden">
       {/* Mobile Header */}
-      <header className="md:hidden border-b border-[var(--theme-border)] p-4 flex items-center justify-between sticky top-0 bg-[color-mix(in_srgb,var(--theme-bg)_90%,transparent)] backdrop-blur-xl z-40">
+      <header className="md:hidden border-b border-[color:var(--theme-border)] p-4 flex items-center justify-between sticky top-0 bg-[color-mix(in_srgb,var(--theme-bg)_90%,transparent)] backdrop-blur-xl z-40">
         <button
           onClick={toggleMenu}
-          className="p-2 text-[var(--theme-dim)] hover:text-[var(--theme-text)] transition-colors"
+          className="p-2 text-[color:var(--theme-dim)] hover:text-[color:var(--theme-text)] transition-colors"
           aria-label="Toggle menu"
         >
           {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
-        <div className="text-lg font-semibold tracking-tight text-[var(--theme-accent-strong)]">Miryn</div>
+        <div className="text-lg font-semibold tracking-tight text-[color:var(--theme-accent-strong)]">Miryn</div>
         <button
           onClick={createConversation}
           disabled={chatLoading}
-          className="p-2 text-[var(--theme-dim)] hover:text-[var(--theme-text)] transition-colors"
+          className="p-2 text-[color:var(--theme-dim)] hover:text-[color:var(--theme-text)] transition-colors"
           aria-label="New chat"
         >
           <Plus size={20} />
@@ -129,7 +129,7 @@ export default function AppLayout({
       {!isDesktopSidebarOpen && (
         <button
           onClick={toggleDesktopSidebar}
-          className="hidden md:flex absolute top-4 left-4 z-50 p-2 text-[var(--theme-dim)] hover:text-[var(--theme-text)] transition-colors bg-[var(--theme-bg)] rounded-md border border-[var(--theme-border)] shadow-sm"
+          className="hidden md:flex absolute top-4 left-4 z-50 p-2 text-[color:var(--theme-dim)] hover:text-[color:var(--theme-text)] transition-colors bg-[color:var(--theme-bg)] rounded-md border border-[color:var(--theme-border)] shadow-sm"
           title="Open sidebar"
         >
           <PanelLeftOpen size={20} />
@@ -146,7 +146,7 @@ export default function AppLayout({
         transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
         className={`
           fixed inset-y-0 left-0 z-50 flex flex-col
-          bg-[var(--theme-sidebar)] border-r border-[var(--theme-sidebar-border)]
+          bg-[color:var(--theme-sidebar)] border-r border-[color:var(--theme-sidebar-border)]
           md:relative md:translate-x-0
           ${isMenuOpen ? "translate-x-0 w-[292px]" : "-translate-x-full md:translate-x-0"}
           ${!isDesktopSidebarOpen && "md:hidden"}
@@ -156,7 +156,7 @@ export default function AppLayout({
         <div className="p-3 flex items-center justify-between">
            <button
             onClick={toggleDesktopSidebar}
-            className="hidden md:flex p-2 text-dim hover:text-primary transition-colors hover:bg-[var(--theme-overlay)] rounded-md"
+            className="hidden md:flex p-2 text-dim hover:text-primary transition-colors hover:bg-[color:var(--theme-overlay)] rounded-md"
             title="Close sidebar"
           >
             <PanelLeftClose size={20} />
@@ -165,7 +165,7 @@ export default function AppLayout({
           <button
             onClick={createConversation}
             disabled={chatLoading}
-            className="flex-1 ml-2 flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg text-primary hover:bg-[var(--theme-overlay)] transition-colors border border-[var(--theme-border)] justify-between disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex-1 ml-2 flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg text-primary hover:bg-[color:var(--theme-overlay)] transition-colors border border-[color:var(--theme-border)] justify-between disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span>New Chat</span>
             <Plus size={16} className="text-dim" />
@@ -207,26 +207,26 @@ export default function AppLayout({
         </div>
 
         {/* User Footer */}
-        <div ref={accountMenuRef} className="sidebar-account relative p-3 mt-auto border-t bg-[var(--theme-sidebar)]">
+        <div ref={accountMenuRef} className="sidebar-account relative p-3 mt-auto border-t bg-[color:var(--theme-sidebar)]">
           {isAccountMenuOpen && (
-            <div role="menu" className="absolute bottom-[calc(100%-8px)] start-3 end-3 rounded-xl border border-[var(--theme-border)] bg-[var(--theme-card)] p-1.5 shadow-xl">
-              <Link href="/settings" role="menuitem" onClick={() => { setIsAccountMenuOpen(false); closeMenu(); }} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-[var(--theme-text)] hover:bg-[var(--theme-overlay)]">
+            <div role="menu" className="absolute bottom-[calc(100%-8px)] start-3 end-3 rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] p-1.5 shadow-xl">
+              <Link href="/settings" role="menuitem" onClick={() => { setIsAccountMenuOpen(false); closeMenu(); }} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-[color:var(--theme-text)] hover:bg-[color:var(--theme-overlay)]">
                 <Settings size={14} /> Settings
               </Link>
-              <button type="button" role="menuitem" onClick={() => { api.logout(); setIsAccountMenuOpen(false); router.replace("/login"); }} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-[var(--theme-text)] hover:bg-[var(--theme-overlay)]">
+              <button type="button" role="menuitem" onClick={() => { api.logout(); setIsAccountMenuOpen(false); router.replace("/login"); }} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-[color:var(--theme-text)] hover:bg-[color:var(--theme-overlay)]">
                 <User size={14} /> Log out
               </button>
             </div>
           )}
-          <button type="button" aria-label="Account menu" aria-expanded={isAccountMenuOpen} onClick={() => setIsAccountMenuOpen((open) => !open)} className="group flex w-full items-center gap-3 rounded-lg p-2 text-left transition-all hover:bg-[var(--theme-overlay)]">
+          <button type="button" aria-label="Account menu" aria-expanded={isAccountMenuOpen} onClick={() => setIsAccountMenuOpen((open) => !open)} className="group flex w-full items-center gap-3 rounded-lg p-2 text-left transition-all hover:bg-[color:var(--theme-overlay)]">
             <div className="flex h-8 w-8 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-sm font-bold text-accent">
               {user?.first_name?.trim()?.[0] || user?.email?.trim()?.[0]?.toUpperCase() || "M"}
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium text-primary">{user?.first_name || "User"}</div>
-              <div className="truncate text-[11px] text-[var(--theme-dim)]">Account</div>
+              <div className="truncate text-[11px] text-[color:var(--theme-dim)]">Account</div>
             </div>
-            <User size={16} className="text-[var(--theme-dim)] transition-colors group-hover:text-[var(--theme-text)]" />
+            <User size={16} className="text-[color:var(--theme-dim)] transition-colors group-hover:text-[color:var(--theme-text)]" />
           </button>
         </div>
       </motion.aside>
@@ -245,7 +245,7 @@ export default function AppLayout({
       </AnimatePresence>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-w-0 relative flex flex-col h-screen overflow-hidden bg-[var(--theme-bg)]">
+      <main className="flex-1 min-w-0 relative flex flex-col h-screen overflow-hidden bg-[color:var(--theme-bg)]">
         <div className="flex-1 overflow-y-auto relative z-10 w-full h-full">
           {children}
         </div>

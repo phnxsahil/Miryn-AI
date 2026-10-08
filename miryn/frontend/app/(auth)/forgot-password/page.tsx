@@ -31,16 +31,16 @@ export default function ForgotPasswordPage() {
     <AuthShell mode="centered" title={sent ? "Check your inbox" : "Reset your password"} subtitle={sent ? "If there’s an account for that email, a reset link is on its way." : "Enter your account email and we’ll send a secure reset link."}>
       {sent ? (
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[var(--miryn-surface)] border border-[var(--miryn-card-border)] text-[var(--miryn-moss)] mx-auto">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[color:var(--miryn-surface)] border border-[color:var(--miryn-card-border)] text-[color:var(--miryn-moss)] mx-auto">
             <CheckCircle size={22} />
           </div>
-          <p className="text-sm leading-relaxed text-[var(--miryn-parchment-muted)]" role="status" aria-live="polite">
-            If an account exists for <span className="font-medium text-[var(--miryn-parchment)]">{email}</span>, a password reset link is on its way.
+          <p className="text-sm leading-relaxed text-[color:var(--miryn-parchment-muted)]" role="status" aria-live="polite">
+            If an account exists for <span className="font-medium text-[color:var(--miryn-parchment)]">{email}</span>, a password reset link is on its way.
           </p>
           <div className="pt-3">
             <Link
               href="/login"
-              className="w-full h-11 bg-[var(--miryn-parchment)] text-[var(--miryn-warm-black)] rounded-full inline-flex items-center justify-center font-semibold text-sm hover:opacity-90 transition-colors"
+              className="w-full h-11 bg-[color:var(--miryn-parchment)] text-[color:var(--miryn-warm-black)] rounded-full inline-flex items-center justify-center font-semibold text-sm hover:opacity-90 transition-colors"
             >
               Return to log in
             </Link>
@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-[var(--miryn-parchment)] mb-1.5 block" htmlFor="email">
+              <label className="text-xs font-medium text-[color:var(--miryn-parchment)] mb-1.5 block" htmlFor="email">
                 Email address
               </label>
               <input
@@ -71,7 +71,7 @@ export default function ForgotPasswordPage() {
 
             <button
               type="submit"
-              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--miryn-parchment)] text-sm font-semibold text-[var(--miryn-warm-black)] transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[color:var(--miryn-parchment)] text-sm font-semibold text-[color:var(--miryn-warm-black)] transition-opacity hover:opacity-90 disabled:opacity-60"
               disabled={loading}
               aria-busy={loading}
             >
@@ -80,7 +80,7 @@ export default function ForgotPasswordPage() {
           </form>
 
           <div className="text-center mt-6">
-            <Link href="/login" className="text-xs text-[var(--miryn-parchment-muted)] hover:text-[var(--miryn-parchment)] transition-colors inline-flex items-center gap-1.5">
+            <Link href="/login" className="text-xs text-[color:var(--miryn-parchment-muted)] hover:text-[color:var(--miryn-parchment)] transition-colors inline-flex items-center gap-1.5">
               <ArrowLeft size={13} /> Back to log in
             </Link>
           </div>
