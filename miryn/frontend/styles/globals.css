@@ -517,3 +517,29 @@
 }
 
 /* Chat-first public entry: the landing page borrows the product's real workspace rhythm. */
+
+.chat-thinking-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--theme-accent);
+  animation: chat-thinking 1s ease-in-out infinite alternate;
+}
+.chat-thinking-dot:nth-child(2) { animation-delay: 150ms; }
+.chat-thinking-dot:nth-child(3) { animation-delay: 300ms; }
+@keyframes chat-thinking { from { opacity: .35; } to { opacity: 1; } }
+.chat-stream-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 2px;
+  vertical-align: -.2em;
+  background: var(--theme-accent);
+  animation: chat-cursor 800ms steps(1) infinite;
+}
+@keyframes chat-cursor { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .chat-thinking-dot, .chat-stream-cursor { animation: none; }
+}
+.settings-nav { scrollbar-width: none; }
+.settings-nav::-webkit-scrollbar { display: none; }

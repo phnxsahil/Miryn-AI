@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowUp, Loader2, Paperclip, X, FileText, FileCode, Image as ImageIcon } from "lucide-react";
+import { ArrowUp, Square, Paperclip, X, FileText, FileCode } from "lucide-react";
 
 export interface AttachedFile {
   id: string;
@@ -18,10 +18,7 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function getFileIcon(filename: string, type: string) {
-  if (type.startsWith("image/") || filename.match(/\.(png|jpe?g|webp|svg|gif)$/i)) {
-    return <ImageIcon size={13} className="text-[color:var(--theme-accent)] shrink-0" />;
-  }
+function getFileIcon(filename: string) {
   if (filename.match(/\.(ts|tsx|js|jsx|py|sql|json|html|css|yaml|yml|sh|env)$/i)) {
     return <FileCode size={13} className="text-[#2dd4bf] shrink-0" />;
   }
@@ -31,17 +28,22 @@ function getFileIcon(filename: string, type: string) {
 export default function InputBox({
   onSend,
   disabled,
+  streaming = false,
+  onStop,
 }: {
   onSend: (message: string) => void;
   disabled?: boolean;
+  streaming?: boolean;
+  onStop?: () => void;
 }) {
   const [value, setValue] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const canSend = (value.trim().length > 0 || attachedFiles.length > 0) && !disabled;
+  const canSend = (value.trim().length > 0 || attachedFiles.length > 0) && !disabled && !streaming;
 
   useEffect(() => {
     if (!textareaRef.current) return;
@@ -51,12 +53,13 @@ export default function InputBox({
   }, [value]);
 
   const processFiles = async (fileList: FileList | File[]) => {
+    setAttachmentError(null);
     const files = Array.from(fileList);
     const newAttachments: AttachedFile[] = [];
 
     for (const file of files) {
       if (file.size > 20 * 1024 * 1024) {
-        // Skip files > 20MB
+        setAttachmentError("Files over 20 MB cannot be attached.");
         continue;
       }
 
@@ -76,25 +79,10 @@ export default function InputBox({
             isText: true,
           });
         } catch {
-          // If text reading fails, record metadata
-          newAttachments.push({
-            id: `${file.name}-${Date.now()}-${Math.random()}`,
-            name: file.name,
-            size: file.size,
-            type: file.type || "application/octet-stream",
-            content: `[File attached: ${file.name} (${formatFileSize(file.size)})]`,
-            isText: false,
-          });
+          setAttachmentError(`Could not read ${file.name}. Try another text file.`);
         }
       } else {
-        newAttachments.push({
-          id: `${file.name}-${Date.now()}-${Math.random()}`,
-          name: file.name,
-          size: file.size,
-          type: file.type || "application/octet-stream",
-          content: `[Binary file attached: ${file.name} (${formatFileSize(file.size)})]`,
-          isText: false,
-        });
+        setAttachmentError("Only text files can be read by Miryn right now.");
       }
     }
 
@@ -109,7 +97,7 @@ export default function InputBox({
 
   const handleSend = () => {
     const trimmed = value.trim();
-    if ((!trimmed && attachedFiles.length === 0) || disabled) return;
+    if ((!trimmed && attachedFiles.length === 0) || disabled || streaming) return;
 
     let fullMessage = trimmed;
     if (attachedFiles.length > 0) {
@@ -133,12 +121,13 @@ export default function InputBox({
   };
 
   return (
-    <div className="relative w-full max-w-3xl mx-auto px-4 md:px-0">
+    <div className="relative w-full max-w-3xl mx-auto">
       {/* Hidden File Input */}
       <input
         ref={fileInputRef}
         type="file"
         multiple
+        accept=".txt,.md,.markdown,.py,.js,.ts,.tsx,.jsx,.json,.csv,.sql,.html,.css,.yaml,.yml,.sh,.env,.xml,.log,.rst,text/*"
         className="hidden"
         onChange={(e) => {
           if (e.target.files && e.target.files.length > 0) {
@@ -171,7 +160,7 @@ export default function InputBox({
           <div className="absolute inset-0 z-30 bg-[color:var(--theme-surface)]/90 border-2 border-dashed border-[color:var(--theme-accent)] rounded-[26px] flex items-center justify-center gap-2 backdrop-blur-sm pointer-events-none">
             <Paperclip size={16} className="text-[color:var(--theme-accent)] animate-bounce" />
             <span className="text-xs font-mono text-[color:var(--theme-accent)] uppercase tracking-wider font-semibold">
-              Drop files to attach to Miryn
+              Drop text files to attach
             </span>
           </div>
         )}
@@ -184,7 +173,7 @@ export default function InputBox({
                 key={file.id}
                 className="flex items-center gap-2 bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-xl px-2.5 py-1.5 text-xs text-[color:var(--theme-text)] transition-all group"
               >
-                {getFileIcon(file.name, file.type)}
+                {getFileIcon(file.name)}
                 <span className="font-mono text-[11.5px] truncate max-w-[140px] text-[color:var(--theme-text)]">
                   {file.name}
                 </span>
@@ -218,7 +207,7 @@ export default function InputBox({
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled}
             className="p-2 mb-0.5 text-[color:var(--theme-dim)] hover:text-[color:var(--theme-text)] hover:bg-[color:var(--theme-overlay)] rounded-full transition-all shrink-0"
-            title="Attach documents, code, or data files"
+            title="Attach a text file"
             aria-label="Attach files"
           >
             <Paperclip size={18} />
@@ -227,7 +216,7 @@ export default function InputBox({
           <textarea
             ref={textareaRef}
             className="flex-1 bg-transparent border-none px-2 py-2 text-[15px] leading-relaxed placeholder:text-[color:var(--theme-dim)] focus:outline-none focus:ring-0 resize-none max-h-[200px] overflow-y-auto custom-scrollbar text-[color:var(--theme-text)] min-h-[44px]"
-            placeholder="Message Miryn or drop files..."
+            placeholder="Message Miryn"
             aria-label="Message Miryn"
             value={value}
             rows={1}
@@ -242,23 +231,26 @@ export default function InputBox({
           />
 
           <button
-            type="submit"
+            type={streaming ? "button" : "submit"}
+            onClick={streaming ? onStop : undefined}
             className={`p-2 mb-0.5 mr-0.5 rounded-full flex items-center justify-center transition-all h-8 w-8 shrink-0 ${
-              canSend
-                ? "bg-gradient-to-tr from-[color:var(--theme-accent)] to-[color:var(--theme-accent-strong)] text-[color:var(--theme-accent-contrast)] hover:brightness-105 shadow-[0_0_15px_rgba(214,145,85,0.25)] active:scale-95"
+              canSend || streaming
+                ? "bg-[color:var(--theme-accent)] text-[color:var(--theme-accent-contrast)] hover:opacity-90"
                 : "bg-[color:var(--theme-overlay)] text-[color:var(--theme-dim)] cursor-not-allowed"
             }`}
-            disabled={!canSend}
-            aria-label="Send message"
+            disabled={!canSend && !streaming}
+            aria-label={streaming ? "Stop generating" : "Send message"}
           >
-            {disabled ? <Loader2 size={16} className="animate-spin text-[color:var(--theme-accent)]" /> : <ArrowUp size={16} strokeWidth={2.5} />}
+            {streaming ? <Square size={13} fill="currentColor" /> : <ArrowUp size={16} strokeWidth={2.5} />}
           </button>
         </form>
       </div>
 
+      {attachmentError && <p role="alert" className="mt-2 px-2 text-xs text-[color:var(--theme-danger-text)]">{attachmentError}</p>}
+
       <div className="mt-2 text-center">
         <p className="text-[11px] font-mono tracking-tight text-[color:var(--theme-dim)]">
-          Miryn v0.1 • 384-dim continuous memory • End-to-end Fernet encrypted
+          Miryn can make mistakes. Check important information.
         </p>
       </div>
     </div>

@@ -18,7 +18,11 @@ import type {
   User,
 } from "@/lib/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// ponytail: use one loopback host in local development; mixed localhost/127 DNS can resolve to different address families.
+const API_URL = typeof window !== "undefined" && window.location.hostname === "127.0.0.1"
+  ? configuredApiUrl.replace(/^http:\/\/localhost(?=:)/, "http://127.0.0.1")
+  : configuredApiUrl;
 
 type AuthSession = {
   access_token: string;
@@ -343,32 +347,32 @@ class ApiClient {
     });
   }
 
-  async *streamMessage(message: string, conversationId?: string) {
+  async *streamMessage(message: string, conversationId?: string, signal?: AbortSignal): AsyncGenerator<{ chunk?: string; error?: string; done?: boolean; conversation_id?: string }> {
     if (!this.token) {
       this.loadToken();
     }
 
-    let res = await fetch(`${API_URL}/chat/stream`, {
+    const send = () => fetch(`${API_URL}/chat/stream`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${this.token}`,
+        ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
       },
       body: JSON.stringify({ message, conversation_id: conversationId }),
+      signal,
     });
+    let res: Response;
+    try { res = await send(); }
+    catch (error) {
+      if (signal?.aborted) throw error;
+      throw new Error("Could not connect to Miryn. Check your connection and retry.");
+    }
 
-    if (res.status === 401 && this.refreshTokenValue) {
+    if ((res.status === 401 || res.status === 403) && this.refreshTokenValue && !signal?.aborted) {
       try {
         const refreshed = await this.refreshSession();
         this.setSession(refreshed);
-        res = await fetch(`${API_URL}/chat/stream`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.token}`,
-          },
-          body: JSON.stringify({ message, conversation_id: conversationId }),
-        });
+        res = await send();
       } catch {
         this.setSession(null);
         throw new Error("Session expired. Please log in again.");
@@ -376,11 +380,11 @@ class ApiClient {
     }
 
     if (!res.ok) {
-      if (res.status === 401) {
+      if (res.status === 401 || res.status === 403) {
         this.clearToken();
         throw new Error("Session expired. Please log in again.");
       }
-      throw new Error(await res.text());
+      throw new Error((await this.parseError(res)) || "Message could not be sent.");
     }
 
     const reader = res.body?.getReader();
@@ -390,18 +394,32 @@ class ApiClient {
 
     const decoder = new TextDecoder();
     let buffer = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n\n");
-      buffer = lines.pop() || "";
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const parsed = JSON.parse(line.slice(6));
-        yield parsed;
+    try {
+      while (true) {
+        let result: ReadableStreamReadResult<Uint8Array>;
+        try { result = await reader.read(); }
+        catch (error) {
+          if (signal?.aborted) throw error;
+          throw new Error("The reply was interrupted. You can retry your message.");
+        }
+        const { done, value } = result;
+        if (done) break;
+        buffer = (buffer + decoder.decode(value, { stream: true })).replace(/\r\n/g, "\n");
+        const frames = buffer.split("\n\n");
+        buffer = frames.pop() || "";
+        for (const frame of frames) {
+          const data = frame.split("\n").filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trimStart()).join("\n");
+          if (data) yield JSON.parse(data);
+        }
       }
+    } finally {
+      reader.releaseLock();
     }
+  }
+
+  getChatEventsUrl(): string {
+    if (!this.token) this.loadToken();
+    return API_URL + "/chat/events/stream" + (this.token ? "?token=" + encodeURIComponent(this.token) : "");
   }
 
   async getChatHistory(conversationId: string) {

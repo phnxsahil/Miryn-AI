@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { MoreVertical, Pin, Pencil, Trash2, CheckCircle2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { api } from "@/lib/api";
@@ -19,6 +19,8 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const pathname = usePathname();
+  const activeId = useSearchParams().get("id");
+  const router = useRouter();
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const loadConversations = () => {
@@ -38,7 +40,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
 
   useEffect(() => {
     loadConversations();
-  }, [pathname]);
+  }, [pathname, activeId]);
 
   useEffect(() => {
     const closeMenu = (event: MouseEvent) => {
@@ -111,6 +113,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
     try {
       await api.deleteConversation(conversation.id);
       setConversations((current) => current.filter((item) => item.id !== conversation.id));
+      if (activeId === conversation.id) router.push("/chat");
       setConfirmDelete(null);
       setMenu(null);
     } catch {
@@ -131,7 +134,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
   };
 
   const renderConversation = (conversation: Conversation) => {
-    const isActive = pathname.includes(conversation.id);
+    const isActive = activeId === conversation.id;
     return (
       <div key={conversation.id} className="group relative flex items-center">
         <Link
@@ -290,7 +293,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
               Delete conversation?
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-[color:var(--theme-muted)]">
-              This will remove this chat thread from your history. Memory insights already formed remain safe.
+              This removes this chat from your history. Saved memories are managed separately.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button
@@ -328,7 +331,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
               Clear all chat history?
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-[color:var(--theme-muted)]">
-              This will clear all past conversation threads from your sidebar. Your core memory bank and calibrated identity model will stay preserved.
+              This clears your chat history. Saved memories are managed separately.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button
