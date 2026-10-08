@@ -1,154 +1,88 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus, Search, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
-import type { MemoryItem } from "@/lib/types";
-import { Search, Trash2, Lock, Plus, X } from "lucide-react";
-import LoadingState from "@/components/ui/LoadingState";
+import type { MemoryItem, MemorySnapshot } from "@/lib/types";
+import { getErrorMessage } from "@/lib/utils";
 
-const TIERS = ["all", "core", "episodic", "emotions"] as const;
-type Tier = typeof TIERS[number];
-
-function MemoryCard({ item, onForget }: { item: MemoryItem; onForget: (id: string) => void }) {
-  const tier = (item as Record<string, unknown>).memory_tier as string | undefined ?? "core";
-  const date = item.created_at ? new Date(item.created_at).toLocaleDateString([], { month: "short", day: "numeric" }) : "";
-  const isCore = tier === "core";
-  return (
-    <div className="group bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] hover:border-[color:var(--theme-border)] rounded-2xl p-5 flex flex-col gap-3 transition-all">
-      <div className="flex items-center justify-between gap-2">
-        <span className={`text-[10.5px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-full border ${isCore ? "border-[color:var(--theme-accent)]/25 bg-[color:var(--theme-accent)]/08 text-[color:var(--theme-accent)]" : "border-[color:var(--theme-border)] bg-[color:var(--theme-overlay)] text-[color:var(--theme-dim)]"}`}>
-          {isCore ? "Core" : "Episodic"}
-        </span>
-        <span className="text-xs text-[color:var(--theme-dim)]">{date}</span>
-      </div>
-      <p className="text-sm text-[color:var(--theme-muted)] leading-relaxed line-clamp-3 flex-1">
-        {item.content || "Memory fragment"}
-      </p>
-      <div className="flex items-center justify-between pt-3 border-t border-[color:var(--theme-border)]">
-        <div className="flex items-center gap-1.5 text-[color:var(--theme-dim)]">
-          <Lock size={11} />
-          <span className="text-[11px]">Encrypted</span>
-        </div>
-        <button onClick={() => onForget(item.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[color:var(--theme-dim)] hover:text-red-400 hover:bg-red-500/10 transition-all" title="Forget this memory">
-          <Trash2 size={13} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
+type Filter = "all" | "core" | "episodic" | "emotions";
 export default function MemoryPage() {
-  const [memories, setMemories] = useState<MemoryItem[]>([]);
+  const [snapshot, setSnapshot] = useState<MemorySnapshot>({ facts: [], emotions: [], recent: [] });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [tier, setTier] = useState<Tier>("all");
-  const [showAdd, setShowAdd] = useState(false);
-  const [newMemory, setNewMemory] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
   const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try { setMemories(await api.getMemories() ?? []); }
-      catch { setMemories([]); }
-      finally { setLoading(false); }
-    })();
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try { setSnapshot(await api.getMemory()); }
+    catch (cause) { setError(getErrorMessage(cause, "Could not load your memories.")); }
+    finally { setLoading(false); }
   }, []);
+  useEffect(() => { void load(); }, [load]);
 
-  const filtered = useMemo(() => {
-    let m = memories;
-    if (tier !== "all") m = m.filter(x => ((x as Record<string,unknown>).memory_tier === (tier === "core" ? "core" : tier === "episodic" ? "episodic" : tier) || (tier === "emotions" && ((x as Record<string,unknown>).memory_tier === "emotion" || x.content?.toLowerCase().includes("feel")))));
-    if (search.trim()) m = m.filter(x => x.content?.toLowerCase().includes(search.toLowerCase()));
-    return m;
-  }, [memories, tier, search]);
+  const all = useMemo(() => {
+    const byId = new Map<string, MemoryItem>();
+    [...snapshot.facts, ...snapshot.emotions, ...snapshot.recent].forEach((item) => byId.set(item.id, item));
+    return [...byId.values()].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [snapshot]);
+  const emotionIds = useMemo(() => new Set(snapshot.emotions.map((item) => item.id)), [snapshot.emotions]);
+  const visible = all.filter((item) => {
+    if (filter === "emotions" && !emotionIds.has(item.id)) return false;
+    if (filter === "core" && item.memory_tier !== "core") return false;
+    if (filter === "episodic" && item.memory_tier !== "episodic") return false;
+    return item.content?.toLowerCase().includes(search.trim().toLowerCase());
+  });
 
-  const stats = useMemo(() => ({
-    total: memories.length,
-    core: memories.filter(m => (m as Record<string,unknown>).memory_tier === "core").length,
-    episodic: memories.filter(m => (m as Record<string,unknown>).memory_tier !== "core").length,
-  }), [memories]);
-
-  const handleForget = async (id: string) => {
-    try { await api.deleteMemory(id); setMemories(m => m.filter(x => x.id !== id)); }
-    catch { /* silent */ }
-  };
-
-  const handleAdd = async () => {
-    if (!newMemory.trim()) return;
-    setAdding(true);
+  const addMemory = async () => {
+    if (!draft.trim() || saving) return;
+    setSaving(true);
+    setActionError(null);
     try {
-      await api.addMemory({ content: newMemory, memory_type: "user_note" });
-      setMemories(await api.getMemories() ?? []);
-      setNewMemory("");
-      setShowAdd(false);
-    } catch { /* silent */ }
-    finally { setAdding(false); }
+      await api.createMemory({ content: draft.trim(), memory_tier: "core" });
+      setDraft("");
+      setAdding(false);
+      await load();
+    } catch (cause) { setActionError(getErrorMessage(cause, "Could not save this memory.")); }
+    finally { setSaving(false); }
   };
-
-  if (loading) return <LoadingState label="Loading memories..." />;
+  const removeMemory = async (id: string) => {
+    setDeletingId(id);
+    setActionError(null);
+    try {
+      await api.deleteMemory(id);
+      await load();
+    } catch (cause) { setActionError(getErrorMessage(cause, "Could not delete this memory.")); }
+    finally { setDeletingId(null); }
+  };
 
   return (
-    <div className="flex flex-col gap-6 px-6 md:px-10 py-8 max-w-5xl mx-auto w-full">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)] mb-0.5">Memory Bank</p>
-          <h1 className="text-xl font-semibold text-[color:var(--theme-text)]">Your Memories</h1>
-          <p className="text-xs text-[color:var(--theme-dim)] mt-0.5">Miryn remembers what matters — review and curate your stored context</p>
-        </div>
-        <button onClick={() => setShowAdd(v => !v)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[color:var(--theme-accent-contrast)] bg-[color:var(--theme-accent)] hover:bg-[color:var(--theme-accent-strong)] rounded-xl transition-colors">
-          <Plus size={15} />Add Memory
-        </button>
+    <div className="mx-auto w-full max-w-3xl space-y-8 px-5 py-8 text-[color:var(--theme-text)] md:px-8 md:py-12">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div><h1 className="font-editorial text-3xl md:text-4xl">Memory</h1><p className="mt-2 max-w-xl text-sm leading-6 text-[color:var(--theme-muted)]">Review the context Miryn has kept from your conversations. You can add or remove a memory here.</p></div>
+        <button type="button" onClick={() => setAdding((value) => !value)} className="inline-flex items-center gap-2 rounded-xl bg-[color:var(--theme-accent)] px-4 py-2.5 text-sm font-medium text-[color:var(--theme-accent-contrast)]"><Plus size={16} /> Add memory</button>
+      </header>
+      {adding && <div className="space-y-3 rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] p-4">
+        <div className="flex justify-between"><label htmlFor="memory-draft" className="text-sm font-medium">What should Miryn remember?</label><button type="button" onClick={() => setAdding(false)} aria-label="Close"><X size={16} /></button></div>
+        <textarea id="memory-draft" value={draft} onChange={(event) => setDraft(event.target.value)} rows={3} className="w-full resize-y rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-input)] p-3 text-sm outline-none focus:border-[color:var(--theme-accent)]" />
+        <button type="button" onClick={addMemory} disabled={saving || !draft.trim()} className="rounded-lg bg-[color:var(--theme-accent)] px-4 py-2 text-sm font-medium text-[color:var(--theme-accent-contrast)] disabled:opacity-50">{saving ? "Saving…" : "Save memory"}</button>
+      </div>}
+      {actionError && <p role="alert" className="text-sm text-[color:var(--theme-danger-text)]">{actionError}</p>}
+      <div className="flex flex-wrap gap-3">
+        <label className="relative min-w-48 flex-1"><Search size={16} className="absolute left-3 top-3 text-[color:var(--theme-muted)]" /><span className="sr-only">Search memories</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search memories" className="w-full rounded-xl border border-[color:var(--theme-border)] bg-[color:var(--theme-input)] py-2.5 pl-9 pr-3 text-sm outline-none focus:border-[color:var(--theme-accent)]" /></label>
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Memory filter">{(["all", "core", "episodic", "emotions"] as Filter[]).map((value) => <button type="button" key={value} onClick={() => setFilter(value)} aria-pressed={filter === value} className={`rounded-lg px-3 py-2 text-sm capitalize ${filter === value ? "bg-[color:var(--theme-card)] text-[color:var(--theme-text)]" : "text-[color:var(--theme-muted)] hover:bg-[color:var(--theme-overlay)]"}`}>{value}</button>)}</div>
       </div>
-
-      {/* Add memory panel */}
-      {showAdd && (
-        <div className="bg-[color:var(--theme-card)] border border-[color:var(--theme-accent)]/20 rounded-2xl p-5 space-y-3 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-[color:var(--theme-text)]">Add a memory</p>
-            <button onClick={() => setShowAdd(false)} className="text-[color:var(--theme-dim)] hover:text-[color:var(--theme-muted)]"><X size={15} /></button>
-          </div>
-          <textarea value={newMemory} onChange={e => setNewMemory(e.target.value)} placeholder="Something you want Miryn to remember about you..." rows={3} className="w-full bg-[color:var(--theme-input)] border border-[color:var(--theme-border)] rounded-xl px-4 py-3 text-sm text-[color:var(--theme-text)] outline-none focus:border-[color:var(--theme-accent)]/30 resize-none placeholder:text-[color:var(--theme-dim)]" />
-          <button onClick={handleAdd} disabled={adding || !newMemory.trim()} className="px-5 py-2 text-sm font-semibold text-[color:var(--theme-accent-contrast)] bg-[color:var(--theme-accent)] hover:bg-[color:var(--theme-accent-strong)] rounded-xl transition-colors disabled:opacity-50">
-            {adding ? "Saving..." : "Save memory"}
-          </button>
-        </div>
-      )}
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        {[["Total", stats.total], ["Core", stats.core], ["Episodic", stats.episodic]].map(([l,v]) => (
-          <div key={l} className="bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-2xl p-4">
-            <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)]">{l}</p>
-            <p className="text-2xl font-semibold text-[color:var(--theme-text)] mt-1">{v}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Search + filter */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-48">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[color:var(--theme-dim)]" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search memories..." className="w-full pl-9 pr-4 py-2.5 bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-xl text-sm text-[color:var(--theme-text)] outline-none focus:border-[color:var(--theme-accent)]/30 placeholder:text-[color:var(--theme-dim)]" />
-        </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {TIERS.map(t => (
-            <button key={t} onClick={() => setTier(t)} className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all capitalize ${tier === t ? "bg-[color:var(--theme-accent)]/10 border border-[color:var(--theme-accent)]/25 text-[color:var(--theme-accent)]" : "bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] text-[color:var(--theme-dim)] hover:text-[color:var(--theme-muted)]"}`}>
-              {t === "all" ? `All (${stats.total})` : t === "core" ? `Core (${stats.core})` : t === "episodic" ? `Episodic (${stats.episodic})` : "Emotions"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Grid */}
-      {filtered.length === 0
-        ? <div className="text-center py-20 text-[color:var(--theme-dim)] text-sm">
-            {search ? "No memories match your search." : "No memories yet — start chatting with Miryn and they will appear here."}
-          </div>
-        : <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map(m => <MemoryCard key={m.id} item={m} onForget={handleForget} />)}
-          </div>
-      }
+      {loading ? <p className="text-sm text-[color:var(--theme-muted)]">Loading memories…</p> : error ? <div role="alert" className="space-y-3 text-sm"><p>{error}</p><button type="button" onClick={() => void load()} className="text-[color:var(--theme-accent)] underline">Try again</button></div> : visible.length === 0 ? <p className="py-12 text-sm text-[color:var(--theme-muted)]">{all.length ? "No memories match this view." : "No saved memories yet. Your conversations can build context over time."}</p> : <ul className="divide-y divide-[color:var(--theme-border)]">{visible.map((item) => <li key={item.id} className="group flex gap-4 py-5">
+        <div className="min-w-0 flex-1"><p className="whitespace-pre-wrap break-words text-[15px] leading-7">{item.content || "Memory without text"}</p><p className="mt-2 text-xs capitalize text-[color:var(--theme-muted)]">{item.memory_tier || "Memory"} · {new Date(item.created_at).toLocaleDateString()}</p></div>
+        <button type="button" onClick={() => void removeMemory(item.id)} disabled={deletingId === item.id} aria-label="Delete memory" className="self-start rounded-lg p-2 text-[color:var(--theme-muted)] hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-danger-text)] disabled:opacity-50"><Trash2 size={16} /></button>
+      </li>)}</ul>}
     </div>
   );
 }
-
