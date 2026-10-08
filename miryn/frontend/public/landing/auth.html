@@ -1,0 +1,756 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Miryn AI — Sign In</title>
+  <meta name="description" content="Sign in or create your Miryn AI account. An AI companion that remembers, learns, and evolves with you.">
+  <link rel="icon" href="/assets/miryn_frontend_logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Design Tokens (matching landing page) ── */
+    :root {
+      --bg:          #0a0a0a;
+      --bg-card:     #171717;
+      --bg-surface:  #1e1e1e;
+      --border:      rgba(255,255,255,0.07);
+      --border-med:  rgba(255,255,255,0.12);
+      --yellow:      #fee435;
+      --yellow-dim:  rgba(254,228,53,0.12);
+      --yellow-glow: rgba(254,228,53,0.25);
+      --purple:      #5a54a4;
+      --purple-dim:  rgba(90,84,164,0.15);
+      --text:        #f5f5f5;
+      --text-muted:  #a3a3a3;
+      --text-faint:  #525252;
+      --accent-green: #65bf72;
+      --accent-red:  #eb2c50;
+      --radius-sm:   8px;
+      --radius:      14px;
+      --radius-lg:   20px;
+      --radius-xl:   28px;
+      --font-mono:   'Fragment Mono', monospace;
+      --font-sans:   'Inter', system-ui, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    /* ── Layout ── */
+    .auth-shell {
+      display: grid;
+      grid-template-columns: 55fr 45fr;
+      height: 100dvh;
+    }
+
+    /* ── LEFT PANEL ── */
+    .panel-left {
+      position: relative;
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 40px 48px;
+      overflow: hidden;
+    }
+
+    /* Ambient glows */
+    .panel-left::before {
+      content: '';
+      position: absolute;
+      top: -120px; left: -80px;
+      width: 520px; height: 520px;
+      background: radial-gradient(circle, rgba(90,84,164,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .panel-left::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; right: -60px;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(254,228,53,0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Logo row */
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo-svg {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+    }
+
+    .logo-name {
+      font-family: var(--font-sans);
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    /* Center content */
+    .panel-left-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 36px;
+      position: relative;
+      z-index: 1;
+      max-width: 480px;
+    }
+
+    .left-headline {
+      font-size: 44px;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.04em;
+      color: var(--text);
+    }
+
+    .left-headline em {
+      font-style: normal;
+      color: var(--yellow);
+    }
+
+    .left-sub {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      font-weight: 400;
+    }
+
+    /* Chat demo */
+    .chat-demo {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .chat-bubble {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .chat-bubble.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .bubble-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .bubble-avatar.user {
+      background: rgba(255,255,255,0.08);
+      color: var(--text-muted);
+      border: 1px solid var(--border-med);
+      margin-left: auto;
+      order: 2;
+    }
+
+    .bubble-avatar.miryn {
+      background: linear-gradient(135deg, var(--purple), #7c75d4);
+    }
+
+    .bubble-content {
+      max-width: 88%;
+      padding: 11px 16px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      line-height: 1.55;
+      font-weight: 400;
+    }
+
+    .bubble-content.miryn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-top-left-radius: 4px;
+    }
+
+    .bubble-content.user {
+      background: rgba(90,84,164,0.22);
+      border: 1px solid rgba(90,84,164,0.3);
+      color: var(--text);
+      border-top-right-radius: 4px;
+      order: 1;
+    }
+
+    .chat-bubble.from-user {
+      flex-direction: row-reverse;
+    }
+
+    .bubble-tag {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--yellow);
+      background: var(--yellow-dim);
+      border: 1px solid rgba(254,228,53,0.2);
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-bottom: 4px;
+    }
+
+    /* Typing indicator */
+    .typing-dots {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      padding: 11px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      border-top-left-radius: 4px;
+      width: fit-content;
+    }
+
+    .dot {
+      width: 5px; height: 5px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      animation: blink 1.4s infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes blink {
+      0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+      30% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Quote strip */
+    .quote-strip {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-faint);
+      letter-spacing: 0.02em;
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+    }
+
+    /* ── RIGHT PANEL ── */
+    .panel-right {
+      background: var(--bg-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 48px;
+      overflow-y: auto;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    /* Tab switcher */
+    .tab-row {
+      display: flex;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 4px;
+      margin-bottom: 36px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--bg-surface);
+      color: var(--text);
+      box-shadow: 0 1px 8px rgba(0,0,0,0.4);
+    }
+
+    .tab-btn:hover:not(.active) {
+      color: var(--text);
+    }
+
+    /* Auth heading */
+    .auth-heading {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .auth-sub {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    /* Google btn */
+    .btn-google {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 13px 20px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-med);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 24px;
+      text-decoration: none;
+    }
+
+    .btn-google:hover {
+      background: rgba(255,255,255,0.09);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    /* Divider */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .divider-text {
+      font-size: 12px;
+      color: var(--text-faint);
+      font-family: var(--font-mono);
+    }
+
+    /* Form */
+    .form { display: flex; flex-direction: column; gap: 16px; }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+
+    .field-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: 0.01em;
+    }
+
+    .field-input {
+      width: 100%;
+      padding: 13px 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .field-input:focus {
+      border-color: var(--yellow);
+      background: rgba(254,228,53,0.03);
+    }
+
+    .field-input::placeholder { color: var(--text-faint); }
+
+    .field-input:-webkit-autofill,
+    .field-input:-webkit-autofill:focus {
+      -webkit-box-shadow: 0 0 0 1000px #1e1e1e inset;
+      -webkit-text-fill-color: var(--text);
+      caret-color: var(--text);
+    }
+
+    /* Password row */
+    .password-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .forgot-link {
+      font-size: 12px;
+      color: var(--text-faint);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .forgot-link:hover { color: var(--text-muted); }
+
+    /* Name row (signup only) */
+    .name-row { display: flex; gap: 12px; }
+    .name-row .field { flex: 1; }
+
+    /* Submit button */
+    .btn-submit {
+      width: 100%;
+      padding: 14px 20px;
+      margin-top: 8px;
+      background: var(--yellow);
+      border: none;
+      border-radius: var(--radius);
+      color: #0a0a0a;
+      font-family: var(--font-sans);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: -0.01em;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-submit:hover {
+      background: #fef08a;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px var(--yellow-glow);
+    }
+
+    .btn-submit:active { transform: translateY(0); }
+
+    .btn-submit .arrow {
+      transition: transform 0.2s ease;
+    }
+    .btn-submit:hover .arrow { transform: translateX(3px); }
+
+    /* Legal */
+    .legal {
+      margin-top: 20px;
+      font-size: 12px;
+      color: var(--text-faint);
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    .legal a {
+      color: var(--text-muted);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .legal a:hover { color: var(--text); }
+
+    /* Back link */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text-faint);
+      text-decoration: none;
+      margin-top: 28px;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--text-muted); }
+
+    /* ── Micro-animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .auth-card { animation: fadeUp 0.5s ease forwards; }
+
+    .panel-left-body > * {
+      animation: fadeUp 0.6s ease both;
+    }
+    .panel-left-body > *:nth-child(1) { animation-delay: 0.1s; }
+    .panel-left-body > *:nth-child(2) { animation-delay: 0.2s; }
+    .panel-left-body > *:nth-child(3) { animation-delay: 0.3s; }
+    .panel-left-body > *:nth-child(4) { animation-delay: 0.4s; }
+
+    /* ── Hidden sections ── */
+    .signup-only, .signin-only { display: none; }
+
+    /* ── Mobile ── */
+    @media (max-width: 768px) {
+      html, body { overflow: auto; }
+      .auth-shell { grid-template-columns: 1fr; }
+      .panel-left {
+        min-height: 240px;
+        padding: 32px 28px;
+      }
+      .panel-left-body {
+        gap: 20px;
+      }
+      .left-headline { font-size: 28px; }
+      .chat-demo { display: none; }
+      .panel-right { padding: 32px 28px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="auth-shell">
+
+  <!-- ════════════════ LEFT PANEL ════════════════ -->
+  <div class="panel-left">
+    <div class="logo-row">
+      <svg class="logo-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Miryn wave logo matching landing page -->
+        <path d="M4 22 Q8 14 12 18 Q16 22 20 14 Q24 6 28 10" stroke="#fee435" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+        <path d="M4 26 Q8 18 12 22 Q16 26 20 18 Q24 10 28 14" stroke="#5a54a4" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.8"/>
+        <path d="M4 18 Q8 10 12 14 Q16 18 20 10 Q24 2 28 6" stroke="#f5f5f5" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.5"/>
+      </svg>
+      <span class="logo-name">Miryn AI</span>
+    </div>
+
+    <div class="panel-left-body">
+
+      <div>
+        <h1 class="left-headline">An AI that<br><em>actually</em><br>knows you.</h1>
+      </div>
+
+      <p class="left-sub">
+        Persistent memory. Evolving identity.<br>
+        Every conversation builds on the last.
+      </p>
+
+      <!-- Animated chat demo -->
+      <div class="chat-demo" id="chatDemo">
+        <div class="chat-bubble" id="bubble-0">
+          <div class="bubble-avatar miryn">M</div>
+          <div class="bubble-content miryn">
+            <div class="bubble-tag">memory recall</div><br>
+            You mentioned last Tuesday that your project deadline is this Friday. How's it looking?
+          </div>
+        </div>
+
+        <div class="chat-bubble from-user" id="bubble-1">
+          <div class="bubble-avatar user">Y</div>
+          <div class="bubble-content user">
+            Still behind. I haven't started the final section.
+          </div>
+        </div>
+
+        <div class="chat-bubble" id="bubble-2">
+          <div class="bubble-avatar miryn">M</div>
+          <div class="bubble-content miryn">
+            <div class="bubble-tag">identity · pattern</div><br>
+            That tracks — you tend to front-load research and push execution late. Let's block 90 minutes today for just the draft.
+          </div>
+        </div>
+
+        <div class="chat-bubble" id="bubble-3" style="display:none">
+          <!-- typing indicator -->
+          <div class="bubble-avatar miryn">M</div>
+          <div class="typing-dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+        </div>
+      </div>
+
+      <p class="quote-strip">// memory · identity · continuity · privacy</p>
+
+    </div>
+  </div>
+
+  <!-- ════════════════ RIGHT PANEL ════════════════ -->
+  <div class="panel-right">
+    <div class="auth-card">
+
+      <!-- Tab switcher -->
+      <div class="tab-row">
+        <button class="tab-btn active" id="tab-signin" onclick="switchTab('signin')">Sign In</button>
+        <button class="tab-btn" id="tab-signup" onclick="switchTab('signup')">Create Account</button>
+      </div>
+
+      <!-- Dynamic heading -->
+      <h2 class="auth-heading" id="auth-heading">Welcome back</h2>
+      <p class="auth-sub" id="auth-sub">Sign in to continue your conversations with Miryn.</p>
+
+      <!-- Google -->
+      <a href="#" class="btn-google" onclick="handleGoogle(event)">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+          <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+          <path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+          <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </a>
+
+      <div class="divider">
+        <div class="divider-line"></div>
+        <span class="divider-text">or</span>
+        <div class="divider-line"></div>
+      </div>
+
+      <!-- Form -->
+      <form class="form" id="authForm" onsubmit="handleSubmit(event)">
+
+        <!-- Name row (signup only) -->
+        <div class="name-row signup-only" id="nameRow">
+          <div class="field">
+            <label class="field-label" for="firstName">First name</label>
+            <input class="field-input" type="text" id="firstName" placeholder="Alex" autocomplete="given-name">
+          </div>
+          <div class="field">
+            <label class="field-label" for="lastName">Last name</label>
+            <input class="field-input" type="text" id="lastName" placeholder="Chen" autocomplete="family-name">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="email">Email</label>
+          <input class="field-input" type="email" id="email" placeholder="you@example.com" autocomplete="email" required>
+        </div>
+
+        <div class="field">
+          <div class="password-row">
+            <label class="field-label" for="password">Password</label>
+            <a href="#" class="forgot-link signin-only" id="forgotLink">Forgot password?</a>
+          </div>
+          <input class="field-input" type="password" id="password" placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+
+        <!-- Confirm password (signup only) -->
+        <div class="field signup-only" id="confirmField">
+          <label class="field-label" for="confirmPassword">Confirm password</label>
+          <input class="field-input" type="password" id="confirmPassword" placeholder="••••••••" autocomplete="new-password">
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">
+          <span id="submitLabel">Sign In</span>
+          <span class="arrow">→</span>
+        </button>
+
+      </form>
+
+      <p class="legal" id="legalText">
+        By signing in, you agree to Miryn's
+        <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+      </p>
+
+      <a href="index.html" class="back-link">
+        ← Back to Miryn AI
+      </a>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── Tab switching ──────────────────────────────
+  let mode = 'signin';
+
+  function switchTab(newMode) {
+    mode = newMode;
+    const isSignup = newMode === 'signup';
+
+    document.getElementById('tab-signin').classList.toggle('active', !isSignup);
+    document.getElementById('tab-signup').classList.toggle('active', isSignup);
+
+    document.getElementById('auth-heading').textContent = isSignup ? 'Create your account' : 'Welcome back';
+    document.getElementById('auth-sub').textContent = isSignup
+      ? 'Start building your persistent memory with Miryn.'
+      : 'Sign in to continue your conversations with Miryn.';
+
+    document.getElementById('submitLabel').textContent = isSignup ? 'Create Account' : 'Sign In';
+    document.getElementById('legalText').innerHTML = isSignup
+      ? 'By creating an account, you agree to Miryn\'s <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.'
+      : 'By signing in, you agree to Miryn\'s <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.';
+
+    document.querySelectorAll('.signup-only').forEach(el => el.style.display = isSignup ? '' : 'none');
+    document.querySelectorAll('.signin-only').forEach(el => el.style.display = isSignup ? 'none' : '');
+
+    document.getElementById('password').autocomplete = isSignup ? 'new-password' : 'current-password';
+  }
+
+  // ── Form submit ───────────────────────────────
+  function handleSubmit(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const label = document.getElementById('submitLabel');
+    btn.disabled = true;
+    label.textContent = mode === 'signup' ? 'Creating account…' : 'Signing in…';
+
+    // ponytail: stub — real auth goes through /api/auth/login or /api/auth/register
+    setTimeout(() => {
+      btn.disabled = false;
+      label.textContent = mode === 'signup' ? 'Create Account' : 'Sign In';
+      // Redirect to app (stub)
+      alert('Auth backend not connected yet. This UI is ready to wire up to /api/auth/.');
+    }, 1400);
+  }
+
+  function handleGoogle(e) {
+    e.preventDefault();
+    alert('Google OAuth not wired yet. Connect via /api/auth/google/.');
+  }
+
+  // ── Animated chat bubbles ─────────────────────
+  const delays = [400, 1400, 2600];
+  delays.forEach((delay, i) => {
+    setTimeout(() => {
+      const bubble = document.getElementById('bubble-' + i);
+      if (bubble) bubble.classList.add('visible');
+    }, delay);
+  });
+
+  // Show typing then hide it
+  setTimeout(() => {
+    const typing = document.getElementById('bubble-3');
+    if (typing) { typing.style.display = 'flex'; typing.classList.add('visible'); }
+  }, 3800);
+  setTimeout(() => {
+    const typing = document.getElementById('bubble-3');
+    if (typing) { typing.style.display = 'none'; }
+  }, 5200);
+</script>
+</body>
+</html>

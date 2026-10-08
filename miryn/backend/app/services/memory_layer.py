@@ -119,7 +119,12 @@ class MemoryLayer:
             List[Dict[str, Any]]: A list of memory entries (dictionaries) relevant to the query, truncated to `limit`.
         """
         cache_key = self._build_cache_key(user_id, query, conversation_id)
-        cached = self.cache.get(cache_key)
+        # Best-effort: a cache miss must never abort retrieval, and without Redis
+        # an unguarded read here killed recall entirely rather than just missing.
+        try:
+            cached = self.cache.get(cache_key)
+        except Exception:
+            cached = None
         if cached:
             try:
                 return json.loads(cached)[:limit]
@@ -875,11 +880,10 @@ class MemoryLayer:
         """
         if not transient:
             return scored
-        seen = {msg.get("id") for msg in scored if msg.get("id")}
+        # ponytail: dedup scored against transient IDs, not against themselves
+        seen = {msg.get("id") for msg in transient if msg.get("id")}
         combined = list(transient)
         for msg in scored:
-            msg_id = msg.get("id")
-            if msg_id and msg_id in seen:
-                continue
-            combined.append(msg)
+            if msg.get("id") not in seen:
+                combined.append(msg)
         return combined

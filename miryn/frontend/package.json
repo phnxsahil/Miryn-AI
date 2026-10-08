@@ -3,23 +3,23 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev.mjs",
     "build": "next build",
-    "start": "next start",
+    "start": "node .next/standalone/server.js",
+    "postbuild": "node scripts/prepare-standalone.mjs",
     "lint": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next lint",
     "check:bom": "node scripts/check-bom.mjs",
     "verify": "npm run lint && npm run check:bom"
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.4",
-    "@sentry/nextjs": "^10.43.0",
     "@tailwindcss/typography": "^0.5.19",
     "framer-motion": "11.0.22",
     "highlight.js": "^11.11.1",
     "lucide-react": "^0.575.0",
     "next": "14.2.35",
     "next-auth": "4.24.12",
-    "nodemailer": "7.0.7",
+    "posthog-js": "^1.396.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-markdown": "^10.1.0",
@@ -28,6 +28,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "20.11.5",
     "@types/react": "18.2.48",
     "@types/react-dom": "18.2.18",

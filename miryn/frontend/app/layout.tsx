@@ -1,30 +1,16 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, EB_Garamond, JetBrains_Mono } from "next/font/google";
-import GoogleAuthProvider from "@/components/GoogleAuthProvider";
+import PostHogProvider from "@/components/PostHogProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import "../styles/globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-space-grotesk",
-});
-
-const ebGaramond = EB_Garamond({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
-  variable: "--font-eb-garamond",
-});
-
-const jetBrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-jetbrains-mono",
-});
-
 export const metadata: Metadata = {
-  title: "Miryn AI | The Memory Layer",
-  description: "A context-aware AI companion that remembers your patterns, beliefs, and evolution.",
+  title: "Miryn AI — Persistent Memory & Evolving AI Companion",
+  description: "An AI companion that remembers, learns, and evolves with you. Powered by 3-tier memory architecture and dynamic identity engine.",
+  icons: {
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({
@@ -33,11 +19,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} ${ebGaramond.variable} ${jetBrainsMono.variable}`} suppressHydrationWarning>
-      <body className="bg-void text-primary font-ui selection:bg-accent/30 selection:text-accent">
-        <GoogleAuthProvider>
-          {children}
-        </GoogleAuthProvider>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try { var theme = localStorage.getItem('miryn-theme'); document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark'; } catch (_) { document.documentElement.dataset.theme = 'dark'; }`,
+          }}
+        />
+      </head>
+      <body className="bg-[#0a0a0a] text-[#f5f5f5] font-sans antialiased selection:bg-[#a8bb94] selection:text-[#0a0a0a]">
+        <ThemeProvider>
+          <PostHogProvider>{children}</PostHogProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

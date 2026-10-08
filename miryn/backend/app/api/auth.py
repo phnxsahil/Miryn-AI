@@ -13,6 +13,7 @@ from app.core.security import get_password_hash, verify_password, create_access_
 from app.core.cache import redis_client
 from app.core.audit import log_event
 from app.config import settings
+from app.services.email_service import send_password_reset, send_welcome_email
 from app.schemas.auth import SignupRequest, LoginRequest, TokenResponse, UserOut, ForgotPasswordRequest, ResetPasswordRequest, GoogleLoginRequest, PasswordUpdate, SessionOut, RefreshTokenRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -101,6 +102,96 @@ def _default_notification_preferences() -> dict[str, bool]:
     }
 
 
+def _store_google_profile(user_id: str, idinfo: dict) -> None:
+    """Keep the Google display name and avatar on the profile.
+
+    The COALESCE on the SQL path and the presence checks on the Supabase path
+    mean a name typed at signup is never overwritten by whatever Google returns.
+    """
+    full_name = str(idinfo.get("name") or "").strip() or None
+    avatar_url = str(idinfo.get("picture") or "").strip() or None
+    if not full_name and not avatar_url:
+        return
+
+    try:
+        if has_sql():
+            with get_sql_session() as session:
+                session.execute(
+                    text(
+                        """
+                        INSERT INTO user_profiles (user_id, full_name, avatar_url)
+                        VALUES (:user_id, :full_name, :avatar_url)
+                        ON CONFLICT (user_id) DO UPDATE
+                        SET full_name = COALESCE(user_profiles.full_name, EXCLUDED.full_name),
+                            avatar_url = COALESCE(user_profiles.avatar_url, EXCLUDED.avatar_url)
+                        """
+                    ),
+                    {"user_id": user_id, "full_name": full_name, "avatar_url": avatar_url},
+                )
+            return
+
+        db = get_db()
+        existing = (
+            db.table("user_profiles")
+            .select("user_id, full_name, avatar_url")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        row = (existing.data or [None])[0]
+        if not row:
+            db.table("user_profiles").insert(
+                {"user_id": user_id, "full_name": full_name, "avatar_url": avatar_url}
+            ).execute()
+            return
+
+        patch: dict[str, str] = {}
+        if full_name and not row.get("full_name"):
+            patch["full_name"] = full_name
+        if avatar_url and not row.get("avatar_url"):
+            patch["avatar_url"] = avatar_url
+        if patch:
+            db.table("user_profiles").update(patch).eq("user_id", user_id).execute()
+    except Exception as exc:
+        logger.warning("Could not store Google profile for %s: %s", user_id, exc)
+
+
+def _get_full_name(user_id: str) -> str | None:
+    try:
+        if has_sql():
+            with get_sql_session() as session:
+                row = session.execute(
+                    text("SELECT full_name FROM user_profiles WHERE user_id = :user_id LIMIT 1"),
+                    {"user_id": user_id},
+                ).mappings().first()
+                return row.get("full_name") if row else None
+
+        db = get_db()
+        res = (
+            db.table("user_profiles")
+            .select("full_name")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        row = (res.data or [None])[0]
+        return row.get("full_name") if row else None
+    except Exception as exc:
+        logger.warning("Could not read profile for %s: %s", user_id, exc)
+        return None
+
+
+@router.get("/config")
+def auth_config():
+    """Which sign-in providers this deployment can actually finish.
+
+    The frontend renders the Google button from a public client id, which says
+    nothing about whether the server holds the matching id needed to verify the
+    token. This lets the two sides agree before a user clicks.
+    """
+    return {"providers": {"google": bool(settings.GOOGLE_CLIENT_ID)}}
+
+
 @router.post("/signup", response_model=UserOut)
 def signup(payload: SignupRequest, request: Request):
     client_host = _client_host(request)
@@ -116,21 +207,33 @@ def signup(payload: SignupRequest, request: Request):
                     ),
                     {"id": str(uuid4()), "email": payload.email, "password_hash": get_password_hash(payload.password)},
                 )
-                result = session.execute(
-                    text("SELECT id, email FROM users WHERE email = :email LIMIT 1"),
-                    {"email": payload.email},
-                ).mappings().first()
             except IntegrityError as exc:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered") from exc
 
-            if not result:
-                result = session.execute(
-                    text("SELECT id, email FROM users WHERE email = :email LIMIT 1"),
-                    {"email": payload.email},
-                ).mappings().first()
+            result = session.execute(
+                text("SELECT id, email FROM users WHERE email = :email LIMIT 1"),
+                {"email": payload.email},
+            ).mappings().first()
 
             if not result:
                 raise HTTPException(status_code=500, detail="Failed to create user")
+
+            # The name is asked once, at signup; onboarding skips its name step
+            # when a profile already carries one.
+            if payload.full_name:
+                try:
+                    session.execute(
+                        text(
+                            """
+                            INSERT INTO user_profiles (user_id, full_name)
+                            VALUES (:user_id, :full_name)
+                            ON CONFLICT (user_id) DO UPDATE SET full_name = EXCLUDED.full_name
+                            """
+                        ),
+                        {"user_id": str(result["id"]), "full_name": payload.full_name},
+                    )
+                except Exception as exc:
+                    logger.warning("Could not store full name for %s: %s", result["id"], exc)
 
         log_event(
             event_type="auth.signup",
@@ -141,6 +244,8 @@ def signup(payload: SignupRequest, request: Request):
             ip=client_host,
             user_agent=request.headers.get("user-agent"),
         )
+
+        send_welcome_email(payload.email)
 
         return {"id": str(result["id"]), "email": result["email"]}
 
@@ -173,6 +278,15 @@ def signup(payload: SignupRequest, request: Request):
     )
 
     created = user.data[0]
+
+    if payload.full_name:
+        try:
+            db.table("user_profiles").insert(
+                {"user_id": str(created.get("id")), "full_name": payload.full_name}
+            ).execute()
+        except Exception as exc:
+            logger.warning("Could not store full name for %s: %s", created.get("id"), exc)
+
     return {"id": str(created.get("id")), "email": created.get("email")}
 
 
@@ -268,6 +382,8 @@ def google_auth(payload: GoogleLoginRequest, request: Request):
 
     if not user_id:
         raise HTTPException(status_code=500, detail="Failed to authenticate user")
+
+    _store_google_profile(user_id, idinfo)
 
     log_event(
         event_type="auth.google",
@@ -411,7 +527,7 @@ def forgot_password(payload: ForgotPasswordRequest):
             redis_client.setex(key, 900, user_id)
         except Exception:
             pass
-        logger.info("Reset token for %s: %s", email, token)
+        send_password_reset(email, token)
 
     return {"message": "If this email exists a reset link was sent"}
 
@@ -504,6 +620,7 @@ def get_me(user_id: str = Depends(get_current_user_id)):
     return {
         "id": str(user["id"]),
         "email": user["email"],
+        "full_name": _get_full_name(user_id),
         "has_password": user["password_hash"] is not None,
         "notification_preferences": user.get("notification_preferences") or _default_notification_preferences(),
         "data_retention": user.get("data_retention") or "forever",

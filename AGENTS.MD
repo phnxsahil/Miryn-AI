@@ -19,12 +19,15 @@
 - Every new endpoint needs a corresponding schema in miryn/backend/app/schemas/
 - Frontend API calls always go through miryn/frontend/lib/api.ts — never direct fetch
 
-## Current broken things (fix these in order)
-1. reflection_worker.py discards analyze_conversation() results — never writes to identity
-2. No streaming endpoint exists — LLMService has no stream_chat() method
-3. Onboarding doesn't load presets — config/presets.json doesn't exist yet
-4. detect_conflicts() in identity_engine.py returns [] always (stub at line 198)
-5. No identity_evolution_log table or writes exist
+## Previously-listed "broken things" — all 5 are FIXED (verified 2026-09-24)
+Do not re-fix these; the code already does what this list used to claim was missing.
+1. FIXED — `workers/reflection_worker.py` writes emotions, patterns and open loops via `IdentityEngine`.
+2. FIXED — `LLMService.stream_chat()` exists (`services/llm_service.py`); `POST /chat/stream` serves SSE.
+3. FIXED — `app/config/presets.json` exists and is loaded by `api/onboarding.py` and `llm_service._build_system_prompt()`.
+4. FIXED — `detect_conflicts()` (`services/identity_engine.py`) delegates to `ReflectionEngine.detect_contradictions()`.
+5. FIXED — `identity_evolution_log` table + writes exist (`migrations/002_evolution_log.sql`, `identity_engine._log_identity_evolution_sql`).
+
+See the parent `../AGENTS.md` for the verified codebase map, and do not trust `SOP.md`, `GEMINI.md`, or `miryn_core.txt` for current state.
 
 ## Testing
 - Run backend: cd miryn/backend && uvicorn app.main:app --reload

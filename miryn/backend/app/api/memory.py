@@ -5,9 +5,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from app.core.database import get_db, has_sql, get_sql_session
 from app.core.security import get_current_user_id
-from app.core.encryption import decrypt_text
+from uuid import uuid4
+from app.core.encryption import decrypt_text, encrypt_text
 from app.services.identity_engine import IdentityEngine
-from app.services.memory_ranker import rank_memories
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 identity_engine = IdentityEngine()
@@ -22,6 +22,11 @@ def _hydrate_message(row: dict) -> dict:
             content = None
 
     metadata = row.get("metadata")
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except json.JSONDecodeError:
+            metadata = None
     if not metadata and row.get("metadata_encrypted"):
         try:
             metadata = json.loads(decrypt_text(row.get("metadata_encrypted")))
@@ -40,7 +45,7 @@ def _hydrate_message(row: dict) -> dict:
 
 
 def _has_primary_emotion(metadata: dict | None) -> bool:
-    if not metadata:
+    if not isinstance(metadata, dict):
         return False
     if isinstance(metadata.get("primary_emotion"), str):
         return True
@@ -206,9 +211,39 @@ def get_memory(
     }
 
 
+@router.delete("/purge/episodic")
+def purge_episodic_memories(user_id: str = Depends(get_current_user_id)):
+    now = datetime.now(timezone.utc)
+    if has_sql():
+        with get_sql_session() as session:
+            result = session.execute(
+                text(
+                    """
+                    UPDATE messages
+                    SET delete_at = :now
+                    WHERE user_id = :user_id
+                      AND memory_tier = 'episodic'
+                      AND (delete_at IS NULL OR delete_at > :now)
+                    """
+                ),
+                {"now": now, "user_id": user_id},
+            )
+            return {"status": "success", "purged_count": result.rowcount}
+
+    db = get_db()
+    response = (
+        db.table("messages")
+        .update({"delete_at": now.isoformat()})
+        .eq("user_id", user_id)
+        .eq("memory_tier", "episodic")
+        .execute()
+    )
+    return {"status": "success", "purged_count": len(response.data or [])}
+
+
 @router.delete("/{message_id}")
 def delete_memory(message_id: str, user_id: str = Depends(get_current_user_id)):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     if has_sql():
         with get_sql_session() as session:
@@ -238,45 +273,47 @@ def delete_memory(message_id: str, user_id: str = Depends(get_current_user_id)):
         raise HTTPException(status_code=404, detail="Memory not found")
     return {"message": "Memory removed"}
 
-@router.get("/ranked")
-def get_ranked_memories(user_id: str = Depends(get_current_user_id)):
-    """
-    Returns all memories ranked by XGBoost relevance model.
-    Adds relevance_score to each memory.
-    """
+@router.post("/")
+def create_memory(payload: dict, user_id: str = Depends(get_current_user_id)):
+    content = payload.get("content", "").strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="Memory content cannot be empty")
+    tier = payload.get("memory_tier", "core")
+    importance = float(payload.get("importance_score", 0.8))
+    memory_id = str(uuid4())
     now = datetime.now(timezone.utc)
-    memories = _get_all_memories(user_id)
+    content_encrypted = encrypt_text(content)
 
-    # Build feature-ready dicts
-    ranked = []
-    for item in memories:
-        created_at = item.get("created_at")
-        if created_at:
-            try:
-                if isinstance(created_at, str):
-                    created_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-                else:
-                    created_dt = created_at
-                days_ago = max(0, (now - created_dt).days)
-            except Exception:
-                days_ago = 30
-        else:
-            days_ago = 30
+    if has_sql():
+        with get_sql_session() as session:
+            session.execute(
+                text(
+                    """
+                    INSERT INTO messages (id, user_id, role, content, content_encrypted, memory_tier, importance_score, created_at)
+                    VALUES (:id, :user_id, 'assistant', :content, :content_encrypted, :tier, :importance, :now)
+                    """
+                ),
+                {
+                    "id": memory_id,
+                    "user_id": user_id,
+                    "content": content,
+                    "content_encrypted": content_encrypted,
+                    "tier": tier,
+                    "importance": importance,
+                    "now": now
+                }
+            )
+            return {"status": "success", "id": memory_id, "content": content, "memory_tier": tier, "importance_score": importance}
 
-        metadata = item.get("metadata") or {}
-        emotions = metadata.get("emotions") or {}
-
-        ranked.append({
-            "id": item.get("id"),
-            "content": item.get("content"),
-            "memory_tier": item.get("memory_tier"),
-            "importance_score": item.get("importance_score"),
-            "created_at": item.get("created_at"),
-            "days_ago": days_ago,
-            "emotional_intensity": float(emotions.get("intensity", 0.5)) if emotions else 0.5,
-            "entity_overlap": int(metadata.get("entity_overlap", 0)),
-            "identity_alignment": 1 if item.get("memory_tier") == "core" else 0,
-        })
-
-    ranked = rank_memories(ranked)
-    return {"ranked_memories": ranked}
+    db = get_db()
+    db.table("messages").insert({
+        "id": memory_id,
+        "user_id": user_id,
+        "role": "assistant",
+        "content": content,
+        "content_encrypted": content_encrypted,
+        "memory_tier": tier,
+        "importance_score": importance,
+        "created_at": now.isoformat()
+    }).execute()
+    return {"status": "success", "id": memory_id, "content": content, "memory_tier": tier, "importance_score": importance}

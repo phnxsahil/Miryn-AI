@@ -1,6 +1,13 @@
-﻿import ChatInterface from "@/components/Chat/ChatInterface";
+import { Suspense } from "react";
+import ChatInterface from "@/components/Chat/ChatInterface";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
-// Server component wrapper for the chat experience.
 export default function ChatPage() {
-  return <ChatInterface />;
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={null}>
+        <ChatInterface />
+      </Suspense>
+    </ErrorBoundary>
+  );
 }

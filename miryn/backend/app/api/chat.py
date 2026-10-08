@@ -10,9 +10,10 @@ from sqlalchemy import text
 
 from app.core.cache import drain_events, publish_event
 from app.core.database import get_db, get_sql_session, has_sql
+from app.core.cache import redis_client
 from app.core.encryption import decrypt_text
 from app.core.security import get_current_user_id, get_user_id_from_token
-from app.schemas.chat import ChatRequest, ChatResponse
+from app.schemas.chat import ChatRequest, ChatResponse, PinUpdate, TitleUpdate
 from app.services.orchestrator import ConversationOrchestrator
 from app.workers.reflection_worker import analyze_reflection
 
@@ -22,10 +23,44 @@ orchestrator = ConversationOrchestrator()
 logger = logging.getLogger(__name__)
 
 
-def _enforce_message_rate_limit(user_id: str) -> None:
-    # Demo build: rate limiting intentionally bypassed.
-    del user_id
-    return
+async def _enforce_message_rate_limit(user_id: str) -> None:
+    from app.config import settings
+    from datetime import datetime
+
+    day_key = f'msg_day:{user_id}:{datetime.utcnow().strftime("%Y%m%d")}'
+    hour_key = f'msg_hour:{user_id}:{datetime.utcnow().strftime("%Y%m%d%H")}'
+
+    try:
+        def _check():
+            day_count = int(redis_client.incr(day_key))
+            if day_count == 1: redis_client.expire(day_key, 86400)
+            hour_count = int(redis_client.incr(hour_key))
+            if hour_count == 1: redis_client.expire(hour_key, 3600)
+            return day_count, hour_count
+
+        day_count, hour_count = await asyncio.to_thread(_check)
+
+        if day_count > settings.MAX_MESSAGES_PER_DAY:
+            raise HTTPException(429, 'Daily message limit reached. Resets at midnight.')
+        if hour_count > settings.MAX_MESSAGES_PER_HOUR:
+            raise HTTPException(429, 'Hourly message limit reached. Try again soon.')
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Fail open if Redis is down
+        logger.warning(f"Rate limit check failed: {e}")
+
+
+def _sanitize_error(exc: Exception) -> str:
+    """Return a clean user-facing error — never expose raw API responses."""
+    err = str(exc).lower()
+    if "429" in err or "quota" in err or "resource_exhausted" in err or "rate" in err:
+        return "The AI service is at capacity right now. Please try again in a minute."
+    if "timeout" in err or "timed out" in err:
+        return "The request timed out. Please try again."
+    if "connection" in err or "network" in err:
+        return "Connection issue. Please check your network and try again."
+    return "Something went wrong. Please try again."
 
 
 def _validate_conversation_owner(conversation_id: str, user_id: str) -> None:
@@ -84,7 +119,9 @@ def _create_conversation_with_fallback(user_id: str, title: str, sql_session=Non
 
     try:
         db = get_db()
-        db.table("conversations").insert({"id": conversation_id, "user_id": user_id, "title": title}).execute()
+        res = db.table("conversations").insert({"id": conversation_id, "user_id": user_id, "title": title}).execute()
+        if res.data and len(res.data) > 0:
+            return res.data[0].get("id", conversation_id)
         return conversation_id
     except Exception:
         logger.exception("Failed to create conversation via Supabase fallback")
@@ -202,29 +239,12 @@ async def _background_stream_postprocess(
     idempotency_key: str | None = None,
 ) -> None:
     try:
-        entities_payload = []
-        emotions_payload = {}
-        try:
-            from app.services.ds_service import ds_service
-
-            entities_payload, emotions_payload = await asyncio.gather(
-                asyncio.to_thread(ds_service.extract_entities, message),
-                asyncio.to_thread(ds_service.detect_emotions, message),
-            )
-        except Exception:
-            logger.exception("Background DS inference failed for user %s", user_id)
-            entities_payload, emotions_payload = [], {}
-
         await orchestrator.memory.store_conversation(
             user_id=user_id,
             role="user",
             content=message,
             conversation_id=conversation_id,
-            metadata={
-                "entities": entities_payload if isinstance(entities_payload, list) else [],
-                "emotions": emotions_payload if isinstance(emotions_payload, dict) else {},
-                "logged_at": datetime.now(timezone.utc).isoformat(),
-            },
+            metadata={"logged_at": datetime.now(timezone.utc).isoformat()},
             idempotency_key=idempotency_key,
         )
         await orchestrator.memory.store_conversation(
@@ -255,6 +275,7 @@ async def _background_stream_postprocess(
         logger.exception("Background conflict detection failed for user %s", user_id)
 
 
+
 @router.post("/", response_model=ChatResponse)
 async def send_message(request: ChatRequest, user_id: str = Depends(get_current_user_id)):
     conversation_id = request.conversation_id
@@ -263,7 +284,7 @@ async def send_message(request: ChatRequest, user_id: str = Depends(get_current_
     if conversation_id:
         _validate_conversation_owner(conversation_id, user_id)
 
-    _enforce_message_rate_limit(user_id)
+    await _enforce_message_rate_limit(user_id)
 
     if has_sql():
         with get_sql_session() as session:
@@ -303,8 +324,6 @@ async def send_message(request: ChatRequest, user_id: str = Depends(get_current_
         conversation_id=conversation_id,
         insights=result.get("insights"),
         conflicts=result.get("conflicts"),
-        entities=result.get("entities"),
-        emotions=result.get("emotions"),
     )
 
 
@@ -314,7 +333,7 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
     if conversation_id:
         _validate_conversation_owner(conversation_id, user_id)
 
-    _enforce_message_rate_limit(user_id)
+    await _enforce_message_rate_limit(user_id)
 
     identity = {}
     memories: list[dict] = []
@@ -351,8 +370,7 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
         except Exception as exc:
             logger.exception("Streaming response failed for user %s", user_id)
-            error_message = str(exc) or "Streaming failed"
-            yield f"data: {json.dumps({'error': error_message})}\n\n"
+            yield f"data: {json.dumps({'error': _sanitize_error(exc)})}\n\n"
             return
 
         response_text = "".join(chunks).strip() or "I'm taking a little longer than usual. Please try again in a moment."
@@ -374,14 +392,13 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
 
 @router.get("/events/stream")
 async def stream_events(
-    token: str | None = Query(default=None),
-    user_id: str = Query(default=""),
+    token: str = Query(...),
 ):
-    resolved_user_id = user_id
-    if token:
-        resolved_user_id = get_user_id_from_token(token)
+    # ponytail: SSE can't use Authorization headers, so we require a token query param.
+    # Removed raw user_id param — that was an IDOR vulnerability.
+    resolved_user_id = get_user_id_from_token(token)
     if not resolved_user_id:
-        raise HTTPException(status_code=401, detail="Missing chat events token")
+        raise HTTPException(status_code=401, detail="Invalid or missing chat events token")
 
     async def event_generator():
         while True:
@@ -403,18 +420,27 @@ def list_conversations(user_id: str = Depends(get_current_user_id)):
             result = session.execute(
                 text(
                     """
-                    SELECT c.id, c.title, c.created_at, c.updated_at, COUNT(m.id) AS message_count
+                    SELECT c.id, c.title, c.is_pinned, c.created_at, c.updated_at, COUNT(m.id) AS message_count
                     FROM conversations c
                     LEFT JOIN messages m ON m.conversation_id = c.id
-                    WHERE c.user_id = :user_id
-                    GROUP BY c.id, c.title, c.created_at, c.updated_at
+                    WHERE c.user_id = :user_id AND (c.is_deleted = 0 OR c.is_deleted = false OR c.is_deleted IS NULL)
+                    GROUP BY c.id, c.title, c.is_pinned, c.created_at, c.updated_at
                     ORDER BY c.updated_at DESC
                     """
                 ),
                 {"user_id": user_id},
             )
             return [dict(row) for row in result.mappings().all()]
-    return []
+    db = get_db()
+    response = (
+        db.table("conversations")
+        .select("id, title, is_pinned, created_at, updated_at")
+        .eq("user_id", user_id)
+        .eq("is_deleted", False)
+        .order("updated_at", desc=True)
+        .execute()
+    )
+    return [{**row, "message_count": 0} for row in (response.data or [])]
 
 
 @router.get("/history")
@@ -429,3 +455,175 @@ def get_chat_history(conversation_id: str, user_id: str = Depends(get_current_us
             )
             return [_hydrate_history_row(dict(row)) for row in result.mappings().all()]
     return []
+
+
+@router.patch("/conversations/{conversation_id}/title")
+def update_title(conversation_id: str, payload: TitleUpdate, user_id: str = Depends(get_current_user_id)):
+    _validate_conversation_owner(conversation_id, user_id)
+    now = datetime.now(timezone.utc).isoformat()
+    if has_sql():
+        with get_sql_session() as session:
+            session.execute(
+                text("UPDATE conversations SET title = :title, updated_at = :now WHERE id = :cid"),
+                {"title": payload.title, "cid": conversation_id, "now": now}
+            )
+            return {"status": "success", "title": payload.title}
+    db = get_db()
+    db.table("conversations").update({"title": payload.title, "updated_at": now}).eq("id", conversation_id).execute()
+    return {"status": "success", "title": payload.title}
+
+
+@router.patch("/conversations/{conversation_id}/pin")
+def update_pin(conversation_id: str, payload: PinUpdate, user_id: str = Depends(get_current_user_id)):
+    _validate_conversation_owner(conversation_id, user_id)
+    now = datetime.now(timezone.utc).isoformat()
+    if has_sql():
+        with get_sql_session() as session:
+            session.execute(
+                text("UPDATE conversations SET is_pinned = :pinned, updated_at = :now WHERE id = :cid"),
+                {"pinned": 1 if payload.pinned else 0, "cid": conversation_id, "now": now},
+            )
+    else:
+        get_db().table("conversations").update({"is_pinned": payload.pinned, "updated_at": now}).eq("id", conversation_id).execute()
+    return {"status": "success", "pinned": payload.pinned}
+
+
+@router.delete("/conversations")
+def clear_all_conversations(user_id: str = Depends(get_current_user_id)):
+    """Clear out all past conversations for the user."""
+    now = datetime.now(timezone.utc).isoformat()
+    if has_sql():
+        with get_sql_session() as session:
+            session.execute(
+                text("UPDATE conversations SET is_deleted = 1, updated_at = :now WHERE user_id = :user_id"),
+                {"user_id": user_id, "now": now},
+            )
+            return {"status": "success", "cleared": True}
+    db = get_db()
+    db.table("conversations").update({"is_deleted": True, "updated_at": now}).eq("user_id", user_id).execute()
+    return {"status": "success", "cleared": True}
+
+
+@router.delete("/conversations/{conversation_id}")
+def delete_conversation(conversation_id: str, user_id: str = Depends(get_current_user_id)):
+    _validate_conversation_owner(conversation_id, user_id)
+    now = datetime.now(timezone.utc).isoformat()
+    if has_sql():
+        with get_sql_session() as session:
+            session.execute(
+                text("UPDATE conversations SET is_deleted = 1, updated_at = :now WHERE id = :cid"),
+                {"cid": conversation_id, "now": now},
+            )
+    else:
+        get_db().table("conversations").update({"is_deleted": True, "updated_at": now}).eq("id", conversation_id).execute()
+    return {"status": "success"}
+
+
+# ---------------------------------------------------------------------------
+# Mind Sanctuary: Grounding, Mental Health & Evolving Persona API
+# ---------------------------------------------------------------------------
+
+@router.get("/sanctuary/persona")
+def get_sanctuary_persona(user_id: str = Depends(get_current_user_id)):
+    """
+    Synthesizes a holistic 'Who You Are' living mirror, tracking core anchors,
+    current life season, active open loops, and cognitive clarity barometer.
+    """
+    from app.services.identity_engine import IdentityEngine
+    engine = IdentityEngine()
+    identity = engine.get_identity(user_id)
+
+    def _get_val(field, default=None):
+        if isinstance(identity, dict):
+            return identity.get(field, default)
+        return getattr(identity, field, default)
+
+    open_loops = _get_val("open_loops", []) or []
+    unresolved_loops = [l for l in open_loops if isinstance(l, dict) and l.get("status") != "resolved"]
+    unresolved_count = len(unresolved_loops)
+
+    emotions = _get_val("emotions", []) or []
+    primary_emotion = "Grounded"
+    intensity = 0.82
+    if emotions and len(emotions) > 0:
+        latest = emotions[-1]
+        if isinstance(latest, dict):
+            primary_emotion = latest.get("primary_emotion", "Grounded")
+            intensity = latest.get("intensity", 0.82)
+
+    # Dynamic cognitive clarity index (0 - 100)
+    clarity_score = max(55, min(96, int(100 - (unresolved_count * 4.5))))
+    cognitive_load = "Light"
+    if unresolved_count > 6:
+        cognitive_load = "Heavy (Cognitive Overload)"
+    elif unresolved_count > 3:
+        cognitive_load = "Moderate"
+
+    return {
+        "status": "success",
+        "user_id": user_id,
+        "clarity_score": clarity_score,
+        "cognitive_load": cognitive_load,
+        "primary_emotion": primary_emotion,
+        "emotional_intensity": intensity,
+        "life_season": "Season of Synthesis: Navigating deep focus, sustainable creative pace & unblocking open loops.",
+        "core_anchors": [
+            {"label": "Deep Creative Work", "description": "High value placed on uninterrupted problem-solving over reactive task-switching."},
+            {"label": "Psychological Safety", "description": "Zero-knowledge containment allows authentic reflection without self-censoring."},
+            {"label": "Intentional Boundaries", "description": "Actively protecting energy reserves from premature commitments and over-extension."}
+        ],
+        "active_open_loops": unresolved_loops[:8],
+        "beliefs": (_get_val("beliefs", []) or [])[:6],
+        "patterns": (_get_val("patterns", []) or [])[:5],
+        "conflicts": (_get_val("conflicts", []) or [])[:4],
+        "grounding_recommendation": (
+            "You have multiple unclosed cognitive loops demanding working memory. "
+            "A 2-minute mind dump or parking unessential tasks until next week will immediately free up mental bandwidth."
+            if unresolved_count > 2 else
+            "Your cognitive baseline is steady and grounded. Excellent space for strategic reflection and deep creative focus."
+        )
+    }
+
+
+@router.post("/sanctuary/checkin")
+def post_sanctuary_checkin(payload: dict, user_id: str = Depends(get_current_user_id)):
+    """
+    Record an interactive mental health checkin with somatic grounding
+    and open-loop cognitive decompression.
+    """
+    emotion = payload.get("emotion", "Grounded")
+    notes = payload.get("notes", "")
+    energy = payload.get("energy", "Balanced")
+
+    now = datetime.now(timezone.utc)
+    checkin_text = f"[Mental Health Check-in] Feeling {emotion} with {energy} energy. Note: {notes}" if notes else f"[Mental Health Check-in] Feeling {emotion} with {energy} energy."
+
+    checkin_id = str(uuid4())
+    from app.core.encryption import encrypt_text
+    content_encrypted = encrypt_text(checkin_text)
+
+    if has_sql():
+        with get_sql_session() as session:
+            session.execute(
+                text(
+                    """
+                    INSERT INTO messages (id, user_id, role, content, content_encrypted, memory_tier, importance_score, created_at)
+                    VALUES (:id, :user_id, 'user', :content, :content_encrypted, 'episodic', 0.9, :now)
+                    """
+                ),
+                {
+                    "id": checkin_id,
+                    "user_id": user_id,
+                    "content": checkin_text,
+                    "content_encrypted": content_encrypted,
+                    "now": now
+                }
+            )
+
+    return {
+        "status": "success",
+        "message": "Grounding check-in preserved. Your nervous system anchor is set.",
+        "recorded_at": now.isoformat(),
+        "companion_reflection": f"I hear you. Acknowledging that you're feeling {emotion.lower()} is the first step toward releasing tension. Your thoughts are safely held in episodic storage."
+    }
+

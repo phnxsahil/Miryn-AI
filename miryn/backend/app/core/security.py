@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.config import settings
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -44,7 +44,7 @@ def _create_token(subject: str, expires_delta: timedelta, token_type: str) -> st
 
 
 def get_current_user_id(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> str:
     """
     Retrieve the current user's ID from HTTP Bearer authorization credentials.
@@ -54,6 +54,12 @@ def get_current_user_id(
     Returns:
         str: The user id extracted from the token.
     """
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     token = credentials.credentials
     return _decode_token(token, expected_type="access")
 

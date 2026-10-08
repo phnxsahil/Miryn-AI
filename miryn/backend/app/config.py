@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from typing import Optional
 
@@ -39,8 +39,6 @@ class Settings(BaseSettings):
     ENABLE_INLINE_CONFLICT_DETECTION: bool = False
     # If Celery isn't available, run reflection inline (very slow). Keep disabled for snappy chat.
     ENABLE_REFLECTION_SYNC_FALLBACK: bool = False
-    # If enabled, warm DS models on startup in a background thread.
-    ENABLE_DS_WARMUP: bool = True
 
     # App
     FRONTEND_URL: str = "http://localhost:3000"
@@ -67,6 +65,9 @@ class Settings(BaseSettings):
 
     # Tool sandbox
     TOOL_SANDBOX_URL: Optional[str] = None
+
+    # Resend (email)
+    RESEND_API_KEY: Optional[str] = None
 
     # Observability
     SENTRY_DSN: Optional[str] = None

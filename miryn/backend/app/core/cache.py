@@ -11,6 +11,12 @@ from app.config import settings
 redis_client: Redis = redis.from_url(
     settings.REDIS_URL,
     decode_responses=True,
+    # Redis is optional here, so an absent server must fail in well under a
+    # second. Without these, every cache read spent seconds retrying a refused
+    # connection before the caller gave up.
+    socket_connect_timeout=0.5,
+    socket_timeout=0.5,
+    retry_on_timeout=False,
 )
 
 

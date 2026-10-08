@@ -1,89 +1,196 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import MirynLogo from "@/components/MirynLogo";
+
+export const metadata: Metadata = {
+  title: "Terms of Service | Miryn",
+  description: "Terms of service governing your use of Miryn, the AI companion platform.",
+};
+
+const TERMS = [
+  {
+    id: "01",
+    title: "The nature of Miryn",
+    content: [
+      "Miryn is an AI-powered companion designed for personal reflection, emotional support, and identity exploration. It is a tool for self-discovery, not a medical device, licensed therapist, or clinical mental health service.",
+      "Miryn does not provide medical advice, diagnosis, or treatment. The AI's responses are generated based on patterns in language and your conversation history — they are not clinical assessments.",
+    ],
+    callout: "Miryn is not a substitute for professional mental health support, therapy, or medical advice. If you are in crisis, please contact professional services immediately.",
+    crisis: "Crisis resources: 988 Suicide & Crisis Lifeline (USA) · Crisis Text Line: text HOME to 741741 · International: findahelpline.com",
+  },
+  {
+    id: "02",
+    title: "Access requirements",
+    bullets: [
+      "You must be at least 18 years of age to use Miryn.",
+      "By creating an account, you confirm you meet this requirement.",
+      "You must provide accurate information during registration.",
+      "One account per person — shared accounts are not permitted.",
+      "You are responsible for maintaining the security of your account credentials.",
+    ],
+  },
+  {
+    id: "03",
+    title: "Acceptable use",
+    content: ["Miryn is a quiet room for honest reflection. To maintain this space for everyone, the following are prohibited:"],
+    bullets: [
+      "Generating, storing, or transmitting illegal content of any kind",
+      "Attempting to manipulate the AI to produce harmful, hateful, or violent outputs",
+      "Automated scraping, reverse engineering, or extracting our underlying model architecture",
+      "Using the service to impersonate others or violate their privacy",
+      "Circumventing rate limits, security measures, or access controls",
+      "Creating multiple accounts to bypass restrictions or free tier limits",
+    ],
+  },
+  {
+    id: "04",
+    title: "Intellectual property",
+    content: [
+      "You retain ownership of all content you submit to Miryn. By submitting content, you grant Miryn a limited, non-exclusive license to process and store that content solely for the purpose of providing the service to you.",
+      "Miryn's software, design, trademarks, and system architecture are owned exclusively by Miryn Technologies, Inc. You may not copy, modify, or distribute any part of the service without express written consent.",
+    ],
+  },
+  {
+    id: "05",
+    title: "Service availability & no warranty",
+    content: [
+      "Miryn is currently provided in beta. We make no guarantees regarding the accuracy or truthfulness of AI-generated insights, 100% uptime, or the persistence of all data during major architectural updates.",
+      "The service is provided \"as-is\" without warranties of any kind, either express or implied. We will always provide advance notice of planned maintenance.",
+    ],
+  },
+  {
+    id: "06",
+    title: "Limitation of liability",
+    content: [
+      "To the fullest extent permitted by law, Miryn Technologies, Inc. shall not be liable for any indirect, incidental, special, or consequential damages resulting from your use of or inability to use the service.",
+      "Our total liability to you for any claim arising from these terms shall not exceed the amount you paid for the service in the 12 months preceding the claim.",
+    ],
+  },
+  {
+    id: "07",
+    title: "Termination",
+    content: [
+      "You may delete your account at any time from Settings → Account → Delete account. Upon deletion, your data will be handled per our Privacy Policy.",
+      "We may suspend or terminate accounts that violate these terms, with or without notice depending on the severity of the violation. We will provide notice and an opportunity to appeal for non-severe cases.",
+    ],
+  },
+  {
+    id: "08",
+    title: "Changes to these terms",
+    content: [
+      "We may update these terms as Miryn evolves. For material changes, we will notify you via the email associated with your account at least 14 days in advance. Your continued use after that date constitutes acceptance.",
+    ],
+  },
+  {
+    id: "09",
+    title: "Governing law",
+    content: [
+      "These terms are governed by the laws of the State of Delaware, United States, without regard to its conflict of law provisions. Any disputes shall be resolved through binding arbitration under AAA rules.",
+    ],
+  },
+];
+
+type Term = {
+  id: string;
+  title: string;
+  content?: string[];
+  bullets?: string[];
+  callout?: string;
+  crisis?: string;
+};
 
 export default function TermsOfService() {
   return (
-    <div className="min-h-screen bg-[#030303] text-[#e0e0e0] font-sans selection:bg-[#c8b8ff] selection:text-black">
-      <div className="max-w-3xl mx-auto px-6 py-20 md:py-32">
-        <header className="mb-16">
-          <Link 
-            href="/" 
-            className="text-xs uppercase tracking-[0.3em] text-[#a0a0a0] hover:text-white transition-colors mb-8 inline-block"
-          >
-            ← Back to Void
-          </Link>
-          <h1 className="text-4xl md:text-5xl font-serif font-light text-white mb-4">Terms of Service</h1>
-          <p className="text-[#666666] text-sm italic">Last updated: March 1, 2026</p>
+    <div className="min-h-dvh bg-[var(--miryn-warm-black)] font-ui text-[var(--text-primary)] antialiased">
+      <nav className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[var(--miryn-card-border)] bg-[rgba(11,12,9,0.9)] px-6 backdrop-blur lg:px-12">
+        <Link href="/" className="rounded-sm transition-opacity hover:opacity-80">
+          <MirynLogo size={22} showText isDark />
+        </Link>
+        <Link href="/" className="text-[13px] text-[var(--miryn-parchment-muted)] transition-colors hover:text-[var(--miryn-parchment)]">
+          ← Back to home
+        </Link>
+      </nav>
+
+      <div className="mx-auto max-w-3xl px-6 py-14 lg:py-20">
+        <header className="mb-12">
+          <div className="mb-5 flex items-center gap-3">
+            <span className="miryn-fragment">Legal</span>
+            <span aria-hidden="true" className="text-[var(--miryn-card-border)]">·</span>
+            <span className="miryn-fragment">Terms of service</span>
+          </div>
+          <h1 className="text-[clamp(2rem,5vw,2.75rem)] leading-[1.1] tracking-tight" style={{ fontFamily: "var(--font-editorial)" }}>
+            Clear terms.
+            <br />
+            <span className="italic text-[var(--miryn-moss)]">No surprises.</span>
+          </h1>
+          <p className="mt-4 max-w-[62ch] text-[15px] leading-relaxed text-[var(--miryn-parchment-muted)]">
+            By using Miryn, you agree to these terms. We&apos;ve written them in plain language, because clarity is respect.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[12px] text-[var(--text-dim)] font-mono">
+            {["Last updated: September 20, 2026", "Effective: September 20, 2026"].map((t) => (
+              <span key={t}>{t}</span>
+            ))}
+          </div>
         </header>
 
-        <div className="space-y-12 leading-relaxed text-sm text-[#a0a0a0]">
-          <section className="space-y-4">
-            <h2 className="text-xl font-serif text-white uppercase tracking-tight">01 // The Nature of Miryn</h2>
-            <p>
-              Miryn is an AI-powered companion designed for personal reflection and identity mapping. It is a tool for self-discovery, not a medical device.
-            </p>
-            <div className="p-6 border border-[#c8b8ff]/20 bg-[#c8b8ff]/5 rounded-2xl text-white italic font-serif">
-              &quot;Miryn is not a substitute for professional mental health support, therapy, or medical advice.&quot;
-            </div>
-            <p>
-              If you are in a crisis, please contact professional services immediately.
-              <br />
-              <span className="text-white">Crisis Resource:</span> National Suicide Prevention Lifeline: 988 (USA) or your local emergency services.
-            </p>
-          </section>
+        <div className="space-y-10">
+          {(TERMS as Term[]).map((s) => (
+            <section key={s.id} className="border-t border-[var(--miryn-card-border)] pt-7">
+              <div className="mb-4 flex items-baseline gap-4">
+                <span className="font-mono text-[11px] font-semibold text-[var(--miryn-moss)]">{s.id}</span>
+                <h2 className="text-[1.15rem] font-medium tracking-tight text-[var(--text-primary)]">{s.title}</h2>
+              </div>
 
-          <section className="space-y-4">
-            <h2 className="text-xl font-serif text-white uppercase tracking-tight">02 // Access Requirements</h2>
-            <p>
-              You must be at least <span className="text-white">18 years of age</span> to use Miryn. By initializing access, you confirm you meet this requirement. There are no exceptions to this age limit.
-            </p>
-          </section>
+              {s.content && (
+                <div className={`space-y-4 ${s.bullets ? "mb-4" : ""}`}>
+                  {s.content.map((p, i) => (
+                    <p key={i} className="max-w-[68ch] text-[14.5px] leading-[1.8] text-[var(--miryn-parchment-muted)]">{p}</p>
+                  ))}
+                </div>
+              )}
 
-          <section className="space-y-4">
-            <h2 className="text-xl font-serif text-white uppercase tracking-tight">03 // Acceptable Use</h2>
-            <p>
-              Miryn is a quiet room for honest reflection. To maintain this space, we prohibit:
-            </p>
-            <ul className="list-disc list-inside space-y-2 ml-4">
-              <li>Generating or storing illegal content.</li>
-              <li>Attempting to manipulate the AI to produce harmful, hateful, or violent outputs.</li>
-              <li>Automated scraping, reverse engineering, or attempting to extract our underlying architecture.</li>
-              <li>Using the service to impersonate others or violate their privacy.</li>
-            </ul>
-          </section>
+              {s.callout && (
+                <div className="my-4 rounded-xl border border-[rgba(226,192,141,0.28)] bg-[rgba(226,192,141,0.07)] px-5 py-4">
+                  <p className="text-[14.5px] italic leading-[1.7] text-[#e2c08d]">&ldquo;{s.callout}&rdquo;</p>
+                  {s.crisis && (
+                    <p className="mt-3 font-mono text-[12px] leading-relaxed text-[var(--miryn-parchment-muted)]">{s.crisis}</p>
+                  )}
+                </div>
+              )}
 
-          <section className="space-y-4">
-            <h2 className="text-xl font-serif text-white uppercase tracking-tight">04 // No Warranty</h2>
-            <p>
-              Miryn is currently provided <span className="text-white italic">&quot;as-is&quot;</span> during its alpha phase. We make no guarantees regarding:
-            </p>
-            <ul className="list-disc list-inside space-y-2 ml-4">
-              <li>The accuracy or truthfulness of AI-generated insights.</li>
-              <li>The 100% uptime of the service.</li>
-              <li>The persistence of data during system-wide architectural updates.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-xl font-serif text-white uppercase tracking-tight">05 // Changes to the Protocol</h2>
-            <p>
-              We may update these terms as Miryn evolves. For material changes, we will notify you via the email associated with your account at least <span className="text-white">7 days</span> in advance. Your continued use of the service after such changes constitutes acceptance.
-            </p>
-          </section>
-
-          <section className="space-y-4 pt-8 border-t border-white/5">
-            <h2 className="text-sm uppercase tracking-[0.2em] text-white font-bold">Agreement</h2>
-            <p>
-              By initializing your connection to Miryn, you agree to these terms in their entirety.
-            </p>
-            <p>
-              Questions? Contact <a href="mailto:sahil@miryn.ai" className="text-[#c8b8ff] hover:underline">sahil@miryn.ai</a>.
-            </p>
-          </section>
+              {s.bullets && (
+                <ul className="space-y-2">
+                  {s.bullets.map((b) => (
+                    <li key={b} className="flex gap-3 text-[14.5px] leading-[1.7] text-[var(--miryn-parchment-muted)]">
+                      <span aria-hidden="true" className="shrink-0 text-[var(--miryn-card-border)]">—</span>
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
         </div>
 
-        <footer className="mt-20 pt-10 border-t border-white/5 text-[10px] uppercase tracking-widest text-[#666666]">
-          Miryn Intelligence © 2026
-        </footer>
+        <div className="miryn-wall-card mt-14 p-6 sm:p-8">
+          <p className="miryn-fragment mb-3">Agreement</p>
+          <p className="mb-2 text-[16px] font-medium text-[var(--text-primary)]">By using Miryn, you agree to these terms.</p>
+          <p className="text-[14px] leading-relaxed text-[var(--miryn-parchment-muted)]">
+            Questions about these terms? Contact{" "}
+            <a href="mailto:legal@miryn.ai" className="text-[var(--miryn-moss)] underline underline-offset-4 hover:text-[var(--miryn-parchment)]">
+              legal@miryn.ai
+            </a>
+            . We respond within 5 business days.
+          </p>
+        </div>
+
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--miryn-card-border)] pt-6">
+          <span className="text-[12px] text-[var(--text-dim)]">© 2026 Miryn Technologies, Inc.</span>
+          <div className="flex gap-5 text-[12px]">
+            <Link href="/privacy" className="text-[var(--miryn-parchment-muted)] transition-colors hover:text-[var(--miryn-parchment)]">Privacy Policy</Link>
+            <Link href="/" className="text-[var(--miryn-parchment-muted)] transition-colors hover:text-[var(--miryn-parchment)]">Home</Link>
+          </div>
+        </div>
       </div>
     </div>
   );

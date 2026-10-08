@@ -26,9 +26,9 @@ export default function ToolPanel({ pending, onGenerate, onApprove }: Props) {
   };
 
   return (
-    <div className="bg-card border border-white/[0.06] rounded-[32px] p-8 h-full flex flex-col shadow-sm">
+    <div className="bg-card border border-[var(--miryn-card-border)] rounded-[32px] p-8 h-full flex flex-col shadow-sm">
       <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full bg-white/[0.03] border border-[var(--miryn-card-border)] flex items-center justify-center">
           <Wrench size={18} className="text-muted" />
         </div>
         <span className="mono-label !text-[12px] !text-muted uppercase tracking-[0.2em] font-bold">Neural Interfacing</span>
@@ -37,7 +37,7 @@ export default function ToolPanel({ pending, onGenerate, onApprove }: Props) {
       <div className="space-y-4">
         <div className="relative group">
           <input
-            className="w-full bg-white/[0.02] border border-white/[0.06] rounded-2xl px-5 py-4 text-[14px] text-primary placeholder:text-muted focus:outline-none focus:border-accent/40 focus:bg-white transition-all shadow-sm"
+            className="w-full bg-white/[0.02] border border-[var(--miryn-card-border)] rounded-2xl px-5 py-4 text-[14px] text-primary placeholder:text-muted focus:outline-none focus:border-accent/40 focus:bg-white transition-all shadow-sm"
             placeholder="Summon a new capability..."
             value={intent}
             onChange={(e) => setIntent(e.target.value)}
@@ -63,7 +63,7 @@ export default function ToolPanel({ pending, onGenerate, onApprove }: Props) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06] group hover:border-accent/20 transition-all shadow-sm"
+                className="p-5 rounded-2xl bg-white/[0.03] border border-[var(--miryn-card-border)] group hover:border-accent/20 transition-all shadow-sm"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">

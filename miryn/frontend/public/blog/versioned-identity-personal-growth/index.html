@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tracking the Arc: How Versioned Identity Models Illuminate Personal Evolution — Miryn AI Blog</title>
+  <meta name="description" content="Who were you six months ago? Most people cannot answer with specificity. Fleeting journals capture snapshots, but they lack an organizing model. By maintaining ...">
+  <link rel="icon" href="/miryn-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @font-face {
+      font-family: 'Gambarino';
+      src: url('../../assets/6KBHT5NXCZVM6GHTPKGIR6DXZLQAYIFK.woff2') format('woff2');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #0a0a0a;
+      color: #f5f5f5;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.8;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* Header */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 72px;
+      background: rgba(10, 10, 10, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(20px, 5vw, 64px);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 500;
+      font-size: 17px;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .back-btn {
+      font-size: 13px;
+      color: #a3a3a3;
+      transition: color 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .back-btn:hover { color: #ffffff; }
+
+    .cta-btn {
+      padding: 8px 18px;
+      border-radius: 999px;
+      background: #fee435;
+      color: #0a0a0a;
+      font-weight: 600;
+      font-size: 13px;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .cta-btn:hover {
+      background: #ffe74d;
+      transform: scale(1.03);
+    }
+
+    /* Main Container */
+    main {
+      max-width: 780px;
+      margin: 140px auto 100px;
+      padding: 0 24px;
+    }
+
+    .meta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Fragment Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #f59e0b;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 5px 14px;
+      border-radius: 999px;
+      margin-bottom: 24px;
+    }
+
+    .meta-badge span.dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #f59e0b;
+      box-shadow: 0 0 8px #f59e0b;
+    }
+
+    h1.article-title {
+      font-family: 'Gambarino', Georgia, serif;
+      font-size: clamp(34px, 4.5vw, 54px);
+      font-weight: 400;
+      line-height: 1.16;
+      letter-spacing: -0.03em;
+      color: #f5f5f5;
+      margin-bottom: 24px;
+    }
+
+    .article-info {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      font-family: 'Fragment Mono', monospace;
+      font-size: 12px;
+      color: #888888;
+      padding-bottom: 32px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 40px;
+    }
+
+    .article-info a {
+      color: #ece4d0;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      font-weight: 500;
+    }
+
+    .lead-paragraph {
+      font-size: 19px;
+      line-height: 1.65;
+      color: #e5e5e5;
+      margin-bottom: 32px;
+      font-weight: 400;
+    }
+
+    .content {
+      font-size: 16.5px;
+      color: #d1d5db;
+    }
+
+    .content p {
+      margin-bottom: 24px;
+    }
+
+    .content h2 {
+      font-family: 'Gambarino', Georgia, serif;
+      font-size: 30px;
+      font-weight: 400;
+      color: #f5f5f5;
+      margin: 52px 0 20px;
+      letter-spacing: -0.02em;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 36px;
+    }
+
+    .content h3 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #f5f5f5;
+      margin: 36px 0 14px;
+      letter-spacing: -0.01em;
+    }
+
+    .callout {
+      background: #141414;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-left: 3px solid #f59e0b;
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin: 36px 0;
+      color: #ece4d0;
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    .callout strong {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .code-block {
+      background: #111111;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 22px 24px;
+      font-family: 'Fragment Mono', monospace;
+      font-size: 13px;
+      color: #a8bb94;
+      overflow-x: auto;
+      margin: 32px 0;
+      line-height: 1.65;
+    }
+
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 36px 0;
+      font-size: 14.5px;
+      background: #121212;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 16px 20px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .comparison-table th {
+      background: #181818;
+      font-family: 'Fragment Mono', monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #a3a3a3;
+    }
+
+    .comparison-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .author-card {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: #131313;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 24px;
+      margin: 64px 0 32px;
+    }
+
+    .author-card img {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      object-fit: cover;
+    }
+
+    .author-info h4 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f5f5f5;
+      margin-bottom: 4px;
+    }
+
+    .author-info p {
+      font-size: 13.5px;
+      color: #a3a3a3;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .author-info a {
+      color: #fee435;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 48px 24px;
+      text-align: center;
+      font-size: 13px;
+      color: #737373;
+    }
+
+    footer a {
+      color: #a8bb94;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="../../index.html" class="nav-brand">
+      <img src="../../assets/0O5v3itGAnPaIlNYp2Dtalj5s.png" alt="Miryn AI">
+      <span>Miryn AI</span>
+    </a>
+    <div class="nav-actions">
+      <a href="../../index.html" class="back-btn">← Back to Overview</a>
+      <a href="http://localhost:3001/login" class="cta-btn">Try Miryn Free</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="meta-badge"><span class="dot"></span>Growth & Self-Discovery</div>
+    <h1 class="article-title">Tracking the Arc: How Versioned Identity Models Illuminate Personal Evolution</h1>
+    <div class="article-info">
+      <span>Sep 10, 2026</span>
+      <span>•</span>
+      <span>6 min read</span>
+      <span>•</span>
+      <span>By <a href="https://sharmasahil.me" target="_blank" rel="noopener noreferrer">Sahil Sharma</a></span>
+    </div>
+
+    <p class="lead-paragraph">Who were you six months ago? Most people cannot answer with specificity. Fleeting journals capture snapshots, but they lack an organizing model. By maintaining versioned, immutable identity graphs, an AI companion can help you see the long arc of your personal growth.</p>
+
+    <div class="content">
+      
+<p>Human identity is not static. Our beliefs shift, our tolerance for risk evolves, and our relational boundaries adapt. Yet, when using typical productivity tools or standard AI, you are treated either as a completely new stranger every morning or as a flat, unversioned caricature.</p>
+
+<div class="callout">
+  <strong>The Problem of Flat Profiles:</strong><br>
+  <em>"If an AI has a single mutable profile for you, changing a belief erases who you were before. You lose the ability to see how far you have come."</em>
+</div>
+
+<h2>Versioned Identity: Treating Personal Growth as an Immutable Ledger</h2>
+<p>In software engineering, version control systems like Git allow developers to trace every commit, rollback regressions, and understand the genesis of every line of code. Miryn applies this exact principle to human self-development through its <code>identities</code> data model:</p>
+<ul style="padding-left:24px;margin-bottom:24px;line-height:2">
+  <li><strong>Immutable Versions:</strong> Every significant identity shift generates a new version row indexed by <code>UNIQUE(user_id, version)</code>. Past versions are never mutated or overwritten.</li>
+  <li><strong>Trait Lineage:</strong> You can inspect how your core values (e.g., career autonomy, work-life balance) evolved across quarters.</li>
+  <li><strong>Behavioral Pattern Logs:</strong> Miryn tracks recurring cycles — such as the tendency to overcommit in week 1 of a project and burn out in week 3.</li>
+</ul>
+
+<h2>The Anatomy of an Open Loop</h2>
+<p>One of the most transformative elements of Miryn is its <strong>Open Loop Engine</strong>. An open loop is any intention, dilemma, or commitment articulated during conversation that has not yet reached resolution:</p>
+<p><em>"I really need to speak with Daniel about our equity split."</em><br>
+<em>"I am thinking of pausing client work to build my open-source library."</em></p>
+<p>In standard chats, such statements vanish forever into history. Miryn records them as active open loops in episodic storage. Days later, when the context is ripe, Miryn gently surfaces the thread:</p>
+
+<div class="callout">
+  <strong>Proactive Follow-up:</strong><br>
+  <em>"Two weeks ago, you mentioned wanting to discuss equity with Daniel before the end of the sprint. Did that conversation happen, or is it still weighing on your mind?"</em>
+</div>
+
+<h2>From Reactive Prompting to Proactive Growth</h2>
+<p>When an AI companion understands your arc, conversations shift from reactive Q&amp;A to collaborative life design. You are no longer prompting an engine; you are consulting an external memory system that is invested in your long-term flourishing.</p>
+
+    </div>
+
+    <div class="author-card">
+      <img src="../../assets/0O5v3itGAnPaIlNYp2Dtalj5s.png" alt="Sahil Sharma">
+      <div class="author-info">
+        <h4>Sahil Sharma</h4>
+        <p>Founder &amp; Engineer at Miryn AI. Researching persistent AI identity, psychological safety in human-AI interaction, and zero-knowledge memory architecture. Learn more at <a href="https://sharmasahil.me" target="_blank" rel="noopener noreferrer">sharmasahil.me</a>.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>© 2026 Miryn AI Inc. All rights reserved. · Designed &amp; Built by <a href="https://sharmasahil.me" target="_blank" rel="noopener noreferrer">Sahil Sharma</a></p>
+  </footer>
+
+  <script>
+    // Universal CTA click routing
+    document.querySelectorAll('.cta-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        var base = window.location.origin.includes('localhost') ? 'http://localhost:3001' : '';
+        if (base) {
+          e.preventDefault();
+          window.location.href = base + '/login';
+        }
+      });
+    });
+  </script>
+</body>
+</html>

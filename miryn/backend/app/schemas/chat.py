@@ -1,5 +1,5 @@
-﻿"""Chat-related request and response models."""
-from typing import Optional, List, Dict, Any
+"""Chat-related request and response models."""
+from typing import Optional, List
 from pydantic import BaseModel, Field
 
 
@@ -14,8 +14,6 @@ class ChatResponse(BaseModel):
     conversation_id: str
     insights: Optional[dict] = None
     conflicts: Optional[list] = None
-    entities: Optional[List[Dict[str, Any]]] = None
-    emotions: Optional[Dict[str, Any]] = None
 
 
 class MessageOut(BaseModel):
@@ -34,3 +32,7 @@ class ChatHistoryResponse(BaseModel):
 
 class TitleUpdate(BaseModel):
     title: str
+
+
+class PinUpdate(BaseModel):
+    pinned: bool

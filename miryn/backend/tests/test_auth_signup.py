@@ -1,5 +1,6 @@
 import uuid
 from contextlib import contextmanager
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -31,6 +32,7 @@ class _FakeSession:
         self._insert_row = insert_row
         self._select_row = select_row
         self._insert_exc = insert_exc
+        self.profile_inserts: list[dict] = []
 
     def execute(self, stmt, params=None):
         sql = str(stmt)
@@ -40,6 +42,9 @@ class _FakeSession:
             return _FakeCursor(self._insert_row)
         if "SELECT id, email FROM users" in sql:
             return _FakeCursor(self._select_row)
+        if "INSERT INTO user_profiles" in sql:
+            self.profile_inserts.append(params)
+            return _FakeCursor(None)
         raise AssertionError(f"Unexpected SQL: {sql}")
 
 
@@ -164,4 +169,71 @@ def test_refresh_accepts_refresh_token_body(client: TestClient, monkeypatch: pyt
 def test_refresh_rejects_access_token_in_refresh_body(client: TestClient):
     res = client.post("/auth/refresh", json={"refresh_token": create_access_token("user-1")})
     assert res.status_code == 401
+
+
+def _sql_signup_session(monkeypatch: pytest.MonkeyPatch, user_id, **kwargs) -> _FakeSession:
+    session = _FakeSession(select_row={"id": user_id, "email": "test@example.com"}, **kwargs)
+
+    @contextmanager
+    def _fake_get_sql_session():
+        yield session
+
+    monkeypatch.setattr(auth, "has_sql", lambda: True)
+    monkeypatch.setattr(auth, "get_sql_session", _fake_get_sql_session)
+    return session
+
+
+def test_signup_stores_normalized_full_name(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    user_id = uuid.uuid4()
+    session = _sql_signup_session(monkeypatch, user_id)
+
+    res = client.post(
+        "/auth/signup",
+        json={"email": "test@example.com", "password": "password123", "full_name": "  Aditya   Verma  "},
+    )
+
+    assert res.status_code == 200
+    assert session.profile_inserts == [{"user_id": str(user_id), "full_name": "Aditya Verma"}]
+
+
+def test_signup_without_name_skips_profile_write(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    user_id = uuid.uuid4()
+    session = _sql_signup_session(monkeypatch, user_id)
+
+    res = client.post("/auth/signup", json={"email": "test@example.com", "password": "password123"})
+
+    assert res.status_code == 200
+    assert session.profile_inserts == []
+
+
+def test_signup_blank_name_is_treated_as_absent(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    user_id = uuid.uuid4()
+    session = _sql_signup_session(monkeypatch, user_id)
+
+    res = client.post(
+        "/auth/signup",
+        json={"email": "test@example.com", "password": "password123", "full_name": "   "},
+    )
+
+    assert res.status_code == 200
+    assert session.profile_inserts == []
+
+
+def test_signup_rejects_overlong_name(client: TestClient):
+    res = client.post(
+        "/auth/signup",
+        json={"email": "test@example.com", "password": "password123", "full_name": "x" * 121},
+    )
+    assert res.status_code == 422
+
+
+def test_auth_config_reflects_google_client_id(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(auth, "settings", SimpleNamespace(GOOGLE_CLIENT_ID="client-123"))
+    res = client.get("/auth/config")
+    assert res.status_code == 200
+    assert res.json() == {"providers": {"google": True}}
+
+    monkeypatch.setattr(auth, "settings", SimpleNamespace(GOOGLE_CLIENT_ID=None))
+    res = client.get("/auth/config")
+    assert res.json() == {"providers": {"google": False}}
 

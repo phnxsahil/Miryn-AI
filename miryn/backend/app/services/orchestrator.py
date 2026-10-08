@@ -2,8 +2,10 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone
+from typing import Any, Dict
 
-
+from app.config import settings
+from app.core.cache import publish_event
 from app.services.identity_engine import IdentityEngine
 from app.services.llm_service import LLMService
 from app.services.memory_layer import MemoryLayer
@@ -28,22 +30,9 @@ class ConversationOrchestrator:
         sql_session: Any | None = None,
     ) -> Dict:
         """
-        Process an incoming user message through identity, memory, LLM, and reflection pipelines and return the assistant response along with derived insights and any detected identity conflicts.
+        Process an incoming user message through identity, memory, LLM, and reflection pipelines.
 
-        Parameters:
-            user_id (str): Identifier of the user sending the message.
-            message (str): The incoming user message content.
-            conversation_id (str): Conversation identifier used to scope retrieval and persistence.
-            idempotency_key (str | None): Optional retry/deduplication key. When provided, completed results for the same user/conversation/key are reused and persisted message writes use deterministic idempotency keys.
-            sql_session (Any | None): Optional open SQLAlchemy-like session reused for memory reads/writes. When None, downstream services open their own sessions as needed.
-
-        Returns:
-            result (Dict): A dictionary with keys:
-                - "response" (str): The assistant's reply, or a fallback message if LLM generation failed.
-                - "insights" (Dict): Reflection analysis results for the conversation.
-                - "conflicts" (List): Any identity conflicts detected for the user's message.
-                - "entities" (List): Named entities extracted from the user message.
-                - "emotions" (Dict): Emotions detected in the user message.
+        Returns dict with: response, insights, conflicts.
         """
         cached_result = self._get_cached_result(user_id, conversation_id, idempotency_key)
         if cached_result is not None:
@@ -54,9 +43,9 @@ class ConversationOrchestrator:
             )
             return cached_result
 
-        identity = self.identity.get_identity(user_id)
+        identity = self.identity.get_identity(user_id, sql_session=sql_session)
 
-        memories = []
+        memories: list = []
         try:
             memories = await asyncio.wait_for(
                 self.memory.retrieve_context(
@@ -80,6 +69,8 @@ class ConversationOrchestrator:
             "patterns": {},
         }
 
+        # ponytail: fire-and-forget tasks must NOT receive sql_session — the
+        # caller's `with get_sql_session()` block closes before these run.
         def _fire_and_forget(coro, label: str):
             task = asyncio.create_task(coro)
 
@@ -91,7 +82,7 @@ class ConversationOrchestrator:
 
             task.add_done_callback(_done)
 
-        conflicts = []
+        conflicts: list = []
         if settings.ENABLE_INLINE_CONFLICT_DETECTION:
             try:
                 conflicts = await asyncio.wait_for(
@@ -99,7 +90,6 @@ class ConversationOrchestrator:
                     timeout=settings.CONFLICT_DETECTION_TIMEOUT_SECONDS,
                 )
                 if conflicts:
-                    self.identity.add_conflicts(user_id, conflicts)
                     await asyncio.to_thread(
                         publish_event,
                         user_id,
@@ -117,7 +107,6 @@ class ConversationOrchestrator:
                         timeout=settings.CONFLICT_DETECTION_TIMEOUT_SECONDS,
                     )
                     if detected:
-                        self.identity.add_conflicts(user_id, detected)
                         await asyncio.to_thread(
                             publish_event,
                             user_id,
@@ -147,54 +136,31 @@ class ConversationOrchestrator:
                     content=fallback,
                     conversation_id=conversation_id,
                     idempotency_key=self._assistant_idempotency_key(idempotency_key),
-                    sql_session=sql_session,
                 ),
                 "store_timeout_fallback",
             )
-            result = {
-                "response": fallback,
-                "insights": {},
-                "conflicts": [],
-                "entities": [],
-                "emotions": {},
-            }
+            result = {"response": fallback, "insights": {}, "conflicts": []}
             self._cache_result(user_id, conversation_id, idempotency_key, result)
             return result
         except Exception:
             self.logger.exception("LLM chat failed for user %s", user_id)
             fallback = "I'm having trouble responding right now. Please try again shortly."
-            try:
-                _fire_and_forget(
-                    self.memory.store_conversation(
-                        user_id=user_id,
-                        role="assistant",
-                        content=fallback,
-                        conversation_id=conversation_id,
-                        idempotency_key=self._assistant_idempotency_key(idempotency_key),
-                        sql_session=sql_session,
-                    ),
-                    "store_llm_error_fallback",
-                )
-            except Exception:
-                self.logger.exception("Failed to queue fallback assistant message for user %s", user_id)
-            result = {
-                "response": fallback,
-                "insights": {},
-                "conflicts": [],
-                "entities": [],
-                "emotions": {},
-            }
+            _fire_and_forget(
+                self.memory.store_conversation(
+                    user_id=user_id,
+                    role="assistant",
+                    content=fallback,
+                    conversation_id=conversation_id,
+                    idempotency_key=self._assistant_idempotency_key(idempotency_key),
+                ),
+                "store_llm_error_fallback",
+            )
+            result = {"response": fallback, "insights": {}, "conflicts": []}
             self._cache_result(user_id, conversation_id, idempotency_key, result)
             return result
 
-        try:
-            entities, emotions = await asyncio.gather(
-                asyncio.to_thread(ds_service.extract_entities, message),
-                asyncio.to_thread(ds_service.detect_emotions, message),
-            )
-        except Exception:
-            self.logger.exception("DS inference failed for user %s", user_id)
-            entities, emotions = [], {}
+        # ponytail: DS inference removed — reflection worker handles NER/emotion
+        # via LLM in the background. No duplicate local ML on the hot path.
 
         _fire_and_forget(
             self.memory.store_conversation(
@@ -202,15 +168,10 @@ class ConversationOrchestrator:
                 role="user",
                 content=message,
                 conversation_id=conversation_id,
-                metadata={
-                    "emotions": emotions if isinstance(emotions, dict) else {},
-                    "entities": entities if isinstance(entities, list) else [],
-                    "logged_at": datetime.now(timezone.utc).isoformat(),
-                },
+                metadata={"logged_at": datetime.now(timezone.utc).isoformat()},
                 idempotency_key=idempotency_key,
-                sql_session=sql_session,
             ),
-            "store_user_message_with_metadata",
+            "store_user_message",
         )
 
         _fire_and_forget(
@@ -220,7 +181,6 @@ class ConversationOrchestrator:
                 content=response,
                 conversation_id=conversation_id,
                 idempotency_key=self._assistant_idempotency_key(idempotency_key),
-                sql_session=sql_session,
             ),
             "store_assistant_message",
         )
@@ -251,8 +211,6 @@ class ConversationOrchestrator:
             "response": response,
             "insights": insights or {},
             "conflicts": conflicts,
-            "entities": entities if isinstance(entities, list) else [],
-            "emotions": emotions if isinstance(emotions, dict) else {},
         }
         self._cache_result(user_id, conversation_id, idempotency_key, result)
         return result

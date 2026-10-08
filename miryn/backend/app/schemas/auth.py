@@ -1,4 +1,4 @@
-﻿"""Schemas for authentication flows."""
+"""Schemas for authentication flows."""
 
 from pydantic import BaseModel, EmailStr, field_validator
 
@@ -6,11 +6,24 @@ from pydantic import BaseModel, EmailStr, field_validator
 class SignupRequest(BaseModel):
     email: EmailStr
     password: str
+    full_name: str | None = None
 
     @field_validator("email")
     @classmethod
     def normalize_email(cls, v: EmailStr) -> str:
         return str(v).strip().lower()
+
+    @field_validator("full_name")
+    @classmethod
+    def normalize_full_name(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        cleaned = " ".join(v.split())
+        if not cleaned:
+            return None
+        if len(cleaned) > 120:
+            raise ValueError("Name must be 120 characters or fewer")
+        return cleaned
 
     @field_validator("password")
     @classmethod
@@ -97,5 +110,5 @@ class PasswordUpdate(BaseModel):
 
 
 class SessionOut(BaseModel):
-    ip: str
+    ip: str | None = None
     timestamp: str

@@ -114,11 +114,16 @@ class EmbeddingService:
         if client:
             try:
                 model = settings.GEMINI_EMBEDDING_MODEL
+                # ponytail: the configured name first, then one live model, because
+                # the previous fallbacks (text-embedding-004/005) are retired and
+                # every attempt 404'd straight through to the hash fallback.
+                # ceiling: a fixed second entry can itself be retired later.
+                # upgrade: list embedding-capable models at startup.
                 candidates = [
                     f"models/{model}" if not model.startswith("models/") else model,
                     model,
-                    "models/text-embedding-004",
-                    "text-embedding-004",
+                    "models/gemini-embedding-001",
+                    "gemini-embedding-001",
                 ]
                 last_error = None
                 for m in candidates:

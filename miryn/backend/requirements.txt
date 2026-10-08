@@ -21,11 +21,6 @@ anthropic==0.34.0
 google-genai==0.8.0
 google-cloud-aiplatform==1.91.0
 
-# Embeddings
-numpy==1.26.4
-transformers==4.40.0
-sentence-transformers==2.7.0
-
 # Background jobs
 celery[redis]==5.3.4
 
@@ -40,9 +35,9 @@ requests==2.33.1
 # Utils
 python-dotenv==1.0.0
 cryptography==44.0.1
+numpy==1.26.4
+resend>=2.0.0
 sentry-sdk[fastapi]==2.58.0
-xgboost==3.2.0
-scikit-learn==1.6.1
 
 # Tests
 pytest==9.0.3

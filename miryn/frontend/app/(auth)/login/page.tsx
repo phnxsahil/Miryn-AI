@@ -3,35 +3,21 @@
 import { useEffect, useState } from "react";
 import { CredentialResponse, GoogleLogin } from "@react-oauth/google";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { api } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
-import { Fingerprint, ArrowRight, Loader2, Zap } from "lucide-react";
-import { motion } from "framer-motion";
+import { Loader2, Zap } from "lucide-react";
+import AuthShell, { AuthError } from "@/components/Auth/AuthShell";
+import GoogleAuthProvider from "@/components/GoogleAuthProvider";
 
-const DEMO_PERSONAS = [
-  {
-    name: "Aditya Verma",
-    role: "Founder · Deep Thinker",
-    email: "persona.alpha@miryn.demo",
-    password: "MirynDemo!2026",
-    avatar: "AV",
-    color: "text-accent",
-    bg: "bg-accent/10",
-    border: "border-accent/20",
-    bio: "Tracks creative drift, open loops, and expansion into new ideas.",
-  },
-  {
-    name: "Priya Sharma",
-    role: "Analyst · Systems Mind",
-    email: "persona.beta@miryn.demo",
-    password: "MirynDemo!2026",
-    avatar: "PS",
-    color: "text-accent-beta",
-    bg: "bg-accent-beta/10",
-    border: "border-accent-beta/20",
-    bio: "Focuses on precision, performance metrics, and retrieval systems.",
-  },
-];
+// The single demo account. Provisioned server-side by
+// miryn/backend/scripts/seed_demo_account.py — there is no seeding endpoint.
+const DEMO_ACCOUNT = {
+  name: "Aditya (Demo)",
+  role: "Interactive Demo",
+  email: "persona.alpha@miryn.demo",
+  password: "MirynDemo!2026",
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,6 +26,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
+  const [googleEnabled, setGoogleEnabled] = useState<boolean | null>(null);
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
@@ -47,6 +34,26 @@ export default function LoginPage() {
       if (authenticated) router.replace("/chat");
     });
   }, [router]);
+
+  // The public client id only says a button can be drawn; the server also has to
+  // hold the matching id to verify the token. Only an explicit "disabled" hides
+  // Google, so a slow or unreachable config never makes the button disappear.
+  useEffect(() => {
+    let active = true;
+    api
+      .getAuthConfig()
+      .then((config) => {
+        if (active) setGoogleEnabled(config?.providers?.google === true);
+      })
+      .catch(() => {
+        // Leave it unknown: the button stays exactly as it was.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const showGoogle = Boolean(googleClientId) && googleEnabled !== false;
 
   const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     if (!credentialResponse.credential) return;
@@ -72,114 +79,128 @@ export default function LoginPage() {
       api.setSession(res);
       window.location.assign("/chat");
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Login failed"));
+      setError(getErrorMessage(err, "Login failed. Check your credentials."));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDemoLogin = async (persona: (typeof DEMO_PERSONAS)[number]) => {
+  const handleDemoLogin = async () => {
     setError(null);
-    setDemoLoading(persona.name);
+    setDemoLoading(DEMO_ACCOUNT.name);
     try {
-      await api.quickDemoLogin(persona.email, persona.password);
+      // A plain sign-in. The old seed-then-retry fallback called
+      // /analytics/demo/seed, which no longer exists (404) and could never help.
+      await api.quickDemoLogin(DEMO_ACCOUNT.email, DEMO_ACCOUNT.password);
       window.location.assign("/chat");
-    } catch {
-      try {
-        await api.seedDemoPersonas();
-        await api.quickDemoLogin(persona.email, persona.password);
-        window.location.assign("/chat");
-      } catch (err2) {
-        setError(getErrorMessage(err2, `Demo login failed for ${persona.name}`));
-      }
+    } catch (err) {
+      setError(getErrorMessage(err, "Demo login failed"));
     } finally {
       setDemoLoading(null);
     }
   };
 
   return (
-    <div className="min-h-screen bg-void text-primary flex items-center justify-center px-6 relative overflow-hidden">
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-accent/5 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 rounded-full blur-[150px]" />
+    <GoogleAuthProvider>
+      <AuthShell title="Welcome back" subtitle="Sign in to continue the conversation.">
+      {error && <AuthError message={error} />}
 
-      <div className="w-full max-w-lg relative z-10">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-accent/[0.08] border border-accent/15 mb-8">
-            <Fingerprint className="text-accent w-10 h-10" />
-          </div>
-          <h1 className="text-5xl font-bold tracking-tighter mb-4 text-primary">Initialize Session</h1>
-          <p className="text-xl text-muted editorial-italic">&ldquo;Recognition is the first step of persistence.&rdquo;</p>
+      {showGoogle && (
+        <div className="mb-5 flex justify-center w-full">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setError("Google sign-in failed")}
+            theme="filled_black"
+            shape="pill"
+          />
+        </div>
+      )}
+
+      {showGoogle && (
+        <div className="relative my-6 flex items-center justify-center">
+          <div className="w-full miryn-rule" />
+          <span className="absolute bg-[var(--miryn-warm-black)] px-3 text-[11px] uppercase tracking-wider text-[var(--miryn-parchment-muted)]">OR</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="text-[13px] text-[var(--miryn-parchment-muted)] mb-2 block pl-1" htmlFor="email">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            className="miryn-input text-base sm:text-[15px]"
+            placeholder="name@example.com"
+            autoComplete="email"
+            inputMode="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={loading}
+            required
+          />
         </div>
 
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-5">
-            <div className="h-[1px] flex-1 bg-white/[0.04]" />
-            <span className="mono-label !text-[10px] !text-dim uppercase tracking-[0.3em] flex items-center gap-2">
-              <Zap size={10} className="text-accent" /> Demo Access
+        <div>
+          <div className="flex justify-between items-center mb-2 pl-1 pr-2">
+            <label className="text-[13px] text-[var(--miryn-parchment-muted)]" htmlFor="password">
+              Password
+            </label>
+            <Link href="/forgot-password" className="text-[12px] text-[var(--miryn-parchment-muted)] hover:text-[var(--miryn-parchment)] transition-colors">
+              Forgot password?
+            </Link>
+          </div>
+          <input
+            id="password"
+            type="password"
+            className="miryn-input text-base sm:text-[15px]"
+            placeholder="Enter your password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="w-full h-[50px] bg-[#fee435] text-[#0a0a0a] rounded-full flex items-center justify-center font-semibold text-[15px] hover:bg-[#ffe74d] active:scale-[0.98] transition-all mt-4 disabled:opacity-50 shadow-md shadow-[#fee435]/10"
+          disabled={loading}
+          aria-busy={loading}
+        >
+          {loading ? <><Loader2 size={18} className="animate-spin mr-2" aria-hidden="true" /> Signing in</> : "Sign in"}
+        </button>
+      </form>
+
+      <p className="text-center md:text-left text-[13px] text-[var(--miryn-parchment-muted)] mt-8 pl-1">
+        Don&apos;t have an account?{" "}
+        <Link href="/signup" className="text-[var(--miryn-moss)] font-medium hover:underline">
+          Sign up
+        </Link>
+      </p>
+
+      <details className="mt-7 border-t border-[var(--miryn-card-border)] pt-4">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm text-[var(--miryn-parchment-muted)] marker:hidden focus-visible:outline-offset-4">
+          <Zap size={14} aria-hidden="true" style={{ color: "var(--miryn-moss)" }} />
+          Explore a demo account
+        </summary>
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={handleDemoLogin}
+            disabled={!!demoLoading || loading}
+            className="flex min-h-11 w-full flex-col justify-center rounded-xl border border-[var(--miryn-card-border)] bg-[var(--miryn-surface)] p-3 text-start transition-colors hover:bg-[var(--miryn-card)] disabled:opacity-60"
+          >
+            <span className="truncate text-[13px] font-medium text-[var(--miryn-parchment)]">
+              {demoLoading ? <><Loader2 size={13} className="me-1 inline animate-spin" aria-hidden="true" /> Opening demo</> : DEMO_ACCOUNT.name}
             </span>
-            <div className="h-[1px] flex-1 bg-white/[0.04]" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            {DEMO_PERSONAS.map((persona) => (
-              <motion.button
-                key={persona.name}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleDemoLogin(persona)}
-                disabled={!!demoLoading || loading}
-                className={`group relative p-5 rounded-[24px] bg-white/[0.03] border ${persona.border} hover:bg-white/[0.05] transition-all text-left overflow-hidden`}
-              >
-                <div className={`absolute top-0 right-0 w-20 h-20 ${persona.bg} blur-2xl opacity-0 group-hover:opacity-100 transition-opacity`} />
-                <div className="flex items-start gap-3 relative z-10">
-                  <div className={`w-10 h-10 rounded-full ${persona.bg} flex items-center justify-center shrink-0 text-sm font-bold ${persona.color}`}>
-                    {demoLoading === persona.name ? <Loader2 size={16} className="animate-spin" /> : persona.avatar}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[14px] font-bold text-primary truncate">{persona.name}</p>
-                    <p className={`text-[10px] mono-label ${persona.color} uppercase tracking-wider`}>{persona.role}</p>
-                  </div>
-                </div>
-                <p className="text-[11px] text-dim mt-3 leading-relaxed line-clamp-2 relative z-10">{persona.bio}</p>
-                <div className={`mt-3 flex items-center gap-1.5 ${persona.color} relative z-10`}>
-                  <Zap size={10} />
-                  <span className="text-[10px] mono-label uppercase tracking-widest">Quick Access</span>
-                </div>
-              </motion.button>
-            ))}
-          </div>
+            <span className="mt-0.5 text-[11px] text-[var(--miryn-parchment-muted)]">{DEMO_ACCOUNT.role}</span>
+          </button>
         </div>
-
-        <div className="glass-card p-10 rounded-[40px]">
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {error && <div className="error-surface">{error}</div>}
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <label className="mono-label !text-[11px] uppercase tracking-widest text-dim ml-1" htmlFor="email">Identity (Email)</label>
-                <input id="email" type="email" className="input-field h-14 rounded-2xl text-base" placeholder="name@nexus.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} />
-              </div>
-              <div className="space-y-2">
-                <label className="mono-label !text-[11px] uppercase tracking-widest text-dim ml-1" htmlFor="password">Passkey</label>
-                <input id="password" type="password" className="input-field h-14 rounded-2xl text-base" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading} />
-              </div>
-            </div>
-            <button type="submit" className="w-full h-16 bg-accent text-[#09090e] rounded-2xl flex items-center justify-center gap-3 hover:scale-[1.02] transition-all shadow-lg shadow-accent/20 disabled:opacity-50 font-bold" disabled={loading}>
-              {loading ? <Loader2 size={20} className="animate-spin" /> : <><span className="uppercase tracking-widest text-sm">Access Matrix</span> <ArrowRight size={18} /></>}
-            </button>
-          </form>
-
-          <div className="relative my-10">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/[0.05]" /></div>
-            <div className="relative flex justify-center text-[10px] uppercase tracking-widest"><span className="bg-surface px-6 text-dim">Or recognize via</span></div>
-          </div>
-
-          <div className="flex flex-col items-center gap-6">
-            {googleClientId && <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError("Google sign-in failed")} theme="filled_black" shape="pill" width={360} />}
-            <p className="text-sm text-muted">Use demo cards above for your project presentation flow.</p>
-          </div>
-        </div>
-      </div>
-    </div>
+      </details>
+      </AuthShell>
+    </GoogleAuthProvider>
   );
 }
-

@@ -1,4 +1,4 @@
-﻿from typing import Optional, Any
+from typing import Optional, Any
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 import asyncio
@@ -32,12 +32,22 @@ class LLMService:
                 raise ValueError("A Gemini API key is required when LLM_PROVIDER=gemini")
             self.client = genai.Client(api_key=key)
             self.model = settings.GEMINI_MODEL
-            self.gemini_fallback_models = [
-                settings.GEMINI_MODEL,
-                "gemini-2.0-flash",
-                "gemini-2.0-flash-lite",
-                "gemini-1.5-flash-001",
-            ]
+            # ponytail: aliases rather than pinned versions, because pinned names
+            # rot (2.0-flash and 1.5-flash-001 are both retired and were silently
+            # making every fallback a 404). ceiling: an alias can shift under you
+            # between releases. upgrade: read the live model list at startup.
+            # ponytail: models/ prefix required by new google-genai SDK against
+            # the AI API (not Vertex). Bare names like 'gemini-2.5-flash' return
+            # 404; 'models/gemini-2.5-flash' works. Fallbacks must also use prefix.
+            # ceiling: if SDK version changes, re-test. upgrade: list live models at startup.
+            def _with_prefix(name: str) -> str:
+                return name if name.startswith("models/") else f"models/{name}"
+            self.gemini_fallback_models = list(dict.fromkeys([
+                _with_prefix(settings.GEMINI_MODEL),
+                "models/gemini-3.8-flash",
+                "models/gemini-2.5-flash",
+                "models/gemini-3.1-pro-preview",
+            ]))
         elif self.provider == "vertex":
             from vertexai import init as vertex_init
             from vertexai.generative_models import GenerativeModel
@@ -122,8 +132,18 @@ class LLMService:
                     except Exception as exc:
                         last_exc = exc
                         err = str(exc).lower()
-                        if "not found" in err or "not supported" in err or "404" in err:
-                            self.logger.warning("Gemini model %s unavailable, trying fallback.", candidate_model)
+                        is_unavailable = "not found" in err or "not supported" in err or "404" in err
+                        is_quota = "429" in err or "quota" in err or "resource_exhausted" in err or "rate" in err
+                        # 503 UNAVAILABLE ("high demand") is transient and usually
+                        # per-model. Aborting the chain on it is what produced the
+                        # generic "trouble responding" reply instead of an answer.
+                        is_transient = (
+                            "503" in err or "500" in err or "502" in err or "504" in err
+                            or "unavailable" in err or "overloaded" in err
+                            or "high demand" in err or "deadline" in err
+                        )
+                        if is_unavailable or is_quota or is_transient:
+                            self.logger.warning("Gemini model %s unavailable/quota, trying fallback.", candidate_model)
                             continue
                         raise
                 if last_exc:
@@ -154,27 +174,7 @@ class LLMService:
     async def chat(self, context: dict, user_message: str, identity: dict) -> str:
         system_prompt = self._build_system_prompt(identity)
         context_text = self._format_context(context)
-
-        full_prompt = f"""
-        {context_text}
-
-        Current message: {user_message}
-
-        Respond as Miryn, keeping in mind:
-        - You remember past conversations (shown above)
-        - You notice patterns in the user's behavior
-        - You are honest, empathetic, and reflective
-        - You ask thoughtful follow-up questions
-
-
-        Formatting requirements:
-        - Keep your response **extremely concise** and highly direct. DO NOT write long paragraphs.
-        - Avoid unnecessary pleasantries or overly verbose explanations.
-        - Answer directly, maintaining a conversational, insightful tone.
-        - Use markdown formatting (like bold, bullet points, or code blocks) only when strictly necessary for clarity.
-        - Only ask ONE thoughtful follow-up question per response, and make sure it is directly relevant.
-        - If the user asks for medical/health advice, include a brief safety note and suggest professional help.
-        """
+        full_prompt = self._build_user_prompt(context_text, user_message)
 
         return await self.generate(
             full_prompt,
@@ -185,27 +185,7 @@ class LLMService:
     async def stream_chat(self, context: dict, user_message: str, identity: dict):
         system_prompt = self._build_system_prompt(identity)
         context_text = self._format_context(context)
-
-        full_prompt = f"""
-        {context_text}
-
-        Current message: {user_message}
-
-        Respond as Miryn, keeping in mind:
-        - You remember past conversations (shown above)
-        - You notice patterns in the user's behavior
-        - You are honest, empathetic, and reflective
-        - You ask thoughtful follow-up questions
-
-
-        Formatting requirements:
-        - Keep your response **extremely concise** and highly direct. DO NOT write long paragraphs.
-        - Avoid unnecessary pleasantries or overly verbose explanations.
-        - Answer directly, maintaining a conversational, insightful tone.
-        - Use markdown formatting (like bold, bullet points, or code blocks) only when strictly necessary for clarity.
-        - Only ask ONE thoughtful follow-up question per response, and make sure it is directly relevant.
-        - If the user asks for medical/health advice, include a brief safety note and suggest professional help.
-        """
+        full_prompt = self._build_user_prompt(context_text, user_message)
 
         if self.provider == "openai":
             async with self.client.chat.completions.stream(
@@ -263,8 +243,15 @@ class LLMService:
                 except Exception as exc:
                     last_exc = exc
                     err = str(exc).lower()
-                    if "not found" in err or "not supported" in err or "404" in err:
-                        self.logger.warning("Gemini stream model %s unavailable, trying fallback.", candidate_model)
+                    is_unavailable = "not found" in err or "not supported" in err or "404" in err
+                    is_quota = "429" in err or "quota" in err or "resource_exhausted" in err or "rate" in err
+                    is_transient = (
+                        "503" in err or "500" in err or "502" in err or "504" in err
+                        or "unavailable" in err or "overloaded" in err
+                        or "high demand" in err or "deadline" in err
+                    )
+                    if is_unavailable or is_quota or is_transient:
+                        self.logger.warning("Gemini stream model %s unavailable/quota, trying fallback.", candidate_model)
                         continue
                     self.logger.exception("Gemini streaming failed")
                     raise
@@ -327,6 +314,7 @@ class LLMService:
     def _build_system_prompt(self, identity: dict) -> str:
         traits = identity.get("traits", {})
         values = identity.get("values", {})
+        beliefs = identity.get("beliefs", [])
         open_loops = identity.get("open_loops", [])
         preset_id = identity.get("preset", "companion")
 
@@ -345,45 +333,110 @@ class LLMService:
         except Exception:
             pass
 
-        prompt = f"""
-        You are Miryn, an AI companion with deep memory and reflective capabilities.
+        # ponytail: render identity as prose so the LLM can actually use it
+        traits_prose = ", ".join(
+            f"{k} ({v:.0%})" for k, v in sorted(traits.items(), key=lambda x: -x[1])
+        ) if traits else "not yet established"
 
-        USER PROFILE:
-        - Personality traits: {traits}
-        - Core values: {values}
-        - Open threads to follow up on: {[loop.get('topic') for loop in open_loops[:5]]}
+        values_prose = ", ".join(
+            f"{k} ({v:.0%})" for k, v in sorted(values.items(), key=lambda x: -x[1])
+        ) if values else "not yet established"
 
-        YOUR BEHAVIORAL STYLE:
-        {preset_modifier}
+        beliefs_prose = ""
+        if beliefs:
+            belief_lines = []
+            for b in beliefs[:5]:
+                if isinstance(b, dict):
+                    topic = b.get("topic", "")
+                    text = b.get("belief", "")
+                    conf = b.get("confidence", 0)
+                    belief_lines.append(f'  - {topic}: "{text}" (confidence: {conf:.0%})')
+                elif isinstance(b, str):
+                    belief_lines.append(f"  - {b}")
+            beliefs_prose = "\n".join(belief_lines)
 
-        CONVERSATION BEHAVIORS:
-        {behaviors}
+        loops_prose = ""
+        if open_loops:
+            loop_lines = []
+            for loop in open_loops[:5]:
+                if isinstance(loop, dict):
+                    topic = loop.get("topic", "unknown")
+                    importance = loop.get("importance", "?")
+                    loop_lines.append(f"  - {topic} (importance: {importance})")
+                elif isinstance(loop, str):
+                    loop_lines.append(f"  - {loop}")
+            loops_prose = "\n".join(loop_lines)
 
+        behavior_prose = ""
+        if behaviors:
+            behavior_lines = []
+            if behaviors.get("ask_followups"):
+                behavior_lines.append("- Ask thoughtful follow-up questions")
+            if behaviors.get("reflect_emotions"):
+                behavior_lines.append("- Reflect the user's emotions back to them")
+            if behaviors.get("challenge_assumptions"):
+                behavior_lines.append("- Gently challenge assumptions when appropriate")
+            if behaviors.get("offer_encouragement"):
+                behavior_lines.append("- Offer genuine encouragement")
+            if behaviors.get("track_goals"):
+                behavior_lines.append("- Track and follow up on the user's stated goals")
+            verbosity = behaviors.get("verbosity", "medium")
+            formality = behaviors.get("formality", "casual")
+            behavior_lines.append(f"- Tone: {formality}, verbosity: {verbosity}")
+            behavior_prose = "\n".join(behavior_lines)
 
-        Your purpose is to:
-        1. Remember everything the user shares
-        2. Notice patterns in their behavior and emotions
-        3. Reflect insights back to them gently
-        4. Be honest, direct, and completely avoid fluff
-        5. Ask ONE thoughtful question at the end to prompt reflection
+        prompt = f"""You are Miryn, an AI companion with deep memory and reflective capabilities.
 
-        Speak naturally, like a thoughtful, sharp friend who truly knows them. Avoid sounding like a generic AI or a therapist.
-                """
+USER PROFILE:
+- Personality traits: {traits_prose}
+- Core values: {values_prose}
+{"- Beliefs:" + chr(10) + beliefs_prose if beliefs_prose else ""}
+{"- Open threads to follow up on:" + chr(10) + loops_prose if loops_prose else ""}
+
+YOUR BEHAVIORAL STYLE:
+{preset_modifier}
+
+{("CONVERSATION BEHAVIORS:" + chr(10) + behavior_prose) if behavior_prose else ""}
+
+Your purpose:
+1. Remember everything the user shares
+2. Notice patterns in their behavior and emotions
+3. Reflect insights back gently
+4. Be honest, direct, avoid fluff
+5. Ask ONE thoughtful question per response
+
+Speak naturally, like a thoughtful, sharp friend who truly knows them. Avoid sounding like a generic AI or a therapist."""
 
         return prompt
 
+    def _build_user_prompt(self, context_text: str, user_message: str) -> str:
+        """Shared user prompt — no duplication between chat() and stream_chat()."""
+        parts = []
+        if context_text:
+            parts.append(context_text)
+        parts.append(f"Current message: {user_message}")
+        parts.append("""
+Formatting requirements:
+- Keep your response extremely concise and direct. No long paragraphs.
+- Answer directly with a conversational, insightful tone.
+- Use markdown only when strictly necessary for clarity.
+- Ask ONE relevant follow-up question per response.
+- For medical/health questions, include a brief safety note and suggest professional help.""")
+        return "\n\n".join(parts)
+
     def _format_context(self, context: dict) -> str:
         memories = context.get("memories", [])
-        patterns = context.get("patterns", {})
 
         context_parts = []
         if memories:
             context_parts.append("Relevant past conversations:")
             for mem in memories[:5]:
-                context_parts.append(f"- {mem.get('content', '')}")
-
-        if patterns:
-            context_parts.append("\nDetected patterns:")
-            context_parts.append(str(patterns))
+                content = mem.get("content", "")
+                ts = mem.get("created_at", "")
+                if ts:
+                    # ponytail: timestamps let the model distinguish recent vs old memories
+                    context_parts.append(f"- [{ts}] {content}")
+                else:
+                    context_parts.append(f"- {content}")
 
         return "\n".join(context_parts)

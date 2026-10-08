@@ -13,6 +13,7 @@ export type Conversation = {
   created_at: string;
   updated_at: string;
   message_count: number;
+  is_pinned?: boolean;
 };
 
 export type EmotionInsight = {
@@ -80,6 +81,7 @@ export type Identity = {
   user_id: string;
   version: number;
   state: string;
+  email?: string;
   traits: Record<string, unknown>;
   values: Record<string, unknown>;
   beliefs: IdentityBelief[];
@@ -292,9 +294,16 @@ export type NotificationPreferences = {
   data_retention: string;
 };
 
+export type AuthConfig = {
+  providers: {
+    google: boolean;
+  };
+};
+
 export type User = {
   id: string;
   email: string;
+  full_name?: string | null;
   has_password: boolean;
   notification_preferences: NotificationPreferences;
   data_retention: string;
@@ -308,3 +317,32 @@ export type ImportStatus = {
   conversations_processed?: number;
   memories_added?: number;
 };
+
+export type SanctuaryAnchor = {
+  label: string;
+  description: string;
+};
+
+export type SanctuaryPersona = {
+  status: string;
+  user_id: string;
+  clarity_score: number;
+  cognitive_load: string;
+  primary_emotion: string;
+  emotional_intensity: number;
+  life_season: string;
+  core_anchors: SanctuaryAnchor[];
+  active_open_loops: Array<{ topic: string; status?: string; importance?: number }>;
+  beliefs: Array<{ topic: string; belief: string }>;
+  patterns: Array<{ pattern_type: string; description: string }>;
+  conflicts: Array<{ statement: string }>;
+  grounding_recommendation: string;
+};
+
+export type SanctuaryCheckinResponse = {
+  status: string;
+  message: string;
+  recorded_at: string;
+  companion_reflection: string;
+};
+

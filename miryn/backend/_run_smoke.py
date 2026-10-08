@@ -9,8 +9,10 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_smoke_result.tx
 
 lines = []
 def log(msg):
-    print(msg)
-    lines.append(msg)
+    # Avoid unicode encode errors on windows console
+    safe_msg = msg.replace("✓", "OK").replace("✗", "FAIL")
+    print(safe_msg)
+    lines.append(safe_msg)
 
 def save():
     with open(OUT, "w", encoding="utf-8") as f:
@@ -24,7 +26,7 @@ try:
 
     # 2) login
     log("[*] Logging in...")
-    login_body = json.dumps({"email": "miryn@gmail.com", "password": "miryn123"}).encode()
+    login_body = json.dumps({"email": "riya_v3@miryn.demo", "password": "MirynDemo!2026"}).encode()
     req = urllib.request.Request(f"{BASE}/auth/login", data=login_body,
                                 headers={"Content-Type": "application/json"}, method="POST")
     with urllib.request.urlopen(req, timeout=15) as r:
@@ -56,12 +58,12 @@ try:
         log(f"[+] Full response ({len(full)} chars):")
         log(full)
         if full:
-            log("[✓] SMOKE TEST PASSED")
+            log("[OK] SMOKE TEST PASSED")
         else:
-            log("[✗] SMOKE TEST FAILED — no chunks")
+            log("[FAIL] SMOKE TEST FAILED — no chunks")
 except Exception as e:
     import traceback
-    log(f"[✗] SMOKE TEST FAILED — {e}")
+    log(f"[FAIL] SMOKE TEST FAILED — {e}")
     log(traceback.format_exc())
 finally:
     save()

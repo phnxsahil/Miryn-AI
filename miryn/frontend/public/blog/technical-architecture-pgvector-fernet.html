@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Under the Hood: 384-Dim pgvector, Zero-Knowledge Fernet Encryption & Sub-1.5s Recall — Miryn AI Blog</title>
+  <meta name="description" content="Designing an AI companion that genuinely evolves with a human requires solving two fundamentally opposed engineering challenges: sub-second conversational laten...">
+  <link rel="icon" href="/miryn-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @font-face {
+      font-family: 'Gambarino';
+      src: url('../assets/6KBHT5NXCZVM6GHTPKGIR6DXZLQAYIFK.woff2') format('woff2');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #0a0a0a;
+      color: #f5f5f5;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.8;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* Header */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 72px;
+      background: rgba(10, 10, 10, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(20px, 5vw, 64px);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 500;
+      font-size: 17px;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .back-btn {
+      font-size: 13px;
+      color: #a3a3a3;
+      transition: color 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .back-btn:hover { color: #ffffff; }
+
+    .cta-btn {
+      padding: 8px 18px;
+      border-radius: 999px;
+      background: #fee435;
+      color: #0a0a0a;
+      font-weight: 600;
+      font-size: 13px;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .cta-btn:hover {
+      background: #ffe74d;
+      transform: scale(1.03);
+    }
+
+    /* Main Container */
+    main {
+      max-width: 780px;
+      margin: 140px auto 100px;
+      padding: 0 24px;
+    }
+
+    .meta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Fragment Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #38bdf8;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 5px 14px;
+      border-radius: 999px;
+      margin-bottom: 24px;
+    }
+
+    .meta-badge span.dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 8px #38bdf8;
+    }
+
+    h1.article-title {
+      font-family: 'Gambarino', Georgia, serif;
+      font-size: clamp(34px, 4.5vw, 54px);
+      font-weight: 400;
+      line-height: 1.16;
+      letter-spacing: -0.03em;
+      color: #f5f5f5;
+      margin-bottom: 24px;
+    }
+
+    .article-info {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      font-family: 'Fragment Mono', monospace;
+      font-size: 12px;
+      color: #888888;
+      padding-bottom: 32px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 40px;
+    }
+
+    .article-info a {
+      color: #ece4d0;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      font-weight: 500;
+    }
+
+    .lead-paragraph {
+      font-size: 19px;
+      line-height: 1.65;
+      color: #e5e5e5;
+      margin-bottom: 32px;
+      font-weight: 400;
+    }
+
+    .content {
+      font-size: 16.5px;
+      color: #d1d5db;
+    }
+
+    .content p {
+      margin-bottom: 24px;
+    }
+
+    .content h2 {
+      font-family: 'Gambarino', Georgia, serif;
+      font-size: 30px;
+      font-weight: 400;
+      color: #f5f5f5;
+      margin: 52px 0 20px;
+      letter-spacing: -0.02em;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 36px;
+    }
+
+    .content h3 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #f5f5f5;
+      margin: 36px 0 14px;
+      letter-spacing: -0.01em;
+    }
+
+    .callout {
+      background: #141414;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-left: 3px solid #38bdf8;
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin: 36px 0;
+      color: #ece4d0;
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    .callout strong {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .code-block {
+      background: #111111;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 22px 24px;
+      font-family: 'Fragment Mono', monospace;
+      font-size: 13px;
+      color: #a8bb94;
+      overflow-x: auto;
+      margin: 32px 0;
+      line-height: 1.65;
+    }
+
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 36px 0;
+      font-size: 14.5px;
+      background: #121212;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 16px 20px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .comparison-table th {
+      background: #181818;
+      font-family: 'Fragment Mono', monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #a3a3a3;
+    }
+
+    .comparison-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .author-card {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: #131313;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 24px;
+      margin: 64px 0 32px;
+    }
+
+    .author-card img {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      object-fit: cover;
+    }
+
+    .author-info h4 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f5f5f5;
+      margin-bottom: 4px;
+    }
+
+    .author-info p {
+      font-size: 13.5px;
+      color: #a3a3a3;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .author-info a {
+      color: #fee435;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 48px 24px;
+      text-align: center;
+      font-size: 13px;
+      color: #737373;
+    }
+
+    footer a {
+      color: #a8bb94;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="../index.html" class="nav-brand">
+      <img src="../assets/0O5v3itGAnPaIlNYp2Dtalj5s.png" alt="Miryn AI">
+      <span>Miryn AI</span>
+    </a>
+    <div class="nav-actions">
+      <a href="../index.html" class="back-btn">← Back to Overview</a>
+      <a href="http://localhost:3001/login" class="cta-btn">Try Miryn Free</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="meta-badge"><span class="dot"></span>Technical Architecture & Systems</div>
+    <h1 class="article-title">Under the Hood: 384-Dim pgvector, Zero-Knowledge Fernet Encryption & Sub-1.5s Recall</h1>
+    <div class="article-info">
+      <span>Sep 18, 2026</span>
+      <span>•</span>
+      <span>9 min read</span>
+      <span>•</span>
+      <span>By <a href="https://sharmasahil.me" target="_blank" rel="noopener noreferrer">Sahil Sharma</a></span>
+    </div>
+
+    <p class="lead-paragraph">Designing an AI companion that genuinely evolves with a human requires solving two fundamentally opposed engineering challenges: sub-second conversational latency and deep, privacy-preserving semantic memory. Here is an architectural deep dive into how Miryn solves both.</p>
+
+    <div class="content">
+      
+<p>Most AI memory systems fail because they treat context as a simple database lookup or an overwhelming prompt dump. Shoving tens of thousands of tokens into an LLM context window is not only slow and expensive — it degrades needle-in-a-haystack attention and leaks private data.</p>
+<p>Miryn implements a hybrid three-tier memory architecture coupled with asynchronous identity extraction, powered by FastAPI, PostgreSQL with pgvector, Redis, and Celery.</p>
+
+<div class="code-block">
+[Incoming User Message]
+         │
+         ▼
+[api/chat.py] ─── (Auth JWT HS256) ───► [ConversationOrchestrator]
+                                                    │
+                 ┌──────────────────────────────────┴──────────────────────────────────┐
+                 ▼                                                                     ▼
+      [IdentityEngine.get_identity()]                                       [MemoryLayer.retrieve_context()]
+      (Immutable Versioned Traits)                                          (Hybrid: Vector + Temporal + Imp)
+                 │                                                                     │
+                 └──────────────────────────────────┬──────────────────────────────────┘
+                                                    ▼
+                                            [LLMService.chat()]
+                                            (Sub-1.5s Recall SLA)
+                                                    │
+                                                    ├──────► [Client Stream Response]
+                                                    │
+                                                    ▼ (Fire-and-forget)
+                                      [MemoryLayer.store_conversation()]
+                                                    │
+                                                    ▼
+                                     [Celery: reflection.analyze]
+                                                    │
+                                                    ▼
+                                       [workers/reflection_worker.py]
+                                       (Extracts beliefs, patterns, open loops)
+                                                    │
+                                                    ▼
+                                            [publish_event()]
+                                                    │
+                                                    ▼
+                                        [SSE: /chat/events/stream]
+</div>
+
+<h2>1. The Three-Tier Memory Hierarchy</h2>
+<p>Memory is not monolithic. Human cognition separates fleeting sensory input, short-term situational memories, and permanent core beliefs. Miryn models this directly:</p>
+
+<table class="comparison-table">
+  <thead>
+    <tr>
+      <th>Memory Tier</th>
+      <th>Storage Engine</th>
+      <th>Lifecycle / TTL</th>
+      <th>Purpose &amp; SLA</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Transient Memory</strong></td>
+      <td>Redis Cluster</td>
+      <td>2 Hours TTL</td>
+      <td>Active chat thread, rate-limit counters, idempotency cache (&lt;10ms)</td>
+    </tr>
+    <tr>
+      <td><strong>Episodic Memory</strong></td>
+      <td>PostgreSQL + pgvector</td>
+      <td>7-Day Auto-Expiry (delete_at)</td>
+      <td>Recent contextual events, task states, situational references (&lt;80ms)</td>
+    </tr>
+    <tr>
+      <td><strong>Core Identity Memory</strong></td>
+      <td>PostgreSQL (identities)</td>
+      <td>Immutable / Versioned</td>
+      <td>Traits, values, beliefs, patterns, open loops (Unique user_id + version)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>2. 384-Dimensional Embeddings &amp; Hybrid Scoring Algorithm</h2>
+<p>Episodic memories are embedded using a compact, high-precision 384-dimensional dense vector space. While 1536-dim embeddings are popular, 384-dim representations offer 4x faster cosine distance calculations, significantly lower memory pressure, and zero quantization loss on conversational semantics.</p>
+<p>Context retrieval does not rely solely on raw vector similarity. A memory from five minutes ago has different relevance than a memory from five days ago, regardless of semantic distance. We use a composite scoring function:</p>
+
+<div class="code-block">
+Score(M) = α · CosineSim(q, v_M) + β · e^(-λ · Δt) + γ · Importance(M)
+
+Where:
+  • CosineSim(q, v_M): Dense vector dot product in 384-dim space
+  • e^(-λ · Δt): Exponential temporal decay over elapsed hours
+  • Importance(M): Weight assigned by reflection worker (1.0 to 5.0)
+  • α = 0.55, β = 0.25, γ = 0.20 (empirically tuned for conversational coherence)
+</div>
+
+<p>The entire retrieval pipeline is bounded by a strict <strong>1.5-second timeout budget</strong>. If pgvector vector search or Redis queries lag, the orchestrator gracefully degrades to transient context, ensuring the user is never left waiting.</p>
+
+<h2>3. Zero-Knowledge Cryptography: Fernet Payload Encryption</h2>
+<p>Every message payload and personal trait stored in Miryn is encrypted using <strong>Fernet symmetric cryptography</strong> before writing to the database table:</p>
+<ul style="padding-left:24px;margin-bottom:24px;line-height:2">
+  <li><strong>Cipher:</strong> AES-128 in Cipher Block Chaining (CBC) mode with PKCS7 padding.</li>
+  <li><strong>Authentication:</strong> HMAC-SHA256 authenticated envelope preventing ciphertext manipulation.</li>
+  <li><strong>Key Isolation:</strong> Cryptographic keys are injected via environment variables and never logged or exposed to the client.</li>
+</ul>
+
+<div class="callout">
+  <strong>Dual-Path Database Execution:</strong><br>
+  Every database operation in Miryn implements both SQLAlchemy parameterized SQL via <code>text()</code> with named binds for native Neon PostgreSQL / pgvector, alongside a fallback adapter for Supabase REST clients. Parameterization guarantees total immunity against SQL injection vulnerabilities.
+</div>
+
+<h2>4. The Asynchronous Reflection Pipeline</h2>
+<p>Generating deep insights — such as identifying recurring behavioral traps or tracking open loops — takes substantial compute. Blocking the user's chat message while an LLM conducts deep introspection would destroy the real-time conversational experience.</p>
+<p>Miryn offloads all identity synthesis to a Celery background queue. Once the message response is returned to the user, a fire-and-forget task triggers <code>reflection.analyze</code>. The worker extracts new beliefs, flags open loops, increments pattern counters, and logs the change to <code>identity_evolution_log</code>. The updated state is then pushed live via Server-Sent Events (SSE) to the frontend.</p>
+
+    </div>
+
+    <div class="author-card">
+      <img src="../assets/0O5v3itGAnPaIlNYp2Dtalj5s.png" alt="Sahil Sharma">
+      <div class="author-info">
+        <h4>Sahil Sharma</h4>
+        <p>Founder &amp; Engineer at Miryn AI. Researching persistent AI identity, psychological safety in human-AI interaction, and zero-knowledge memory architecture. Learn more at <a href="https://sharmasahil.me" target="_blank" rel="noopener noreferrer">sharmasahil.me</a>.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>© 2026 Miryn AI Inc. All rights reserved. · Designed &amp; Built by <a href="https://sharmasahil.me" target="_blank" rel="noopener noreferrer">Sahil Sharma</a></p>
+  </footer>
+
+  <script>
+    // Universal CTA click routing
+    document.querySelectorAll('.cta-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        var base = window.location.origin.includes('localhost') ? 'http://localhost:3001' : '';
+        if (base) {
+          e.preventDefault();
+          window.location.href = base + '/login';
+        }
+      });
+    });
+  </script>
+</body>
+</html>

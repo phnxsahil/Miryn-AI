@@ -1,7 +1,32 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowUp, Loader2, Paperclip } from "lucide-react";
+import { ArrowUp, Loader2, Paperclip, X, FileText, FileCode, Image as ImageIcon } from "lucide-react";
+
+export interface AttachedFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  content: string;
+  isText: boolean;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileIcon(filename: string, type: string) {
+  if (type.startsWith("image/") || filename.match(/\.(png|jpe?g|webp|svg|gif)$/i)) {
+    return <ImageIcon size={13} className="text-[#D69155] shrink-0" />;
+  }
+  if (filename.match(/\.(ts|tsx|js|jsx|py|sql|json|html|css|yaml|yml|sh|env)$/i)) {
+    return <FileCode size={13} className="text-[#2dd4bf] shrink-0" />;
+  }
+  return <FileText size={13} className="text-[#D69155] shrink-0" />;
+}
 
 export default function InputBox({
   onSend,
@@ -11,8 +36,12 @@ export default function InputBox({
   disabled?: boolean;
 }) {
   const [value, setValue] = useState("");
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const canSend = value.trim().length > 0 && !disabled;
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const canSend = (value.trim().length > 0 || attachedFiles.length > 0) && !disabled;
 
   useEffect(() => {
     if (!textareaRef.current) return;
@@ -21,62 +50,216 @@ export default function InputBox({
     element.style.height = `${Math.min(element.scrollHeight, 200)}px`;
   }, [value]);
 
+  const processFiles = async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList);
+    const newAttachments: AttachedFile[] = [];
+
+    for (const file of files) {
+      if (file.size > 20 * 1024 * 1024) {
+        // Skip files > 20MB
+        continue;
+      }
+
+      const isTextFile =
+        file.type.startsWith("text/") ||
+        Boolean(file.name.match(/\.(txt|md|markdown|py|js|ts|tsx|jsx|json|csv|sql|html|css|yaml|yml|sh|env|xml|log|rst)$/i));
+
+      if (isTextFile) {
+        try {
+          const text = await file.text();
+          newAttachments.push({
+            id: `${file.name}-${Date.now()}-${Math.random()}`,
+            name: file.name,
+            size: file.size,
+            type: file.type || "text/plain",
+            content: text,
+            isText: true,
+          });
+        } catch {
+          // If text reading fails, record metadata
+          newAttachments.push({
+            id: `${file.name}-${Date.now()}-${Math.random()}`,
+            name: file.name,
+            size: file.size,
+            type: file.type || "application/octet-stream",
+            content: `[File attached: ${file.name} (${formatFileSize(file.size)})]`,
+            isText: false,
+          });
+        }
+      } else {
+        newAttachments.push({
+          id: `${file.name}-${Date.now()}-${Math.random()}`,
+          name: file.name,
+          size: file.size,
+          type: file.type || "application/octet-stream",
+          content: `[Binary file attached: ${file.name} (${formatFileSize(file.size)})]`,
+          isText: false,
+        });
+      }
+    }
+
+    if (newAttachments.length > 0) {
+      setAttachedFiles((prev) => [...prev, ...newAttachments]);
+    }
+  };
+
+  const removeFile = (id: string) => {
+    setAttachedFiles((prev) => prev.filter((f) => f.id !== id));
+  };
+
   const handleSend = () => {
     const trimmed = value.trim();
-    if (!trimmed || disabled) return;
-    onSend(trimmed);
+    if ((!trimmed && attachedFiles.length === 0) || disabled) return;
+
+    let fullMessage = trimmed;
+    if (attachedFiles.length > 0) {
+      const attachmentsBlock = attachedFiles
+        .map((f) => {
+          const ext = f.name.split(".").pop() || "txt";
+          if (f.isText) {
+            return `[Attached File: ${f.name} (${formatFileSize(f.size)})]\n\`\`\`${ext}\n${f.content}\n\`\`\``;
+          }
+          return `[Attached File: ${f.name} (${formatFileSize(f.size)})]`;
+        })
+        .join("\n\n");
+
+      fullMessage = trimmed ? `${attachmentsBlock}\n\n${trimmed}` : attachmentsBlock;
+    }
+
+    onSend(fullMessage);
     setValue("");
+    setAttachedFiles([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
     <div className="relative w-full max-w-3xl mx-auto px-4 md:px-0">
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          handleSend();
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            void processFiles(e.target.files);
+          }
         }}
-        className="relative flex items-end gap-2 p-2 bg-[#2f2f2f] rounded-[24px] border border-white/10 shadow-sm focus-within:bg-[#2f2f2f]/90 transition-colors"
-      >
-        <button
-          type="button"
-          className="p-2 ml-1 text-dim/50 rounded-full cursor-not-allowed"
-          disabled
-          aria-label="Attachments coming soon"
-          title="Attachments coming soon"
-        >
-          <Paperclip size={20} />
-        </button>
+      />
 
-        <textarea
-          ref={textareaRef}
-          className="flex-1 bg-transparent border-none px-2 py-2.5 text-[15px] leading-relaxed placeholder:text-dim focus:ring-0 resize-none max-h-[200px] overflow-y-auto custom-scrollbar text-primary min-h-[44px]"
-          placeholder="Message Miryn..."
-          value={value}
-          rows={1}
-          onChange={(event) => setValue(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              handleSend();
-            }
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            void processFiles(e.dataTransfer.files);
+          }
+        }}
+        className={`relative flex flex-col bg-[#17171d] rounded-[26px] border transition-all duration-200 shadow-sm ${
+          isDragging
+            ? "border-[#D69155] bg-[#1a1a24] shadow-[0_0_25px_rgba(214,145,85,0.15)]"
+            : "border-white/[0.08] focus-within:border-white/[0.18]"
+        }`}
+      >
+        {/* Drag Overlay */}
+        {isDragging && (
+          <div className="absolute inset-0 z-30 bg-[#14141c]/90 border-2 border-dashed border-[#D69155] rounded-[26px] flex items-center justify-center gap-2 backdrop-blur-sm pointer-events-none">
+            <Paperclip size={16} className="text-[#D69155] animate-bounce" />
+            <span className="text-xs font-mono text-[#D69155] uppercase tracking-wider font-semibold">
+              Drop files to attach to Miryn
+            </span>
+          </div>
+        )}
+
+        {/* Attached Files Tray */}
+        {attachedFiles.length > 0 && (
+          <div className="flex flex-wrap gap-2 px-3.5 pt-3 pb-1 border-b border-white/[0.05]">
+            {attachedFiles.map((file) => (
+              <div
+                key={file.id}
+                className="flex items-center gap-2 bg-[#20202a] border border-white/[0.08] rounded-xl px-2.5 py-1.5 text-xs text-[#f0f0f4] transition-all group"
+              >
+                {getFileIcon(file.name, file.type)}
+                <span className="font-mono text-[11.5px] truncate max-w-[140px] text-[#e0e0e6]">
+                  {file.name}
+                </span>
+                <span className="text-[10px] font-mono text-[#787884]">
+                  {formatFileSize(file.size)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeFile(file.id)}
+                  className="text-[#787884] hover:text-white transition-colors p-0.5"
+                  title="Remove attachment"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Input Textarea & Controls */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSend();
           }}
-          disabled={disabled}
-        />
-        
-        <button
-          type="submit"
-          className={`
-            p-2 mb-0.5 mr-1 rounded-full flex items-center justify-center transition-colors h-8 w-8
-            ${canSend ? "bg-white text-black hover:bg-white/90" : "bg-[#424242] text-dim/50 cursor-not-allowed"}
-          `}
-          disabled={!canSend}
+          className="relative flex items-end gap-2 p-2"
         >
-          {disabled ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={18} strokeWidth={3} />}
-        </button>
-      </form>
-      
+          {/* Paperclip Button */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled}
+            className="p-2 mb-0.5 text-[#888892] hover:text-[#f0f0f4] hover:bg-white/[0.06] rounded-full transition-all shrink-0"
+            title="Attach documents, code, or data files"
+            aria-label="Attach files"
+          >
+            <Paperclip size={18} />
+          </button>
+
+          <textarea
+            ref={textareaRef}
+            className="flex-1 bg-transparent border-none px-2 py-2 text-[15px] leading-relaxed placeholder:text-[#6a6a74] focus:outline-none focus:ring-0 resize-none max-h-[200px] overflow-y-auto custom-scrollbar text-[#f3f3f6] min-h-[44px]"
+            placeholder="Message Miryn or drop files..."
+            aria-label="Message Miryn"
+            value={value}
+            rows={1}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            disabled={disabled}
+          />
+
+          <button
+            type="submit"
+            className={`p-2 mb-0.5 mr-0.5 rounded-full flex items-center justify-center transition-all h-8 w-8 shrink-0 ${
+              canSend
+                ? "bg-gradient-to-tr from-[#D69155] to-[#F2B271] text-[#0d0d11] hover:brightness-105 shadow-[0_0_15px_rgba(214,145,85,0.25)] active:scale-95"
+                : "bg-white/[0.06] text-[#555560] cursor-not-allowed"
+            }`}
+            disabled={!canSend}
+            aria-label="Send message"
+          >
+            {disabled ? <Loader2 size={16} className="animate-spin text-[#D69155]" /> : <ArrowUp size={16} strokeWidth={2.5} />}
+          </button>
+        </form>
+      </div>
+
       <div className="mt-2 text-center">
-        <p className="text-[12px] text-dim/70">Miryn can make mistakes. Consider verifying important information.</p>
+        <p className="text-[11px] font-mono tracking-tight text-[#62626e]">
+          Miryn v0.1 • 384-dim continuous memory • End-to-end Fernet encrypted
+        </p>
       </div>
     </div>
   );

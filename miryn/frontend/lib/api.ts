@@ -1,4 +1,5 @@
 import type {
+  AuthConfig,
   ComparePayload,
   CompareReport,
   Conversation,
@@ -11,6 +12,8 @@ import type {
   MemorySnapshot,
   NotificationPreferences,
   OnboardingPayload,
+  SanctuaryCheckinResponse,
+  SanctuaryPersona,
   Session,
   User,
 } from "@/lib/types";
@@ -28,10 +31,35 @@ class ApiClient {
   private refreshTokenValue: string | null = null;
   private refreshRequest: Promise<AuthSession> | null = null;
   private requestCache = new Map<string, { expiresAt: number; value: unknown }>();
+  private posthogInitialized = false;
 
   constructor() {
     if (typeof window !== "undefined") {
       this.loadToken();
+    }
+  }
+
+  private capture(event: string, properties?: Record<string, unknown>) {
+    if (typeof window === "undefined") return;
+    try {
+      const ph = (window as Window & { posthog?: { capture?: (event: string, properties?: Record<string, unknown>) => void } }).posthog;
+      if (ph?.capture) {
+        ph.capture(event, properties);
+      }
+    } catch {
+      // silently fail
+    }
+  }
+
+  private identifyUser(userId: string, properties?: Record<string, unknown>) {
+    if (typeof window === "undefined") return;
+    try {
+      const ph = (window as Window & { posthog?: { capture?: (event: string, properties?: Record<string, unknown>) => void; identify?: (userId: string, properties?: Record<string, unknown>) => void } }).posthog;
+      if (ph?.identify) {
+        ph.identify(userId, properties);
+      }
+    } catch {
+      // silently fail
     }
   }
 
@@ -49,6 +77,9 @@ class ApiClient {
   setSession(session: AuthSession | null) {
     this.setToken(session?.access_token ?? null);
     this.setRefreshToken(session?.refresh_token ?? null);
+    if (session?.is_new) {
+      this.capture("signup");
+    }
   }
 
   clearToken() {
@@ -206,11 +237,15 @@ class ApiClient {
     }
   }
 
-  async signup(email: string, password: string) {
+  async signup(email: string, password: string, fullName?: string) {
     return this.request("/auth/signup", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, full_name: fullName?.trim() || null }),
     });
+  }
+
+  async getAuthConfig(): Promise<AuthConfig> {
+    return this.request("/auth/config") as Promise<AuthConfig>;
   }
 
   async login(email: string, password: string) {
@@ -281,7 +316,27 @@ class ApiClient {
     });
   }
 
+  async setConversationPinned(id: string, pinned: boolean) {
+    return this.request(`/chat/conversations/${id}/pin`, {
+      method: "PATCH",
+      body: JSON.stringify({ pinned }),
+    });
+  }
+
+  async deleteConversation(id: string) {
+    return this.request(`/chat/conversations/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async clearConversations() {
+    return this.request("/chat/conversations", {
+      method: "DELETE",
+    });
+  }
+
   async sendMessage(message: string, conversationId?: string) {
+    this.capture("chat_message_sent", { has_conversation: !!conversationId });
     return this.request("/chat/", {
       method: "POST",
       body: JSON.stringify({ message, conversation_id: conversationId }),
@@ -450,13 +505,6 @@ class ApiClient {
     return session;
   }
 
-  async createConversation() {
-    return this.request("/chat/conversations", {
-      method: "POST",
-      body: JSON.stringify({ title: "New Reflection" }),
-    }) as Promise<{ id: string; title: string }>;
-  }
-
   async getDemoPersonaDetail(userId: string): Promise<DemoPersonaDetail> {
     const key = `persona:${userId}`;
     const cached = this.getCached<DemoPersonaDetail>(key);
@@ -490,6 +538,44 @@ class ApiClient {
     return this.request(`/memory/${id}`, {
       method: "DELETE",
     });
+  }
+
+  async purgeEpisodicMemory() {
+    return this.request("/memory/purge/episodic", {
+      method: "DELETE",
+    });
+  }
+
+  async exportData(): Promise<Blob> {
+    if (!this.token) this.loadToken();
+    const res = await fetch(`${API_URL}/memory/export`, {
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+      },
+    });
+    if (!res.ok) {
+      const err = await this.parseError(res);
+      throw new Error(err || "Export failed");
+    }
+    return res.blob();
+  }
+
+  async createMemory(payload: { content: string; memory_tier?: "core" | "episodic" | "transient"; importance_score?: number }) {
+    return this.request("/memory/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getSanctuaryPersona(): Promise<SanctuaryPersona> {
+    return this.request("/chat/sanctuary/persona") as Promise<SanctuaryPersona>;
+  }
+
+  async postSanctuaryCheckin(payload: { emotion: string; energy?: string; notes?: string }): Promise<SanctuaryCheckinResponse> {
+    return this.request("/chat/sanctuary/checkin", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }) as Promise<SanctuaryCheckinResponse>;
   }
 
   async importChatGPT(file: File) {

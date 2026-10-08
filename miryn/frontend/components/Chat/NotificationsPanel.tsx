@@ -15,9 +15,9 @@ export default function NotificationsPanel({ notifications, onMarkRead }: Props)
   }
 
   return (
-    <div className="bg-card border border-white/[0.06] rounded-[32px] p-8 h-full flex flex-col shadow-sm">
+    <div className="bg-card border border-[var(--miryn-card-border)] rounded-[32px] p-8 h-full flex flex-col shadow-sm">
       <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full bg-white/[0.03] border border-[var(--miryn-card-border)] flex items-center justify-center">
           <Bell size={18} className="text-muted" />
         </div>
         <span className="mono-label !text-[12px] !text-muted uppercase tracking-[0.2em] font-bold">Signal Feed</span>
@@ -34,7 +34,7 @@ export default function NotificationsPanel({ notifications, onMarkRead }: Props)
               className={`
                 group relative flex items-center justify-between gap-4 px-5 py-3.5 rounded-2xl border transition-all
                 ${note.status === "new" 
-                  ? "bg-white/[0.03] border-white/[0.06] shadow-sm" 
+                  ? "bg-white/[0.03] border-[var(--miryn-card-border)] shadow-sm" 
                   : "bg-transparent border-transparent opacity-40"}
               `}
             >

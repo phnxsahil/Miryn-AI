@@ -1,20 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
-import dynamic from "next/dynamic";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useChatStore } from "@/lib/store";
 import type { Message, ToolRun, Notification } from "@/lib/types";
 import { getErrorMessage } from "@/lib/utils";
 import MessageBubble from "./MessageBubble";
 import InputBox from "./InputBox";
-import InsightsPanel from "./InsightsPanel";
-import { Sparkles, Bell, Brain, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle, HeartPulse } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-const ToolPanel = dynamic(() => import("./ToolPanel"));
-const NotificationsPanel = dynamic(() => import("./NotificationsPanel"));
+import { MirynMark } from "@/components/visuals";
 
 export default function ChatInterface() {
   const {
@@ -23,10 +20,6 @@ export default function ChatInterface() {
     streaming,
     conversationId,
     status,
-    insights,
-    conflicts,
-    pendingTools,
-    notifications,
     secondaryPanelsReady,
     streamingIndex,
     setMessages,
@@ -45,11 +38,23 @@ export default function ChatInterface() {
   } = useChatStore();
 
   const searchParams = useSearchParams();
+  const router = useRouter();
   const idFromUrl = searchParams.get("id");
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
+  const isAutoScrolledRef = useRef(true);
+  
   const chunkBufferRef = useRef("");
   const animationFrameRef = useRef<number | null>(null);
+  const lastMessageRef = useRef<string | null>(null);
+
+  const handleScroll = useCallback(() => {
+    if (!chatContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    // If user is within 100px of bottom, auto-scroll is enabled
+    isAutoScrolledRef.current = scrollHeight - scrollTop - clientHeight < 100;
+  }, []);
 
   useEffect(() => {
     api.loadToken();
@@ -65,10 +70,14 @@ export default function ChatInterface() {
       setLoading(true);
       api.getChatHistory(idFromUrl)
         .then((history) => {
-          setMessages((history as Message[]) || []);
+          const nextHistory = (history as Message[]) || [];
+          if (nextHistory.length > 0 || useChatStore.getState().messages.length === 0) {
+            setMessages(nextHistory);
+          }
           setLoading(false);
         })
         .catch((err) => {
+          setMessages([]);
           setStatus(getErrorMessage(err, "Failed to load reflection history."));
           setLoading(false);
         });
@@ -128,12 +137,14 @@ export default function ChatInterface() {
   }, [secondaryPanelsReady, setInsights, setConflicts, setNotifications]);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (isAutoScrolledRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, loading, scrollToBottom]);
+  }, [messages, loading, scrollToBottom, streamingIndex]);
 
   useEffect(() => {
     return () => {
@@ -153,6 +164,7 @@ export default function ChatInterface() {
   const sendMessage = async (rawMessage: string) => {
     const trimmed = rawMessage.trim();
     if (!trimmed || loading) return;
+    lastMessageRef.current = trimmed;
 
     const timestamp = new Date().toISOString();
     appendMessage({ role: "user", content: trimmed, timestamp });
@@ -192,7 +204,16 @@ export default function ChatInterface() {
         }
         if (event.done && event.conversation_id) {
           flushChunkBuffer();
-          if (!conversationId) setConversationId(event.conversation_id);
+          if (!conversationId) {
+            setConversationId(event.conversation_id);
+            router.replace(`/chat?id=${event.conversation_id}`);
+            window.setTimeout(() => {
+              api.getChatHistory(event.conversation_id).then((history) => {
+                const persistedHistory = history as Message[];
+                if (persistedHistory.length > 0) setMessages(persistedHistory);
+              }).catch(() => null);
+            }, 1800);
+          }
           completed = true;
           setLoading(false);
           setStreaming(false);
@@ -221,129 +242,121 @@ export default function ChatInterface() {
     }
   };
 
-  const generateTool = async (intent: string) => {
-    try {
-      await api.generateTool(intent);
-      const tools = (await api.listPendingTools()) as ToolRun[];
-      setPendingTools(tools || []);
-    } catch (error: unknown) {
-      setStatus(getErrorMessage(error, "Failed to generate tool."));
-    }
+  const retryLastMessage = () => {
+    if (!lastMessageRef.current || loading) return;
+    setStatus(null);
+    setMessages((prev) => {
+      const withoutError = prev.filter((message) => message.role !== "system");
+      return withoutError.at(-1)?.role === "user" ? withoutError.slice(0, -1) : withoutError;
+    });
+    void sendMessage(lastMessageRef.current);
   };
-
-  const approveTool = async (toolId: string) => {
-    try {
-      const res = (await api.approveTool(toolId)) as { result?: { output?: string; error?: string } };
-      if (res?.result?.output) {
-        appendMessage({ role: "system", content: `Tool output: ${res.result.output}`, timestamp: new Date().toISOString() });
-      }
-      const tools = (await api.listPendingTools()) as ToolRun[];
-      setPendingTools(tools || []);
-    } catch (error: unknown) {
-      setStatus(getErrorMessage(error, "Failed to run tool."));
-    }
-  };
-
-  const markNotificationRead = async (id: string) => {
-    try {
-      await api.markNotificationRead(id);
-      setNotifications((prev) => prev.map((note) => (note.id === id ? { ...note, status: "read" } : note)));
-    } catch (error: unknown) {
-      setStatus(getErrorMessage(error, "Failed to update notification."));
-    }
-  };
-
-  const unreadCount = notifications.filter((n) => n.status === "new").length;
 
   return (
-    <div className="flex flex-col h-screen bg-void overflow-hidden font-ui relative">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[400px] bg-accent/[0.05] blur-[150px] pointer-events-none -z-10" />
+    <div className="flex flex-col h-screen bg-[#0d0d11] text-[#f4f4f7] overflow-hidden font-ui relative">
+      {/* Subtle Impeccable Ambient Glow */}
+      <div className="absolute top-0 right-1/3 w-[550px] h-[350px] bg-[radial-gradient(ellipse_at_top,_rgba(214,145,85,0.05),transparent_70%)] pointer-events-none" />
 
-      <header className="px-10 py-8 flex items-center justify-between shrink-0 relative z-20 border-b border-white/[0.04] bg-[#0f0f17]/80 backdrop-blur-xl">
-        <div className="flex items-center gap-6">
-          <div className="flex flex-col">
-            <h1 className="text-xl font-bold tracking-tight text-primary">
-              {idFromUrl ? "Active Reflection" : "New Session"}
-            </h1>
-            <div className="flex items-center gap-2 mt-1">
-              <div className={`w-2 h-2 rounded-full ${loading ? "bg-accent animate-pulse" : "bg-white/10"}`} />
-              <span className="mono-label !text-[11px] !text-dim uppercase tracking-widest">
-                {loading ? "Listening..." : "Standing By"}
-              </span>
+      {/* Minimalist Claude/ChatGPT Header */}
+      <header className="h-14 px-5 md:px-6 flex items-center justify-between shrink-0 relative z-20 border-b border-white/[0.06] bg-[#0d0d11]/80 backdrop-blur-xl">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 px-2 py-1 text-sm font-semibold text-[#f0f0f4]">
+            <div className="w-6 h-6 rounded-lg bg-[#181820] border border-white/[0.08] flex items-center justify-center">
+              <MirynMark state="avatar" className="w-3.5 h-3.5 text-[#D69155]" />
             </div>
+            <span className="tracking-tight">Miryn</span>
           </div>
+
+          {idFromUrl && (
+            <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-[#8a8a96] pl-3 border-l border-white/[0.08]">
+              <div className={`w-1.5 h-1.5 rounded-full ${loading ? "bg-[#D69155] animate-pulse" : "bg-emerald-400"}`} />
+              <span>{loading ? "Thinking..." : "Continuous Memory Synced"}</span>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-5">
-           <div className="hidden md:flex items-center gap-3 px-5 py-2.5 rounded-full bg-accent/[0.06] border border-accent/15">
-             <Brain size={16} className="text-accent" />
-             <span className="mono-label !text-[11px] !text-accent tracking-widest">Resonance: 98.4%</span>
-           </div>
-           
-           <div className="relative">
-             <button className="p-3 rounded-full bg-white/[0.03] border border-white/[0.06] text-dim hover:text-primary transition-all">
-               <Bell size={20} />
-               {unreadCount > 0 && <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-accent rounded-full shadow-[0_0_10px_rgba(200,184,255,0.4)]" />}
-             </button>
-           </div>
-        </div>
+        <Link
+          href="/sanctuary"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] hover:border-[#D69155]/40 hover:bg-white/[0.07] text-xs font-mono text-[#e0e0e6] transition-all font-medium"
+          title="Open Mind Sanctuary & Emotional Barometer"
+        >
+          <HeartPulse size={13} className="text-[#D69155]" />
+          <span className="hidden sm:inline">SANCTUARY</span>
+        </Link>
       </header>
 
+      {/* Error banner */}
       <AnimatePresence>
         {status && (
           <motion.div 
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="bg-[rgba(226,75,74,0.08)] border-l-2 border-l-[#e24b4a] text-[#c17070] text-[11px] mono-label tracking-widest px-8 py-3 shrink-0 flex items-center justify-between"
+            className="bg-rose-500/10 border-b border-rose-500/20 text-rose-300 text-xs px-6 py-2.5 shrink-0 flex items-center justify-between z-30"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <AlertCircle size={14} />
-              {status}
+              <span>{status}</span>
             </div>
-            <button onClick={() => setStatus(null)} className="hover:text-white transition-colors">✕</button>
+            <div className="flex items-center gap-2">
+              {lastMessageRef.current && (
+                <button type="button" onClick={retryLastMessage} className="rounded px-2 py-1 font-medium hover:bg-rose-500/20">
+                  Retry
+                </button>
+              )}
+              <button onClick={() => setStatus(null)} className="hover:text-white transition-colors">✕</button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="flex-1 overflow-y-auto px-6 py-12 custom-scrollbar relative">
+      {/* Messages Scroll Area */}
+      <div 
+        ref={chatContainerRef} 
+        onScroll={handleScroll} 
+        className="flex-1 overflow-y-auto px-4 md:px-6 py-6 custom-scrollbar relative"
+      >
         <div className="max-w-3xl mx-auto w-full">
+          {/* Empty State Hero */}
           {messages.length === 0 && !loading && (
             <motion.div 
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 1.2, ease: "easeOut" }}
-              className="flex flex-col items-center justify-center py-24 text-center"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="flex flex-col items-center justify-center min-h-[min(540px,calc(100vh-230px))] py-12 text-center relative"
             >
-              <div className="w-24 h-24 rounded-full bg-accent/[0.06] border border-accent/15 flex items-center justify-center mb-10 accent-glow">
-                <Sparkles className="text-accent w-12 h-12" />
+              <div className="w-10 h-10 rounded-2xl bg-[#17171e] border border-white/[0.08] flex items-center justify-center text-[#D69155] mb-5 shadow-[0_0_20px_rgba(214,145,85,0.15)]">
+                <MirynMark state="avatar" className="w-5 h-5 text-[#D69155]" />
               </div>
-              <h2 className="text-5xl md:text-6xl font-bold tracking-tight text-primary mb-8">The Mirror is Ready.</h2>
-              <p className="text-2xl editorial-italic text-muted max-w-xl mb-20 leading-relaxed">
-                &quot;What we notice about ourselves is the beginning of who we can become.&quot;
+
+              <h2 className="text-3xl md:text-4xl font-serif italic tracking-tight text-[#f4f4f7] mb-2.5">
+                Where memory meets presence.
+              </h2>
+              <p className="text-xs md:text-sm text-[#9494a0] max-w-md mx-auto mb-8 leading-relaxed font-ui">
+                An evolving companion with continuous 384-dim recall, versioned identity, and zero-knowledge encryption.
               </p>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-[720px] text-left">
                 {[
-                  { title: "Reflective Journey", desc: "Help me reflect on my last 7 days", prompt: "Help me reflect on my week" },
-                  { title: "Pattern Recognition", desc: "Analyze my recent identity shifts", prompt: "Analyze my recent patterns" },
-                  { title: "Blind Spot Check", desc: "Show me what I might be missing", prompt: "Reveal my blind spots" },
-                  { title: "System Calibration", desc: "Sync my core belief architecture", prompt: "Calibrate my identity" }
+                  { title: "Decompress & Untangle", desc: "Quiet somatic check-in and 2-minute thought dump", prompt: "I'm feeling mentally scattered right now. Can we do a gentle, grounding 2-minute mind dump to untangle my thoughts?" },
+                  { title: "Notice My Patterns & Loops", desc: "Reflect on subtle recurring cycles and blindspots", prompt: "Reflecting on who I am and our past conversations, what subconscious patterns or tensions have you noticed in me lately?" },
+                  { title: "High-Stakes Decision", desc: "Balance core values with emotional clarity", prompt: "I need to make an important decision. Help me weigh the trade-offs without overthinking or second-guessing." },
+                  { title: "Unburden Working Memory", desc: "Park swirling tasks and reset cognitive load", prompt: "I have too many open loops running in my head. Help me externalize them and park what can wait." }
                 ].map((s) => (
                   <button
                     key={s.title}
                     onClick={() => sendMessage(s.prompt)}
-                    className="p-8 rounded-[32px] bg-card border border-white/[0.04] text-left hover:border-accent/30 hover:bg-accent/[0.03] transition-all group relative overflow-hidden"
+                    className="p-4 rounded-2xl bg-[#16161d] border border-white/[0.07] hover:border-[#D69155]/40 hover:bg-[#1c1c25] transition-all group text-left shadow-sm"
                   >
-                    <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-accent/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <h3 className="text-lg font-bold text-primary mb-2">{s.title}</h3>
-                    <p className="text-sm text-muted group-hover:text-primary/70 transition-colors">{s.desc}</p>
+                    <div className="text-[13.5px] font-medium text-[#f0f0f4] mb-1 group-hover:text-white transition-colors">{s.title}</div>
+                    <div className="text-xs text-[#8c8c98] leading-relaxed">{s.desc}</div>
                   </button>
                 ))}
               </div>
             </motion.div>
           )}
 
+          {/* Conversation Stream */}
           <div className="space-y-4">
             {messages.map((msg, idx) => (
               <MessageBubble
@@ -354,44 +367,15 @@ export default function ChatInterface() {
             ))}
           </div>
 
-          {loading && !streaming && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex gap-8 items-start py-12"
-            >
-              <div className="w-2 h-10 rounded-full bg-accent/20 animate-pulse" />
-              <div className="flex-1 space-y-6">
-                <div className="h-5 bg-white/[0.04] rounded-full w-3/4 animate-pulse" />
-                <div className="h-5 bg-white/[0.04] rounded-full w-1/2 animate-pulse" />
-              </div>
-            </motion.div>
-          )}
-          <div ref={messagesEndRef} className="h-32" />
+          <div ref={messagesEndRef} className="h-24" />
         </div>
       </div>
 
+      {/* Floating Bottom Input Area */}
       <div className="shrink-0 relative z-20">
-        <div className="absolute bottom-full left-0 w-full h-32 bg-gradient-to-t from-[#09090e] to-transparent pointer-events-none" />
+        <div className="absolute bottom-full left-0 w-full h-20 bg-gradient-to-t from-[#0d0d11] via-[#0d0d11]/80 to-transparent pointer-events-none" />
         
-        <div className="max-w-4xl mx-auto w-full px-6 pb-10">
-          <div className="mb-6">
-            <InsightsPanel insights={insights} conflicts={conflicts} />
-          </div>
-          
-          <AnimatePresence>
-            {secondaryPanelsReady && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6"
-              >
-                <NotificationsPanel notifications={notifications} onMarkRead={markNotificationRead} />
-                <ToolPanel pending={pendingTools} onGenerate={generateTool} onApprove={approveTool} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
+        <div className="max-w-3xl mx-auto w-full px-4 md:px-0 pb-6">
           <InputBox onSend={sendMessage} disabled={loading} />
         </div>
       </div>
