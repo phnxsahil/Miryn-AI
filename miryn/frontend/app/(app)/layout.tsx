@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, MessageSquare, Fingerprint, Archive, Settings, Plus, Layers, User, PanelLeftClose, PanelLeftOpen, HeartPulse } from "lucide-react";
 import ConversationList from "@/components/Chat/ConversationList";
@@ -181,11 +181,10 @@ export default function AppLayout({
 
           {/* Chat History Section */}
           <div className="flex-1 flex flex-col min-h-0">
-
-
-
             <div className="flex-1 min-h-0 -mx-3">
-              <ConversationList onItemClick={closeMenu} />
+              <Suspense fallback={null}>
+                <ConversationList onItemClick={closeMenu} />
+              </Suspense>
             </div>
           </div>
         </div>
