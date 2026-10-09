@@ -112,4 +112,6 @@ class PasswordUpdate(BaseModel):
 
 class SessionOut(BaseModel):
     ip: str | None = None
+    user_agent: str | None = None
+    device: str | None = None
     timestamp: datetime | str

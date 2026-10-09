@@ -14,6 +14,7 @@ from app.core.cache import redis_client
 from app.core.audit import log_event
 from app.config import settings
 from app.services.email_service import send_password_reset, send_welcome_email
+from app.core.useragent import describe_user_agent
 from app.schemas.auth import SignupRequest, LoginRequest, TokenResponse, UserOut, ForgotPasswordRequest, ResetPasswordRequest, GoogleLoginRequest, PasswordUpdate, SessionOut, RefreshTokenRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -29,11 +30,12 @@ return attempts
 
 
 def _client_host(request: Request) -> str:
+    if settings.TRUST_PROXY_HEADERS:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
     if request.client and request.client.host:
         return request.client.host
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
     return "unknown"
 
 
@@ -426,6 +428,7 @@ def login(payload: LoginRequest, request: Request):
             status_code=200,
             ip=client_host,
             user_agent=request.headers.get("user-agent"),
+            force_pii=True,
         )
         return _issue_token_response(user_id=str(user["id"]), email=str(user["email"]))
 
@@ -456,6 +459,7 @@ def login(payload: LoginRequest, request: Request):
         status_code=200,
         ip=client_host,
         user_agent=request.headers.get("user-agent"),
+        force_pii=True,
     )
     return _issue_token_response(user_id=str(user["id"]), email=str(user["email"]))
 
@@ -664,7 +668,7 @@ def get_sessions(user_id: str = Depends(get_current_user_id)):
             rows = session.execute(
                 text(
                     """
-                    SELECT ip, created_at as timestamp
+                    SELECT ip, user_agent, created_at as timestamp
                     FROM audit_logs
                     WHERE user_id = :user_id AND event_type = 'auth.login'
                     ORDER BY created_at DESC
@@ -673,8 +677,19 @@ def get_sessions(user_id: str = Depends(get_current_user_id)):
                 ),
                 {"user_id": user_id},
             ).mappings().all()
-            return [dict(row) for row in rows]
+            return [
+                {**dict(row), "device": describe_user_agent(row.get("user_agent"))}
+                for row in rows
+            ]
     else:
         db = get_db()
-        res = db.table("audit_logs").select("ip, created_at").eq("user_id", user_id).eq("event_type", "auth.login").order("created_at", desc=True).limit(5).execute()
-        return [{"ip": r["ip"], "timestamp": r["created_at"]} for r in (res.data or [])]
+        res = db.table("audit_logs").select("ip, user_agent, created_at").eq("user_id", user_id).eq("event_type", "auth.login").order("created_at", desc=True).limit(5).execute()
+        return [
+            {
+                "ip": row.get("ip"),
+                "user_agent": row.get("user_agent"),
+                "device": describe_user_agent(row.get("user_agent")),
+                "timestamp": row.get("created_at"),
+            }
+            for row in (res.data or [])
+        ]

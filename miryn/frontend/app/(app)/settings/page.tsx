@@ -164,12 +164,12 @@ export default function SettingsPage() {
             </div>
             <div className="space-y-2.5">
               <h3 className="text-sm font-semibold text-[color:var(--theme-muted)]">Active sessions</h3>
-              {sessions.length === 0 ? <p className="text-sm text-[color:var(--theme-dim)]">No sessions found.</p> : sessions.map(s => (
-                <div key={s.timestamp + s.ip} className="flex items-center gap-3 bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-2xl px-4 py-3">
+              {sessions.length === 0 ? <p className="text-sm text-[color:var(--theme-dim)]">No sessions found.</p> : sessions.map((s, index) => (
+                <div key={`${s.timestamp}-${s.ip ?? "unknown"}-${index}`} className="flex items-center gap-3 bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-2xl px-4 py-3">
                   <Laptop size={15} className="text-[color:var(--theme-dim)] shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-[color:var(--theme-text)] truncate">Session</p>
-                    <p className="text-xs text-[color:var(--theme-dim)] mt-0.5">{s.ip ?? "Unknown"} · {s.timestamp ? new Date(s.timestamp).toLocaleDateString() : ""}</p>
+                    <p className="flex items-center gap-2 text-sm text-[color:var(--theme-text)] truncate">{s.device ?? "Unknown device"}{index === 0 && <span className="rounded-full bg-[color:var(--theme-accent)]/10 px-1.5 py-0.5 text-[10px] font-medium text-[color:var(--theme-accent)]">This device</span>}</p>
+                    <p className="text-xs text-[color:var(--theme-dim)] mt-0.5">{s.ip ?? "IP not recorded"} · {s.timestamp ? new Date(s.timestamp).toLocaleString() : ""}</p>
                   </div>
                 </div>
               ))}

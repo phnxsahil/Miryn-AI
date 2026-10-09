@@ -59,10 +59,13 @@ def log_event(
     ip: Optional[str] = None,
     user_agent: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    force_pii: bool = False,
 ):
     _maybe_purge()
 
-    if not settings.AUDIT_STORE_PII:
+    if user_agent:
+        user_agent = user_agent[:512]
+    if not settings.AUDIT_STORE_PII and not force_pii:
         ip = None
         user_agent = None
 

@@ -283,7 +283,9 @@ export type Notification = {
 };
 
 export type Session = {
-  ip: string;
+  ip?: string | null;
+  user_agent?: string | null;
+  device?: string | null;
   timestamp: string;
 };
 
