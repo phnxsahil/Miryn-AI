@@ -40,6 +40,7 @@ const faqs = [
 ] as const;
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://miryn.ai"),
   title: "Miryn AI — Persistent Memory & Evolving AI Companion",
   description: "Miryn is a private AI companion that remembers your goals, values, and patterns, then brings the right context back as you learn and evolve together.",
   alternates: { canonical: "/" },
@@ -63,7 +64,7 @@ export default function LandingPage() {
     <main className={`${styles.landing} font-ui`}>
       <LandingNav />
 
-      <section id="hero" className="landing-hero relative isolate mx-auto max-w-7xl overflow-clip px-5 pb-24 pt-20 sm:px-8 sm:pt-28 lg:px-12 lg:pb-32 lg:pt-32">
+      <Reveal ambient as="section" id="hero" className="landing-hero relative isolate mx-auto max-w-7xl overflow-clip px-5 pb-24 pt-20 sm:px-8 sm:pt-28 lg:px-12 lg:pb-32 lg:pt-32">
         <div className={`${styles.heroGrid} pointer-events-none absolute inset-x-0 top-0 -z-10 h-[680px]`} aria-hidden="true" />
         <SpectrumOrb />
         <div className="hero-copy mx-auto max-w-6xl text-center">
@@ -84,7 +85,7 @@ export default function LandingPage() {
 
         <HeroCards />
         <ToolIcons />
-      </section>
+      </Reveal>
 
       <section id="about" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
         <div className="about-intro">
@@ -126,8 +127,8 @@ export default function LandingPage() {
         </div>
 
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
-          <WaveChart title="Memory layer performance" label="Memory Retrieval" ticks={["16.0", "14.0", "12.0"]} accent="#a78bfa" variant="memory" />
-          <WaveChart title="Identity evolution over time" label="Identity Evolution" ticks={["100%", "80%", "60%"]} accent="#e7c86e" variant="identity" />
+          <Reveal><WaveChart title="Memory layer performance" label="Memory Retrieval" ticks={["16.0", "14.0", "12.0"]} accent="#a78bfa" variant="memory" /></Reveal>
+          <Reveal><WaveChart title="Identity evolution over time" label="Identity Evolution" ticks={["100%", "80%", "60%"]} accent="#e7c86e" variant="identity" /></Reveal>
         </div>
       </section>
 
@@ -207,11 +208,11 @@ export default function LandingPage() {
 
       <footer className="border-t border-white/10">
         <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[1.5fr_1fr_1fr]">
-          <Reveal><div><a href="/" className="font-editorial text-2xl text-[#FAFAFA]">Miryn AI</a><p className="mt-4 max-w-xs text-sm leading-6 text-[#A3A3A3]">Empowering Personal Growth Through Persistent Intelligence.</p></div></Reveal>
+          <Reveal><div><a href="/" className="inline-flex min-h-11 items-center font-editorial text-2xl text-[#FAFAFA]">Miryn AI</a><p className="mt-4 max-w-xs text-sm leading-6 text-[#A3A3A3]">Empowering Personal Growth Through Persistent Intelligence.</p></div></Reveal>
           <Reveal><FooterColumn title="Sections" links={[["About", "#about"], ["Features", "#features"], ["Insights", "#insights"], ["FAQ's", "#faq"], ["Contact", "#contact"]]} /></Reveal>
           <Reveal><FooterColumn title="Pages" links={[["Insights", "/landing/blog/index.html"], ["Privacy Policy", "/privacy"], ["Terms of Service", "/terms"], ["Security Overview", "/privacy"], ["Contact", "#contact"]]} /></Reveal>
         </div>
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 border-t border-white/10 px-5 py-6 text-xs text-[#525252] sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>Miryn AI</span><span>© 2026 Miryn AI Inc. All rights reserved. · Designed &amp; Built by <a href="https://sharmasahil.me" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-[#A3A3A3] underline underline-offset-4">Sahil Sharma</a></span></div>
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 border-t border-white/10 px-5 py-6 text-xs text-[#8F8F8F] sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>Miryn AI</span><span>© 2026 Miryn AI Inc. All rights reserved. · Designed &amp; Built by <a href="https://sharmasahil.me" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-[#A3A3A3] underline underline-offset-4">Sahil Sharma</a></span></div>
       </footer>
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faqs.map(([name, text]) => ({ "@type": "Question", name, acceptedAnswer: { "@type": "Answer", text } })) }) }} />
@@ -220,12 +221,12 @@ export default function LandingPage() {
 }
 
 function FooterColumn({ title, links }: { title: string; links: readonly (readonly [string, string])[] }) {
-  return <div><p className="font-editorial text-base text-[#FAFAFA]">{title}</p><div className="mt-3 flex flex-col items-start">{links.map(([label, href]) => <a key={`${title}-${label}`} href={href} className="flex min-h-11 items-center text-sm text-[#A3A3A3] transition-colors hover:text-[#FAFAFA]">{label}</a>)}</div></div>;
+  return <div><p className="font-editorial text-base text-[#FAFAFA]">{title}</p><div className="mt-3 flex flex-col items-start">{links.map(([label, href]) => <a key={`${title}-${label}`} href={href} className="flex min-h-11 min-w-11 items-center text-sm text-[#A3A3A3] transition-colors hover:text-[#FAFAFA]">{label}</a>)}</div></div>;
 }
 
 function CapabilityRow({ title, copy, reverse = false, children }: { title: string; copy: string; reverse?: boolean; children: ReactNode }) {
   return (
-    <Reveal as="div" className={`grid items-center gap-10 lg:grid-cols-2 lg:gap-20 ${reverse ? "lg:[&>*:first-child]:order-2" : ""}`}>
+    <Reveal as="div" className={`grid grid-cols-1 items-center gap-10 [&>*]:min-w-0 lg:grid-cols-2 lg:gap-20 ${reverse ? "lg:[&>*:first-child]:order-2" : ""}`}>
       <div><h3 className="font-editorial text-4xl leading-tight tracking-[-0.03em] text-[#FAFAFA]">{title}</h3><p className="mt-5 max-w-xl text-base leading-8 text-[#A3A3A3] sm:text-lg">{copy}</p></div>
       <div>{children}</div>
     </Reveal>

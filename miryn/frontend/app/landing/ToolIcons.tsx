@@ -9,7 +9,7 @@ const icons = [
 
 export default function ToolIcons() {
   return (
-    <div className="tool-icons" aria-label="Miryn integrates with the tools you already use">
+    <div className="tool-icons" aria-hidden="true">
       {icons.map((icon, index) => (
         <span className="tool-icon" key={index} aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
