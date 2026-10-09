@@ -72,11 +72,82 @@ _EMOTION_TERMS = (
 )
 _FIRST_PERSON = re.compile(r"\b(?:i|i'm|i am|my|me|we|our|ours)\b", re.IGNORECASE)
 _WORDS = re.compile(r"\b[\w']+\b")
+_GREETING_PREFIX = re.compile(r"^(?:hi|hey|hello|so|well|also|btw|ok(?:ay)?)(?:,|\s)+", re.IGNORECASE)
+_FIRST_PERSON_VERBS = {
+    "love": "Loves", "like": "Likes", "hate": "Hates", "work": "Works", "live": "Lives",
+    "study": "Studies", "start": "Starts", "started": "Started", "move": "Moves", "moved": "Moved",
+    "got": "Got", "want": "Wants", "need": "Needs", "miss": "Misses", "fear": "Fears",
+    "enjoy": "Enjoys", "prefer": "Prefers", "plan": "Plans", "hope": "Hopes", "remember": "Remembers",
+    "feel": "Feels", "felt": "Felt", "have": "Has", "keep": "Keeps", "build": "Builds",
+}
 
 
 def normalize_fact(text: str) -> str:
     """Normalize fact text for stable deduplication without changing stored text."""
     return " ".join(text.strip().split()).strip(" .")
+
+
+def _rewrite_fact_clause(clause: str) -> str:
+    clause = clause.strip().rstrip(".!?")
+    if not clause:
+        return ""
+    if re.match(r"^my\s+", clause, re.IGNORECASE):
+        return re.sub(r"^my\s+", "Their ", clause, count=1, flags=re.IGNORECASE)
+    match = re.match(r"^i(?:'m| am)\s+(.+)$", clause, re.IGNORECASE)
+    if match:
+        remainder = re.sub(r"^(?:just|really|kind of|a bit)\s+", "", match.group(1), flags=re.IGNORECASE)
+        if re.match(r"^(?:a|an)\s+", remainder, re.IGNORECASE):
+            return remainder[:1].upper() + remainder[1:]
+        return "Feels " + remainder
+    match = re.match(r"^i(?:'ve| have)\s+(.+)$", clause, re.IGNORECASE)
+    if match:
+        remainder = re.sub(r"^(?:just|really|kind of|a bit)\s+", "", match.group(1), flags=re.IGNORECASE)
+        return "Has " + remainder
+    match = re.match(r"^i\s+(.+)$", clause, re.IGNORECASE)
+    if match:
+        remainder = re.sub(r"^(?:just|really|kind of|a bit)\s+", "", match.group(1), flags=re.IGNORECASE)
+        verb, _, rest = remainder.partition(" ")
+        rewritten = _FIRST_PERSON_VERBS.get(verb.lower())
+        if rewritten:
+            return f"{rewritten} {rest}".strip()
+        return remainder[:1].upper() + remainder[1:]
+    return clause[:1].upper() + clause[1:]
+
+
+def clean_fact_text(sentence: str) -> str:
+    """Turn a first-person sentence into a short, readable memory label."""
+    normalized = normalize_fact(sentence).rstrip("!? ")
+    if not normalized:
+        return normalized
+    stripped = _GREETING_PREFIX.sub("", normalized).strip()
+    if not stripped:
+        return normalized
+    clauses = re.split(r"\s+and\s+(?=i(?:'m| am)\s+)|\s*,\s+but\s+|\s*;\s*|\s*,\s+and\s+", stripped, flags=re.IGNORECASE)
+    rewritten = "; ".join(part for part in (_rewrite_fact_clause(clause) for clause in clauses) if part)
+    rewritten = re.sub(r"; ([A-Z])", lambda match: "; " + match.group(1).lower(), rewritten)
+    rewritten = normalize_fact(rewritten).rstrip(".!? ")
+    if len(_WORDS.findall(rewritten)) < 3:
+        return normalized
+    if len(rewritten) > 160:
+        rewritten = rewritten[:160].rsplit(" ", 1)[0].rstrip(";,")
+    return rewritten[:1].upper() + rewritten[1:] if rewritten else normalized
+
+
+def make_conversation_title(message: str) -> str:
+    normalized = normalize_fact(message)
+    if len(normalized.strip()) < 3:
+        return "New chat"
+    first = re.split(r"(?<=[.!?])\s+", normalized, maxsplit=1)[0].strip().rstrip(".!?")
+    if "?" in first or normalized.lstrip().startswith(("what ", "how ", "why ", "when ", "where ", "who ", "can ", "could ", "should ", "is ", "are ")):
+        title = first.rstrip("?")
+    else:
+        title = clean_fact_text(first).split("; ", 1)[0]
+    title = title.strip()
+    if len(title) < 3:
+        return "New chat"
+    if len(title) > 40:
+        title = title[:40].rsplit(" ", 1)[0].rstrip(" ,;:.-") + "…"
+    return title[:1].upper() + title[1:]
 
 
 def fact_key(text: str) -> str:
@@ -127,7 +198,8 @@ def score_message_heuristic(text: str) -> list[ScoredFact]:
             importance = max(importance, 0.8)
             if category == "chitchat":
                 category = "emotional_event"
-        facts.append(ScoredFact(normalized[:240], category, importance, emotional_weight, "heuristic"))
+        cleaned = clean_fact_text(normalized)
+        facts.append(ScoredFact(cleaned[:240], category, importance, emotional_weight, "heuristic"))
 
     facts.sort(key=lambda fact: fact.importance, reverse=True)
     return facts[: max(0, settings.IMPORTANCE_MAX_FACTS_PER_MESSAGE)]

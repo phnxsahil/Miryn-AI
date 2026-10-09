@@ -11,7 +11,7 @@ from sqlalchemy import text
 from app.config import settings
 from app.core.database import get_db, get_sql_session, has_sql
 from app.core.encryption import decrypt_text, encrypt_text
-from app.services.importance import ScoredFact, fact_key
+from app.services.importance import ScoredFact, clean_fact_text, fact_key
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ class FactStore:
             rows = session.execute(
                 text(
                     f"""
-                    SELECT id, fact, importance, created_at, last_seen_at
+                    SELECT id, fact, importance, created_at, last_seen_at, extractor
                     FROM memory_facts
                     WHERE user_id = :user_id AND status = 'active' {where_importance}
                     ORDER BY importance DESC, last_seen_at DESC
@@ -119,6 +119,8 @@ class FactStore:
                 content = decrypt_text(row["fact"])
             except Exception:
                 continue
+            if row["extractor"] == "heuristic":
+                content = clean_fact_text(content)
             result.append(
                 {
                     "id": str(row["id"]),

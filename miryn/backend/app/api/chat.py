@@ -15,7 +15,7 @@ from app.core.encryption import decrypt_text
 from app.core.security import get_current_user_id
 from app.config import settings
 from app.schemas.chat import ChatRequest, ChatResponse, PinUpdate, TitleUpdate
-from app.services.importance import score_message_heuristic
+from app.services.importance import make_conversation_title, score_message_heuristic
 from app.services.fact_store import FactStore
 from app.services.memory_layer import chat_tier_for
 from app.services.orchestrator import ConversationOrchestrator
@@ -308,7 +308,7 @@ async def send_message(request: ChatRequest, user_id: str = Depends(get_current_
 
     if has_sql():
         if not conversation_id:
-            conversation_id = _create_conversation_with_fallback(user_id, request.message[:50])
+            conversation_id = _create_conversation_with_fallback(user_id, make_conversation_title(request.message))
         with get_sql_session() as session:
             try:
                 result = await orchestrator.handle_message(
@@ -325,7 +325,7 @@ async def send_message(request: ChatRequest, user_id: str = Depends(get_current_
             _touch_conversation_updated_at(conversation_id, sql_session=session)
     else:
         if not conversation_id:
-            conversation_id = _create_conversation_with_fallback(user_id, request.message[:50])
+            conversation_id = _create_conversation_with_fallback(user_id, make_conversation_title(request.message))
         try:
             result = await orchestrator.handle_message(
                 user_id=user_id,
@@ -362,7 +362,7 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
         try:
             with get_sql_session() as session:
                 if not conversation_id:
-                    conversation_id = _create_conversation_with_fallback(user_id, request.message[:50], sql_session=session)
+                    conversation_id = _create_conversation_with_fallback(user_id, make_conversation_title(request.message), sql_session=session)
                 identity, memories = await _prepare_stream_context(user_id, request.message, conversation_id, sql_session=session)
                 prepared_with_sql = True
                 _touch_conversation_updated_at(conversation_id, sql_session=session)
@@ -371,7 +371,7 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
 
     if not prepared_with_sql:
         if not conversation_id:
-            conversation_id = _create_conversation_with_fallback(user_id, request.message[:50])
+            conversation_id = _create_conversation_with_fallback(user_id, make_conversation_title(request.message))
         identity, memories = await _prepare_stream_context(user_id, request.message, conversation_id)
         _touch_conversation_updated_at(conversation_id)
 

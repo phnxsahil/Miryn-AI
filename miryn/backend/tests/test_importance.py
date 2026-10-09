@@ -1,4 +1,4 @@
-from app.services.importance import score_message_heuristic
+from app.services.importance import clean_fact_text, score_message_heuristic
 
 
 def test_identity_fact_scores_high():
@@ -29,3 +29,25 @@ def test_chitchat_is_not_stored():
     for message in ("ok", "thanks!", "lol", "what's the weather?", "can you explain recursion?"):
         facts = score_message_heuristic(message)
         assert not facts or all(fact.importance < 0.3 for fact in facts)
+
+
+def test_clean_fact_text_rewrites_clauses():
+    assert clean_fact_text("Hi, I just moved to Pune for college and I am nervous") == "Moved to Pune for college; feels nervous"
+
+
+def test_clean_fact_text_common_verb():
+    assert clean_fact_text("I love hiking on weekends") == "Loves hiking on weekends"
+
+
+def test_clean_fact_text_preserves_names_and_months():
+    text = clean_fact_text("My sister Riya is getting married in June")
+    assert "Riya" in text and "June" in text and text.startswith("Their sister")
+
+
+def test_clean_fact_text_short_input_is_unchanged():
+    assert clean_fact_text("ok") == "ok"
+
+
+def test_clean_text_is_used_for_scored_facts():
+    facts = score_message_heuristic("Hi, I just moved to Pune for college and I am nervous")
+    assert facts[0].text == "Moved to Pune for college; feels nervous"

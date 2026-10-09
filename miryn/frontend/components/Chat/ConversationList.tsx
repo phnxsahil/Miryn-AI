@@ -87,7 +87,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
   };
 
   const rename = async (conversation: Conversation) => {
-    const title = window.prompt("Rename conversation", conversation.title || "New Chat")?.trim();
+    const title = window.prompt("Rename conversation", conversation.title || "New chat")?.trim();
     if (!title || title === conversation.title) return;
     try {
       await api.updateConversationTitle(conversation.id, title);
@@ -146,7 +146,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
               : "text-[color:var(--theme-muted)] hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)]"
           }`}
         >
-          <span className="min-w-0 truncate text-[13px]">{conversation.title || "New Chat"}</span>
+          <span className="min-w-0 truncate text-[13px]">{conversation.title || "New chat"}</span>
           {Boolean(conversation.is_pinned) && (
             <Pin size={12} className="ms-1 shrink-0 text-[color:var(--theme-accent)]" aria-label="Pinned" />
           )}
@@ -155,7 +155,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
         {/* Kebab menu button (MoreVertical) replacing old 0 / invisible button */}
         <button
           type="button"
-          aria-label={`Options for ${conversation.title || "New Chat"}`}
+          aria-label={`Options for ${conversation.title || "New chat"}`}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
