@@ -6,6 +6,7 @@ import LandingNav from "./landing/LandingNav";
 import MoodCarousel from "./landing/MoodCarousel";
 import SpectrumOrb from "./landing/SpectrumOrb";
 import ToolIcons from "./landing/ToolIcons";
+import WaveChart from "./landing/WaveChart";
 import styles from "./landing/LandingPage.module.css";
 
 const stats = [
@@ -118,8 +119,8 @@ export default function LandingPage() {
         </div>
 
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
-          <ChartCard title="Memory layer performance" label="Memory Retrieval" ticks={["16.0", "14.0", "12.0"]} points="8,64 55,52 102,55 149,34 196,38 243,19 290,25 337,8" area="8,64 55,52 102,55 149,34 196,38 243,19 290,25 337,8 337,82 8,82" />
-          <ChartCard title="Identity evolution over time" label="Identity Evolution" ticks={["100%", "80%", "60%"]} points="8,69 55,62 102,64 149,48 196,43 243,30 290,25 337,10" area="8,69 55,62 102,64 149,48 196,43 243,30 290,25 337,10 337,82 8,82" />
+          <WaveChart title="Memory layer performance" label="Memory Retrieval" ticks={["16.0", "14.0", "12.0"]} accent="#a78bfa" variant="memory" />
+          <WaveChart title="Identity evolution over time" label="Identity Evolution" ticks={["100%", "80%", "60%"]} accent="#e7c86e" variant="identity" />
         </div>
       </section>
 
@@ -209,22 +210,6 @@ export default function LandingPage() {
 
 function FooterColumn({ title, links }: { title: string; links: readonly (readonly [string, string])[] }) {
   return <div><p className="font-editorial text-base text-[#FAFAFA]">{title}</p><div className="mt-3 flex flex-col items-start">{links.map(([label, href]) => <a key={`${title}-${label}`} href={href} className="flex min-h-11 items-center text-sm text-[#A3A3A3] transition-colors hover:text-[#FAFAFA]">{label}</a>)}</div></div>;
-}
-
-function ChartCard({ title, label, ticks, points, area }: { title: string; label: string; ticks: string[]; points: string; area: string }) {
-  return (
-    <article className="rounded-3xl border border-white/10 bg-white/[0.035] p-5 sm:p-7">
-      <p className="text-sm text-[#A3A3A3]">{title}</p>
-      <p className="mt-2 font-editorial text-2xl">{label}</p>
-      <div className="mt-7 grid grid-cols-[38px_1fr] gap-3">
-        <div className="flex h-28 flex-col justify-between text-[10px] text-[#525252]">{ticks.map((tick) => <span key={tick}>{tick}</span>)}</div>
-        <div>
-          <svg viewBox="0 0 345 90" className="h-28 w-full overflow-visible" role="img" aria-label={`${label} chart`} preserveAspectRatio="none"><polygon points={area} fill="rgba(159, 235, 199, .12)" /><polyline points={points} fill="none" stroke="#9fe9c5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          <div className="mt-2 flex justify-between text-[10px] text-[#525252]"><span>Week 1</span><span>Week 4</span></div>
-        </div>
-      </div>
-    </article>
-  );
 }
 
 function CapabilityRow({ title, copy, reverse = false, children }: { title: string; copy: string; reverse?: boolean; children: ReactNode }) {
