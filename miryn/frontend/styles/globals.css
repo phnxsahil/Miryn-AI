@@ -580,11 +580,10 @@
   transform: translateX(-50%);
   pointer-events: none;
   opacity: .9;
-  filter: blur(48px);
   will-change: transform, opacity;
   animation: spectrum-breathe 9s ease-in-out infinite;
 }
-.spectrum-orb__bands, .spectrum-orb__core { position: absolute; inset: 0; border-radius: 50%; }
+.spectrum-orb__bands, .spectrum-orb__core { position: absolute; inset: 0; border-radius: 50%; filter: blur(48px); }
 .spectrum-orb__bands {
   background: repeating-linear-gradient(90deg, rgba(235, 44, 80, .72) 0 11%, rgba(242, 146, 32, .7) 11% 23%, rgba(254, 228, 53, .65) 23% 35%, rgba(101, 191, 114, .64) 35% 48%, rgba(71, 136, 200, .64) 48% 61%, rgba(71, 136, 200, .68) 61% 76%, rgba(90, 84, 164, .7) 76% 100%);
   -webkit-mask-image: radial-gradient(circle, #000 0 42%, transparent 72%);
@@ -649,7 +648,7 @@ html.js .landing-reveal[data-reveal].is-revealed { opacity: 1; transform: none; 
 .heroGrid { background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size: 56px 56px; -webkit-mask-image: linear-gradient(to bottom, black, transparent 85%); mask-image: linear-gradient(to bottom, black, transparent 85%); }
 .reveal { animation: reveal .8s ease both; } .revealDelay { animation: reveal .8s .12s ease both; } @keyframes reveal { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { html.js .landing-reveal[data-reveal], html.js .landing-reveal[data-reveal].is-revealed { opacity: 1; transform: none; transition: none; } .reveal, .revealDelay, .spectrum-orb, .hero-card, .mood-orb, .wave-chart__line, .contact-aurora { animation: none; } .about-word { opacity: 1; color: #fafafa; transition: none; } }
-@media (max-width: 640px) { .spectrum-orb { top: 210px; width: 340px; height: 340px; filter: blur(38px); } .landing-nav-wrap { padding-right: 12px; padding-left: 12px; } .landing-nav { padding: 0 10px 0 14px; } .tool-icons { flex-wrap: wrap; gap: 12px; margin-top: 38px; } }
+@media (max-width: 640px) { .spectrum-orb__bands, .spectrum-orb__core { filter: blur(38px); } .spectrum-orb { top: 210px; width: 340px; height: 340px; } .landing-nav-wrap { padding-right: 12px; padding-left: 12px; } .landing-nav { padding: 0 10px 0 14px; } .tool-icons { flex-wrap: wrap; gap: 12px; margin-top: 38px; } }
 @media (max-width: 899px) { .faq-grid { grid-template-columns: 1fr; } .faq-row summary { min-height: 52px; font-size: 16px; } }
 @media (min-width: 641px) and (max-width: 1099px) { .hero-card { transform: none; animation: none; } .hero-card--chat, .hero-card--thought { top: auto; bottom: 92px; width: 210px; } .hero-card--chat { left: 4%; } .hero-card--thought { right: 4%; } .hero-card--focus, .hero-card--mood { display: none; } }
 @media (max-width: 640px) { .hero-cards { display: none; } }
