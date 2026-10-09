@@ -273,6 +273,11 @@
 .contact-aurora { position: absolute; top: -72px; right: -56px; width: 280px; height: 230px; border-radius: 0 0 0 100%; background: conic-gradient(from 220deg at 100% 0%, rgba(112, 225, 169, .66), rgba(246, 218, 84, .54), rgba(244, 154, 92, .48), rgba(234, 118, 196, .42), transparent 72%); filter: blur(34px); opacity: .62; -webkit-mask-image: radial-gradient(ellipse at 100% 0%, #000 0 45%, transparent 76%); mask-image: radial-gradient(ellipse at 100% 0%, #000 0 45%, transparent 76%); pointer-events: none; animation: contact-aurora-breathe 9s ease-in-out infinite; }
 @keyframes contact-aurora-breathe { 0%, 100% { opacity: .5; } 50% { opacity: .72; } }
 
+.blog-art { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(ellipse at 20% 85%, rgba(255, 161, 207, .9), transparent 42%), linear-gradient(135deg, #ff9cba 0%, #9a75dc 45%, #506fda 100%); }
+.blog-art::before, .blog-art::after { position: absolute; width: 120%; height: 65%; border: 1px solid rgba(255, 255, 255, .4); border-radius: 50%; content: ""; transform: rotate(-21deg); }
+.blog-art::before { top: -7%; left: -18%; box-shadow: 0 0 0 18px rgba(255, 255, 255, .06), 0 0 0 36px rgba(255, 255, 255, .06), 0 0 0 54px rgba(255, 255, 255, .05); }
+.blog-art::after { right: -28%; bottom: -14%; border-color: rgba(60, 53, 152, .32); transform: rotate(23deg); }
+
 @keyframes hero-card-float {
   0%, 100% { transform: translateY(-6px); }
   50% { transform: translateY(6px); }
