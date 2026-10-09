@@ -66,6 +66,7 @@ export default function SanctuaryPage() {
   const values = data?.core_anchors?.map(anchor => anchor.label) ?? [];
   const hasLearnedData = Boolean(data && (
     openLoops.length > 0 ||
+    data.primary_emotion !== null ||
     data.beliefs.length ||
     data.patterns.length ||
     data.conflicts.length
@@ -98,8 +99,8 @@ export default function SanctuaryPage() {
       {/* Status cards */}
       <div className="grid gap-3 md:grid-cols-3">
         {[
-          { label: "Emotional Baseline", value: data?.primary_emotion || "", icon: Heart, color: "var(--theme-accent)" },
-          { label: "Cognitive Load", value: data?.cognitive_load || "", icon: Brain, color: "var(--theme-accent)" },
+          { label: "Emotional Baseline", value: data?.primary_emotion, icon: Heart, color: "var(--theme-accent)" },
+          { label: "Cognitive Load", value: data?.cognitive_load, icon: Brain, color: "var(--theme-accent)" },
           { label: "Open Loops", value: `${openLoops.length} active`, icon: Zap, color: "var(--accent)" },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-2xl p-5">
@@ -107,7 +108,7 @@ export default function SanctuaryPage() {
               <Icon size={14} style={{ color }} />
               <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)]">{label}</p>
             </div>
-            <p className="text-base font-semibold text-[color:var(--theme-text)]">{value}</p>
+            <p className={`text-base font-semibold ${value ? "text-[color:var(--theme-text)]" : "text-[color:var(--text-dim)]"}`}>{value || "Not enough data yet"}</p>
           </div>
         ))}
       </div>

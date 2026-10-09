@@ -326,17 +326,17 @@ export type SanctuaryAnchor = {
 export type SanctuaryPersona = {
   status: string;
   user_id: string;
-  clarity_score: number;
-  cognitive_load: string;
-  primary_emotion: string;
-  emotional_intensity: number;
-  life_season: string;
+  clarity_score: number | null;
+  cognitive_load: string | null;
+  primary_emotion: string | null;
+  emotional_intensity: number | null;
+  life_season: string | null;
   core_anchors: SanctuaryAnchor[];
   active_open_loops: Array<{ topic: string; status?: string; importance?: number }>;
   beliefs: Array<{ topic: string; belief: string }>;
   patterns: Array<{ pattern_type: string; description: string }>;
   conflicts: Array<{ statement: string }>;
-  grounding_recommendation: string;
+  grounding_recommendation: string | null;
 };
 
 export type SanctuaryCheckinResponse = {

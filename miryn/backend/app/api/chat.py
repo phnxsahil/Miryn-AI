@@ -543,21 +543,26 @@ def get_sanctuary_persona(user_id: str = Depends(get_current_user_id)):
     unresolved_count = len(unresolved_loops)
 
     emotions = _get_val("emotions", []) or []
-    primary_emotion = "Grounded"
-    intensity = 0.82
-    if emotions and len(emotions) > 0:
-        latest = emotions[-1]
-        if isinstance(latest, dict):
-            primary_emotion = latest.get("primary_emotion", "Grounded")
-            intensity = latest.get("intensity", 0.82)
+    latest_emotion = emotions[-1] if emotions else None
+    primary_emotion = latest_emotion.get("primary_emotion") if isinstance(latest_emotion, dict) else None
+    intensity = latest_emotion.get("intensity") if isinstance(latest_emotion, dict) else None
 
-    # Dynamic cognitive clarity index (0 - 100)
-    clarity_score = max(55, min(96, int(100 - (unresolved_count * 4.5))))
-    cognitive_load = "Light"
-    if unresolved_count > 6:
-        cognitive_load = "Heavy (Cognitive Overload)"
-    elif unresolved_count > 3:
-        cognitive_load = "Moderate"
+    has_clarity_data = unresolved_count > 0 or bool(emotions)
+    clarity_score = max(55, min(96, int(100 - (unresolved_count * 4.5)))) if has_clarity_data else None
+    cognitive_load = None
+    if has_clarity_data:
+        cognitive_load = "Light"
+        if unresolved_count > 6:
+            cognitive_load = "Heavy (Cognitive Overload)"
+        elif unresolved_count > 3:
+            cognitive_load = "Moderate"
+
+    values = _get_val("values", {}) or {}
+    core_anchors = [
+        {"label": key, "description": value}
+        for key, value in values.items()
+        if isinstance(key, str) and isinstance(value, str) and value.strip()
+    ] if isinstance(values, dict) else []
 
     return {
         "status": "success",
@@ -566,12 +571,8 @@ def get_sanctuary_persona(user_id: str = Depends(get_current_user_id)):
         "cognitive_load": cognitive_load,
         "primary_emotion": primary_emotion,
         "emotional_intensity": intensity,
-        "life_season": "Season of Synthesis: Navigating deep focus, sustainable creative pace & unblocking open loops.",
-        "core_anchors": [
-            {"label": "Deep Creative Work", "description": "High value placed on uninterrupted problem-solving over reactive task-switching."},
-            {"label": "Psychological Safety", "description": "Zero-knowledge containment allows authentic reflection without self-censoring."},
-            {"label": "Intentional Boundaries", "description": "Actively protecting energy reserves from premature commitments and over-extension."}
-        ],
+        "life_season": None,
+        "core_anchors": core_anchors,
         "active_open_loops": unresolved_loops[:8],
         "beliefs": (_get_val("beliefs", []) or [])[:6],
         "patterns": (_get_val("patterns", []) or [])[:5],
@@ -579,8 +580,7 @@ def get_sanctuary_persona(user_id: str = Depends(get_current_user_id)):
         "grounding_recommendation": (
             "You have multiple unclosed cognitive loops demanding working memory. "
             "A 2-minute mind dump or parking unessential tasks until next week will immediately free up mental bandwidth."
-            if unresolved_count > 2 else
-            "Your cognitive baseline is steady and grounded. Excellent space for strategic reflection and deep creative focus."
+            if unresolved_count > 2 else None
         )
     }
 
