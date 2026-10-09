@@ -1,5 +1,6 @@
 """Schemas for authentication flows."""
 
+from datetime import datetime
 from pydantic import BaseModel, EmailStr, field_validator
 
 
@@ -111,4 +112,4 @@ class PasswordUpdate(BaseModel):
 
 class SessionOut(BaseModel):
     ip: str | None = None
-    timestamp: str
+    timestamp: datetime | str
