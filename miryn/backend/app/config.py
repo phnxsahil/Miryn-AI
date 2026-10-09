@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     IMPORTANCE_CORE_THRESHOLD: float = 0.75
     IMPORTANCE_USE_LLM: bool = True
     IMPORTANCE_MAX_FACTS_PER_MESSAGE: int = 3
+    SANCTUARY_MIN_USER_MESSAGES: int = 10
 
     # App
     FRONTEND_URL: str = "http://localhost:3000"

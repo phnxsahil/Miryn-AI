@@ -339,6 +339,7 @@ export type SanctuaryPersona = {
   patterns: Array<{ pattern_type: string; description: string }>;
   conflicts: Array<{ statement: string }>;
   grounding_recommendation: string | null;
+  data_sufficiency?: { user_messages: number; needed: number } | null;
 };
 
 export type SanctuaryCheckinResponse = {

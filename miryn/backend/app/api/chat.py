@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -13,6 +13,7 @@ from app.core.database import get_db, get_sql_session, has_sql
 from app.core.cache import redis_client
 from app.core.encryption import decrypt_text
 from app.core.security import get_current_user_id, get_user_id_from_token
+from app.config import settings
 from app.schemas.chat import ChatRequest, ChatResponse, PinUpdate, TitleUpdate
 from app.services.orchestrator import ConversationOrchestrator
 from app.workers.reflection_worker import analyze_reflection
@@ -547,15 +548,62 @@ def get_sanctuary_persona(user_id: str = Depends(get_current_user_id)):
     primary_emotion = latest_emotion.get("primary_emotion") if isinstance(latest_emotion, dict) else None
     intensity = latest_emotion.get("intensity") if isinstance(latest_emotion, dict) else None
 
-    has_clarity_data = unresolved_count > 0 or bool(emotions)
-    clarity_score = max(55, min(96, int(100 - (unresolved_count * 4.5)))) if has_clarity_data else None
+    user_msg_count = 0
+    messages_last_7d = 0
+    average_emotion_intensity = 0.0
+    if has_sql():
+        now = datetime.now(timezone.utc)
+        cutoff_14d = now - timedelta(days=14)
+        cutoff_7d = now - timedelta(days=7)
+        with get_sql_session() as session:
+            user_msg_count = session.execute(
+                text(
+                    """
+                    SELECT COUNT(*)
+                    FROM messages
+                    WHERE user_id = :user_id AND role = 'user'
+                      AND (delete_at IS NULL OR delete_at > :now)
+                      AND created_at >= :cutoff
+                    """
+                ),
+                {"user_id": user_id, "now": now, "cutoff": cutoff_14d},
+            ).scalar_one()
+            messages_last_7d = session.execute(
+                text(
+                    """
+                    SELECT COUNT(*)
+                    FROM messages
+                    WHERE user_id = :user_id AND role = 'user'
+                      AND (delete_at IS NULL OR delete_at > :now)
+                      AND created_at >= :cutoff
+                    """
+                ),
+                {"user_id": user_id, "now": now, "cutoff": cutoff_7d},
+            ).scalar_one()
+            average_emotion_intensity = session.execute(
+                text(
+                    """
+                    SELECT COALESCE(AVG(intensity), 0)
+                    FROM identity_emotions
+                    WHERE user_id = :user_id AND created_at >= :cutoff
+                    """
+                ),
+                {"user_id": user_id, "cutoff": cutoff_14d},
+            ).scalar_one() or 0.0
+    else:
+        logger.warning("sanctuary clarity: supabase backend not supported")
+
+    has_enough = user_msg_count >= settings.SANCTUARY_MIN_USER_MESSAGES
+    clarity_score = None
     cognitive_load = None
-    if has_clarity_data:
-        cognitive_load = "Light"
-        if unresolved_count > 6:
-            cognitive_load = "Heavy (Cognitive Overload)"
-        elif unresolved_count > 3:
-            cognitive_load = "Moderate"
+    if has_enough:
+        from app.services.clarity import compute_clarity
+
+        clarity_score, cognitive_load = compute_clarity(
+            unresolved_count,
+            average_emotion_intensity,
+            messages_last_7d,
+        )
 
     values = _get_val("values", {}) or {}
     core_anchors = [
@@ -581,7 +629,11 @@ def get_sanctuary_persona(user_id: str = Depends(get_current_user_id)):
             "You have multiple unclosed cognitive loops demanding working memory. "
             "A 2-minute mind dump or parking unessential tasks until next week will immediately free up mental bandwidth."
             if unresolved_count > 2 else None
-        )
+        ),
+        "data_sufficiency": None if has_enough else {
+            "user_messages": user_msg_count,
+            "needed": settings.SANCTUARY_MIN_USER_MESSAGES,
+        },
     }
 
 
