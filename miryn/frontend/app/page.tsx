@@ -19,9 +19,9 @@ const moods = [
 ] as const;
 
 const posts = [
-  ["Mental Health", "Sep 24, 2026", "The Quiet Mind: How Continuous Context Reduces Daily Anxiety & Cognitive Overload", "Discover why repeatedly re-explaining yourself causes decision fatigue, and how an AI companion that remembers your emotional rhythms fosters grounding.", "/landing/blog/persistent-memory-human-ai-collaboration", "/assets/A4rnasqJDMazGtLN9cqF0u3G37Y.webp"],
-  ["Personal Growth", "Sep 18, 2026", "Tracking the Arc: How Versioned Identity Models Illuminate Personal Evolution", "Explore how tracking versioned beliefs, recurring behavioral patterns, and open loops over weeks reveals genuine personal growth and mental clarity.", "/landing/blog/open-loops-accountability", "/assets/owwQD0I3Dmy0SkNNeVvRmInAiPg.webp"],
-  ["Technical Architecture", "Sep 10, 2026", "Under the Hood: 384-Dim pgvector, Zero-Knowledge Fernet & Sub-1.5s Recall", "A technical breakdown of our hybrid memory layer: combining Redis transient caches, 384-dim pgvector embeddings, and zero-knowledge Fernet encryption.", "/landing/blog/zero-knowledge-memory-architecture", "/assets/dLmIWoKYLcvi1tADPgJRWp5Xk.webp"],
+  ["Mental Health", "Sep 24, 2026", "The Quiet Mind: How Continuous Context Reduces Daily Anxiety & Cognitive Overload", "Discover why repeatedly re-explaining yourself causes decision fatigue, and how an AI companion that remembers your emotional rhythms fosters grounding.", "/landing/blog/persistent-memory-human-ai-collaboration/index.html", "/assets/A4rnasqJDMazGtLN9cqF0u3G37Y.webp"],
+  ["Personal Growth", "Sep 18, 2026", "Tracking the Arc: How Versioned Identity Models Illuminate Personal Evolution", "Explore how tracking versioned beliefs, recurring behavioral patterns, and open loops over weeks reveals genuine personal growth and mental clarity.", "/landing/blog/open-loops-accountability/index.html", "/assets/owwQD0I3Dmy0SkNNeVvRmInAiPg.webp"],
+  ["Technical Architecture", "Sep 10, 2026", "Under the Hood: 384-Dim pgvector, Zero-Knowledge Fernet & Sub-1.5s Recall", "A technical breakdown of our hybrid memory layer: combining Redis transient caches, 384-dim pgvector embeddings, and zero-knowledge Fernet encryption.", "/landing/blog/zero-knowledge-memory-architecture/index.html", "/assets/dLmIWoKYLcvi1tADPgJRWp5Xk.webp"],
 ] as const;
 
 const faqs = [
@@ -172,7 +172,7 @@ export default function LandingPage() {
 
       <section id="insights" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
         <p className="font-editorial text-sm uppercase tracking-[0.22em] text-[#A3A3A3]">INSIGHTS &amp; BLOG</p>
-        <div className="mt-5 flex flex-col justify-between gap-6 sm:flex-row sm:items-end"><h2 className="max-w-3xl font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Exploring the Future of Personal AI &amp; Memory</h2><a href="/landing/blog" className="inline-flex min-h-11 shrink-0 items-center font-editorial text-sm text-[#A3A3A3] hover:text-[#FAFAFA]">Explore All Insights →</a></div>
+        <div className="mt-5 flex flex-col justify-between gap-6 sm:flex-row sm:items-end"><h2 className="max-w-3xl font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Exploring the Future of Personal AI &amp; Memory</h2><a href="/landing/blog/index.html" className="inline-flex min-h-11 shrink-0 items-center font-editorial text-sm text-[#A3A3A3] hover:text-[#FAFAFA]">Explore All Insights →</a></div>
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
           {posts.map(([category, date, title, excerpt, href, image]) => <a key={href} href={href} className="group rounded-3xl border border-white/10 bg-white/[0.03] p-3 transition-colors hover:border-white/25"><div className="relative aspect-[1.55] overflow-hidden rounded-2xl"><Image src={image} alt="" fill sizes="(max-width: 1024px) 90vw, 380px" className="object-cover transition-transform duration-500 group-hover:scale-105" /></div><div className="p-3"><p className="text-xs text-[#A3A3A3]">{category} <span className="px-1 text-[#525252]">·</span> {date}</p><h3 className="mt-4 font-editorial text-[22px] leading-tight text-[#FAFAFA]">{title}</h3><p className="mt-3 text-sm leading-6 text-[#A3A3A3]">{excerpt}</p><p className="mt-6 text-xs text-[#525252]">Miryn AI</p></div></a>)}
         </div>
@@ -194,7 +194,7 @@ export default function LandingPage() {
         <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[1.5fr_1fr_1fr]">
           <div><a href="/" className="font-editorial text-2xl text-[#FAFAFA]">Miryn AI</a><p className="mt-4 max-w-xs text-sm leading-6 text-[#A3A3A3]">Empowering Personal Growth Through Persistent Intelligence.</p></div>
           <FooterColumn title="Sections" links={[["About", "#about"], ["Features", "#features"], ["Insights", "#insights"], ["FAQ's", "#faq"], ["Contact", "#contact"]]} />
-          <FooterColumn title="Pages" links={[["Insights", "/landing/blog"], ["Privacy Policy", "/privacy"], ["Terms of Service", "/terms"], ["Security Overview", "/privacy"], ["Contact", "#contact"]]} />
+          <FooterColumn title="Pages" links={[["Insights", "/landing/blog/index.html"], ["Privacy Policy", "/privacy"], ["Terms of Service", "/terms"], ["Security Overview", "/privacy"], ["Contact", "#contact"]]} />
         </div>
         <div className="mx-auto flex max-w-6xl flex-col gap-3 border-t border-white/10 px-5 py-6 text-xs text-[#525252] sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>Miryn AI</span><span>© 2026 Miryn AI Inc. All rights reserved. · Designed &amp; Built by <a href="https://sharmasahil.me" target="_blank" rel="noopener noreferrer" className="text-[#A3A3A3] underline underline-offset-4">Sahil Sharma</a></span></div>
       </footer>
@@ -216,7 +216,7 @@ function ChartCard({ title, label, ticks, points, area }: { title: string; label
       <div className="mt-7 grid grid-cols-[38px_1fr] gap-3">
         <div className="flex h-28 flex-col justify-between text-[10px] text-[#525252]">{ticks.map((tick) => <span key={tick}>{tick}</span>)}</div>
         <div>
-          <svg viewBox="0 0 345 90" className="h-28 w-full overflow-visible" role="img" aria-label={`${label} chart`} preserveAspectRatio="none"><path d={area} fill="rgba(159, 235, 199, .12)" /><polyline points={points} fill="none" stroke="#9fe9c5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <svg viewBox="0 0 345 90" className="h-28 w-full overflow-visible" role="img" aria-label={`${label} chart`} preserveAspectRatio="none"><polygon points={area} fill="rgba(159, 235, 199, .12)" /><polyline points={points} fill="none" stroke="#9fe9c5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
           <div className="mt-2 flex justify-between text-[10px] text-[#525252]"><span>Week 1</span><span>Week 4</span></div>
         </div>
       </div>
