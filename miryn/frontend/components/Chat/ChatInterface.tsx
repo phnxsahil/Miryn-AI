@@ -306,7 +306,7 @@ export default function ChatInterface() {
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-[color:var(--theme-bg)] text-[color:var(--theme-text)] font-ui">
       <header className={`${insights || conflicts.length > 0 ? "flex" : "hidden md:flex"} h-11 shrink-0 items-center justify-between border-b border-[color:var(--theme-border)] px-5 md:h-14 md:px-8`}>
-        <span className="hidden text-sm font-semibold md:inline">Miryn</span>
+        <span className="hidden font-editorial text-lg tracking-[-0.02em] md:inline">Miryn</span>
         {(insights || conflicts.length > 0) && (
           <button type="button" onClick={() => setInsightsOpen((open) => !open)} aria-expanded={insightsOpen} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-[color:var(--theme-muted)] hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)]">
             <Lightbulb size={16} /> Insights
@@ -351,10 +351,10 @@ export default function ChatInterface() {
             {loading && !streaming && messages.length === 0 && <p className="py-10 text-sm text-[color:var(--theme-muted)]">Loading conversation…</p>}
             {messages.length === 0 && !loading && !status && (
               <div className="flex min-h-[min(520px,60vh)] flex-col justify-center py-12">
-                <h1 className="text-center font-editorial text-3xl leading-tight md:text-4xl">What can I help with today?</h1>
+                <h1 className="text-center font-editorial text-3xl leading-tight tracking-[-0.03em] md:text-5xl">What can I help with today?</h1>
                 <p className="mx-auto mt-3 max-w-md text-center text-sm leading-relaxed text-[color:var(--theme-muted)]">Start anywhere. Miryn can carry useful context into future conversations.</p>
                 <div className="mx-auto mt-10 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
-                  {suggestions.map((item) => <button key={item.title} type="button" onClick={() => void sendMessage(item.prompt)} className="rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-4 py-3.5 text-left text-sm font-medium transition-colors hover:bg-[color:var(--theme-card)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--theme-accent)]">{item.title}</button>)}
+                  {suggestions.map((item) => <button key={item.title} type="button" onClick={() => void sendMessage(item.prompt)} className="rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] px-4 py-4 text-left text-sm text-[color:var(--theme-muted)] transition-colors hover:border-white/25 hover:text-[color:var(--theme-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--theme-accent)]">{item.title}</button>)}
                 </div>
               </div>
             )}

@@ -24,7 +24,7 @@ function MessageBubble({ message, isStreaming = false, saved = false, stopped = 
   if (message.role === "system") return <p role="status" className="text-sm text-[color:var(--theme-danger-text)]">{message.content}</p>;
   if (message.role === "user") return (
     <div className="flex justify-end">
-      <div className="max-w-[90%] whitespace-pre-wrap break-words rounded-2xl bg-[color:var(--theme-card)] px-4 py-3 text-[15px] leading-7 text-[color:var(--theme-text)] sm:max-w-[78%]">{message.content}</div>
+      <div className="max-w-[90%] whitespace-pre-wrap break-words rounded-3xl bg-[color:var(--theme-card)] px-5 py-3 text-[15px] leading-7 text-[color:var(--theme-text)] sm:max-w-[78%]">{message.content}</div>
     </div>
   );
   return (

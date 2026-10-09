@@ -149,7 +149,7 @@ export default function InputBox({
             void processFiles(e.dataTransfer.files);
           }
         }}
-        className={`relative flex flex-col bg-[color:var(--theme-surface)] rounded-[26px] border transition-all duration-200 shadow-sm ${
+        className={`relative flex flex-col bg-[color:var(--theme-card)] rounded-[28px] border transition-all duration-200 ${
           isDragging
             ? "border-[color:var(--theme-accent)] bg-[color:var(--theme-card)] shadow-[0_0_25px_var(--accent-glow)]"
             : "border-[color:var(--theme-border)] focus-within:border-[color:var(--theme-border)]"
@@ -249,7 +249,7 @@ export default function InputBox({
       {attachmentError && <p role="alert" className="mt-2 px-2 text-xs text-[color:var(--theme-danger-text)]">{attachmentError}</p>}
 
       <div className="mt-2 text-center">
-        <p className="text-[11px] font-mono tracking-tight text-[color:var(--theme-dim)]">
+        <p className="text-[11px] text-[color:var(--theme-dim)]">
           Miryn can make mistakes. Check important information.
         </p>
       </div>
