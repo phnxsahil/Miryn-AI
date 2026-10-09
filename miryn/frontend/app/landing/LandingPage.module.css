@@ -269,6 +269,10 @@
 .faq-row[open] .faq-plus { transform: rotate(45deg); color: rgba(255, 255, 255, .75); }
 .faq-row p { max-width: 60ch; padding: 0 18px 17px; color: rgba(255, 255, 255, .62); font-size: 14px; line-height: 1.75; }
 
+.contact-card { position: relative; isolation: isolate; overflow: hidden; }
+.contact-aurora { position: absolute; top: -72px; right: -56px; width: 280px; height: 230px; border-radius: 0 0 0 100%; background: conic-gradient(from 220deg at 100% 0%, rgba(112, 225, 169, .66), rgba(246, 218, 84, .54), rgba(244, 154, 92, .48), rgba(234, 118, 196, .42), transparent 72%); filter: blur(34px); opacity: .62; -webkit-mask-image: radial-gradient(ellipse at 100% 0%, #000 0 45%, transparent 76%); mask-image: radial-gradient(ellipse at 100% 0%, #000 0 45%, transparent 76%); pointer-events: none; animation: contact-aurora-breathe 9s ease-in-out infinite; }
+@keyframes contact-aurora-breathe { 0%, 100% { opacity: .5; } 50% { opacity: .72; } }
+
 @keyframes hero-card-float {
   0%, 100% { transform: translateY(-6px); }
   50% { transform: translateY(6px); }
@@ -317,7 +321,8 @@
   .spectrum-orb,
   .hero-card,
   .mood-orb,
-  .wave-chart__line { animation: none; }
+  .wave-chart__line,
+  .contact-aurora { animation: none; }
 }
 
 @media (max-width: 640px) {

@@ -193,7 +193,7 @@ export default function LandingPage() {
       </section>
 
       <section id="contact" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
-        <div className="rounded-[2rem] border border-white/10 bg-[#151515] px-6 py-16 text-center sm:px-12 lg:py-24"><h2 className="font-editorial text-4xl tracking-[-0.04em] sm:text-6xl">We’d Love to Hear From You</h2><p className="mx-auto mt-5 max-w-xl text-base leading-7 text-[#A3A3A3] sm:text-lg">Have questions, suggestions, or feedback about Miryn? Our team is here to assist you.</p><a href="mailto:hello@miryn.ai" className="mt-8 inline-flex min-h-12 items-center justify-center rounded-full bg-[#FAFAFA] px-7 font-editorial text-base text-[#0A0A0A]">Send Message</a></div>
+        <div className="contact-card rounded-[2rem] border border-white/10 bg-[#151515] px-6 py-16 text-center sm:px-12 lg:py-24"><div className="contact-aurora" aria-hidden="true" /><h2 className="relative font-editorial text-4xl tracking-[-0.04em] sm:text-6xl">We’d Love to Hear From You</h2><p className="relative mx-auto mt-5 max-w-xl text-base leading-7 text-[#A3A3A3] sm:text-lg">Have questions, suggestions, or feedback about Miryn? Our team is here to assist you.</p><a href="mailto:hello@miryn.ai" className="relative mt-8 inline-flex min-h-12 items-center justify-center rounded-full bg-[#FAFAFA] px-7 font-editorial text-base text-[#0A0A0A]">Send Message</a></div>
       </section>
 
       <footer className="border-t border-white/10">
