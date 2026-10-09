@@ -15,6 +15,10 @@ pytest
 
 Set required environment variables (see `backend/.env.example`) or export a test-safe `.env` before running.
 
+## Live smoke tests
+
+The `test_chat_smoke.py` module is skipped by default because it calls a running server and a real Gemini model, which spends provider quota. Run it deliberately with `SMOKE_LIVE=1 pytest tests/test_chat_smoke.py -v -s --timeout=60` and set `SMOKE_BASE` if the server is not at `http://127.0.0.1:8000`.
+
 ## Writing new tests
 
 - Prefer fast unit tests that isolate services (mock Supabase/Redis/LLM clients).

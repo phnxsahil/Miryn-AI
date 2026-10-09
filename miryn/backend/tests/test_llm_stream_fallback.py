@@ -8,6 +8,9 @@ import pytest
 from app.services.llm_service import LLMService
 
 
+pytestmark = pytest.mark.live_llm
+
+
 class ApiError(Exception):
     def __init__(self, message: str, code: int, status: str):
         super().__init__(message)

@@ -17,6 +17,13 @@ BASE = os.getenv("SMOKE_BASE", "http://127.0.0.1:8000")
 DEMO_EMAIL = "riya_v3@miryn.demo"
 DEMO_PASSWORD = "MirynDemo!2026"
 
+pytestmark = pytest.mark.live
+if os.getenv("SMOKE_LIVE") != "1":
+    pytest.skip(
+        "live smoke tests hit a real server and real LLM; run with SMOKE_LIVE=1",
+        allow_module_level=True,
+    )
+
 
 # ---------------------------------------------------------------------------
 # helpers
