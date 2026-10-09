@@ -16,6 +16,13 @@ from app.services.importance import ScoredFact, clean_fact_text, fact_key
 logger = logging.getLogger(__name__)
 
 
+def bumped_importance(old: float, new: float) -> float:
+    base = max(old, new)
+    if base >= 1.0:
+        return base
+    return min(0.99, base + (1.0 - base) * 0.15)
+
+
 class FactStore:
     def _unsupported(self) -> None:
         logger.warning("memory_facts: supabase backend not supported")
@@ -46,7 +53,12 @@ class FactStore:
                         ON CONFLICT (user_id, fact_key) WHERE status = 'active'
                         DO UPDATE SET
                             mention_count = memory_facts.mention_count + 1,
-                            importance = LEAST(1.0, GREATEST(memory_facts.importance, EXCLUDED.importance) + 0.05),
+                            importance = CASE
+                                WHEN memory_facts.extractor = 'manual' OR EXCLUDED.extractor = 'manual'
+                                    THEN GREATEST(memory_facts.importance, EXCLUDED.importance)
+                                ELSE LEAST(0.99, GREATEST(memory_facts.importance, EXCLUDED.importance)
+                                    + (1.0 - GREATEST(memory_facts.importance, EXCLUDED.importance)) * 0.15)
+                            END,
                             emotional_weight = GREATEST(memory_facts.emotional_weight, EXCLUDED.emotional_weight),
                             last_seen_at = NOW(),
                             updated_at = NOW()
@@ -107,7 +119,7 @@ class FactStore:
                     SELECT id, fact, importance, created_at, last_seen_at, extractor
                     FROM memory_facts
                     WHERE user_id = :user_id AND status = 'active' {where_importance}
-                    ORDER BY importance DESC, last_seen_at DESC
+                    ORDER BY importance DESC, mention_count DESC, last_seen_at DESC
                     LIMIT :limit
                     """
                 ),
