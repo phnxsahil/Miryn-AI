@@ -67,6 +67,10 @@ class EmotionStore:
         """
         Replace all stored emotions for the given user and identity with the provided list.
         """
+        saved_emotions = [emotion for emotion in emotions if emotion.get("primary_emotion") != "neutral"]
+        if emotions and not saved_emotions:
+            return
+        emotions = saved_emotions
         if has_sql():
             with self._session_scope(sql_session) as session:
                 session.execute(

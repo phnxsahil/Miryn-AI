@@ -134,6 +134,8 @@ def get_memory(
                     SELECT id, primary_emotion, intensity, created_at
                     FROM identity_emotions
                     WHERE user_id = :user_id
+                      AND primary_emotion IS NOT NULL
+                      AND primary_emotion <> 'neutral'
                     ORDER BY created_at DESC
                     LIMIT :limit
                     """
