@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import HeroCards from "./landing/HeroCards";
 import LandingNav from "./landing/LandingNav";
+import MoodCarousel from "./landing/MoodCarousel";
 import SpectrumOrb from "./landing/SpectrumOrb";
 import ToolIcons from "./landing/ToolIcons";
 import styles from "./landing/LandingPage.module.css";
@@ -157,9 +158,12 @@ export default function LandingPage() {
           </CapabilityRow>
 
           <CapabilityRow title="Track Goals & Unresolved Ideas" copy="Never lose track of a project, thought, or goal. Miryn recognizes open loops in your life and reminds you when it’s time to check in." reverse>
+            <div className="space-y-5">
             <div className="rounded-3xl border border-white/10 bg-[#151515] p-6">
               <div className="flex items-center justify-between border-b border-white/10 pb-5"><span className="font-editorial text-xl">Open loops</span><span className="rounded-full bg-[#d5f4dc] px-2.5 py-1 text-xs text-[#1c3b28]">3 active</span></div>
               <div className="mt-6 space-y-4">{['Prepare visa interview', 'Finish the personal essay', 'Return to morning walks'].map((item, index) => <div key={item} className="flex items-center gap-3 text-sm text-[#A3A3A3]"><span className={`h-3 w-3 rounded-full border ${index === 0 ? 'border-[#d5f4dc] bg-[#d5f4dc]' : 'border-[#525252]'}`} />{item}<span className="ml-auto text-xs text-[#525252]">{index === 0 ? 'today' : 'soon'}</span></div>)}</div>
+            </div>
+            <MoodCarousel />
             </div>
           </CapabilityRow>
 

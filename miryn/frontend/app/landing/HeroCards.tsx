@@ -39,9 +39,10 @@ function MoodPreviewCard() {
   return (
     <article className="hero-card hero-card--mood" aria-hidden="true">
       <p className="hero-card__eyebrow">Today, in context</p>
-      <div className="mood-preview"><span className="mood-preview__orb mood-preview__orb--red" /><div><strong>Seeing red</strong><small>Thu, Apr 3</small></div></div>
-      <p className="hero-card__copy">You might be feeling a bit frustrated or tense.</p>
-      <div className="mood-preview mood-preview--second"><span className="mood-preview__orb mood-preview__orb--yellow" /><div><strong>Feeling light</strong><small>Seems like you have a good day!</small></div></div>
+      <div className="hero-mood-stack">
+        <MoodCard mood={moodItems[0]} compact />
+        <MoodCard mood={moodItems[1]} compact />
+      </div>
     </article>
   );
 }
@@ -56,3 +57,4 @@ export default function HeroCards() {
     </div>
   );
 }
+import MoodCard, { moodItems } from "./MoodCard";
