@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowDown, Lightbulb, X } from "lucide-react";
+import { ArrowDown, Lightbulb, Loader2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useChatStore } from "@/lib/store";
 import type { Message, Notification, ToolRun } from "@/lib/types";
@@ -40,6 +40,8 @@ export default function ChatInterface() {
   const [savedIndex, setSavedIndex] = useState<number | null>(null);
   const [stoppedIndex, setStoppedIndex] = useState<number | null>(null);
   const [historyRetry, setHistoryRetry] = useState(0);
+  const [hasEarlierMessages, setHasEarlierMessages] = useState(false);
+  const [loadingEarlierMessages, setLoadingEarlierMessages] = useState(false);
   const lastMessageRef = useRef<string | null>(null);
 
   useEffect(() => { api.loadToken(); }, []);
@@ -58,10 +60,14 @@ export default function ChatInterface() {
     setConflicts([]);
     setConversationId(idFromUrl);
     setMessages([]);
+    setHasEarlierMessages(false);
     if (!idFromUrl) { setLoading(false); return; }
     setLoading(true);
     api.getChatHistory(idFromUrl).then((history) => {
-      if (active && historyRequestRef.current === currentRequest) setMessages(history as Message[]);
+      if (active && historyRequestRef.current === currentRequest) {
+        setMessages(history.messages);
+        setHasEarlierMessages(history.hasMore);
+      }
     }).catch((error) => {
       if (active && historyRequestRef.current === currentRequest) setStatus(getErrorMessage(error, "Could not load this conversation."));
     }).finally(() => {
@@ -69,6 +75,34 @@ export default function ChatInterface() {
     });
     return () => { active = false; };
   }, [historyRetry, idFromUrl, setConflicts, setConversationId, setInsights, setLoading, setMessages, setStatus]);
+
+  const loadEarlierMessages = async () => {
+    const firstMessage = messages[0];
+    const area = scrollRef.current;
+    if (!conversationId || !firstMessage?.id || !area || loadingEarlierMessages) return;
+    const oldHeight = area.scrollHeight;
+    pinnedRef.current = false;
+    userScrolledUpRef.current = true;
+    setPinned(false);
+    setLoadingEarlierMessages(true);
+    try {
+      const page = await api.getChatHistory(conversationId, { before: firstMessage.id });
+      setHasEarlierMessages(page.hasMore);
+      if (page.messages.length) {
+        const existingIds = new Set(messages.map((message) => message.id).filter(Boolean));
+        setMessages([...page.messages.filter((message) => !message.id || !existingIds.has(message.id)), ...messages]);
+        window.requestAnimationFrame(() => {
+          if (!scrollRef.current) return;
+          scrollRef.current.scrollTop += scrollRef.current.scrollHeight - oldHeight;
+          previousScrollTopRef.current = scrollRef.current.scrollTop;
+        });
+      }
+    } catch (error) {
+      setStatus(getErrorMessage(error, "Could not load earlier messages."));
+    } finally {
+      setLoadingEarlierMessages(false);
+    }
+  };
 
   useEffect(() => {
     if (!messages.length) return;
@@ -284,6 +318,14 @@ export default function ChatInterface() {
           previousScrollTopRef.current = area.scrollTop;
         }} className="h-full overflow-y-auto px-4 pb-28 pt-6 md:px-8 md:pb-28 md:pt-8">
           <div ref={contentRef} className="mx-auto w-full max-w-3xl">
+            {hasEarlierMessages && messages.length > 0 && (
+              <div className="mb-6 flex justify-center">
+                <button type="button" onClick={() => void loadEarlierMessages()} disabled={loadingEarlierMessages} className="inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm text-[color:var(--theme-muted)] transition-colors hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)] disabled:cursor-wait disabled:opacity-60">
+                  {loadingEarlierMessages && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
+                  {loadingEarlierMessages ? "Loading earlier messages…" : "Load earlier messages"}
+                </button>
+              </div>
+            )}
             {loading && !streaming && messages.length === 0 && <p className="py-10 text-sm text-[color:var(--theme-muted)]">Loading conversation…</p>}
             {messages.length === 0 && !loading && !status && (
               <div className="flex min-h-[min(520px,60vh)] flex-col justify-center py-12">

@@ -10,6 +10,7 @@ import type {
   ImportStatus,
   Identity,
   MemorySnapshot,
+  Message,
   NotificationPreferences,
   OnboardingPayload,
   SanctuaryCheckinResponse,
@@ -130,7 +131,7 @@ class ApiClient {
     }
   }
 
-  private async request(endpoint: string, options: RequestInit = {}, triedRefresh = false): Promise<unknown> {
+  private async request(endpoint: string, options: RequestInit = {}, triedRefresh = false, includeHeaders = false): Promise<unknown> {
     if (!this.token) {
       this.loadToken();
     }
@@ -161,7 +162,7 @@ class ApiClient {
         try {
           const refreshed = await this.refreshSession();
           this.setSession(refreshed);
-          return this.request(endpoint, options, true);
+          return this.request(endpoint, options, true, includeHeaders);
         } catch {
           this.clearToken();
           throw new Error(`Session expired. Please log in again. [req ${responseRequestId}]`);
@@ -177,7 +178,7 @@ class ApiClient {
     }
 
     if (res.status === 204) {
-      return null;
+      return includeHeaders ? { data: null, headers: res.headers } : null;
     }
 
     const text = await res.text();
@@ -185,11 +186,13 @@ class ApiClient {
       return null;
     }
 
+    let data: unknown;
     try {
-      return JSON.parse(text);
+      data = JSON.parse(text);
     } catch {
-      return text;
+      data = text;
     }
+    return includeHeaders ? { data, headers: res.headers } : data;
   }
 
   private async refreshSession(): Promise<AuthSession> {
@@ -484,9 +487,11 @@ class ApiClient {
     }
   }
 
-  async getChatHistory(conversationId: string) {
-    const params = new URLSearchParams({ conversation_id: conversationId }).toString();
-    return this.request(`/chat/history?${params}`);
+  async getChatHistory(conversationId: string, options: { before?: string } = {}): Promise<{ messages: Message[]; hasMore: boolean }> {
+    const params = new URLSearchParams({ conversation_id: conversationId, limit: "50" });
+    if (options.before) params.set("before", options.before);
+    const result = await this.request(`/chat/history?${params}`, {}, false, true) as { data: Message[]; headers: Headers };
+    return { messages: result.data || [], hasMore: result.headers.get("X-Has-More") === "true" };
   }
 
   async getIdentity(): Promise<Identity> {

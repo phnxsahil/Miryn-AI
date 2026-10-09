@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 
@@ -194,6 +194,31 @@ def _hydrate_history_row(row: dict) -> dict:
         "metadata": metadata or {},
         "importance_score": float(row.get("importance_score") or 0.0),
     }
+
+
+def _select_history_page(session, conversation_id: str, limit: int, before: str | None):
+    result = session.execute(
+        text(
+            """
+            SELECT * FROM messages
+            WHERE conversation_id = :cid
+              AND (
+                :before IS NULL OR (created_at, CAST(id AS TEXT)) < (
+                  SELECT created_at, CAST(id AS TEXT) FROM messages
+                  WHERE CAST(id AS TEXT) = :before AND conversation_id = :cid
+                )
+              )
+            ORDER BY created_at DESC, CAST(id AS TEXT) DESC
+            LIMIT :fetch_limit
+            """
+        ),
+        {"cid": conversation_id, "before": before, "fetch_limit": limit + 1},
+    )
+    rows = result.mappings().all()
+    has_more = len(rows) > limit
+    page = rows[:limit]
+    page.reverse()
+    return page, has_more
 
 
 async def _prepare_stream_context(
@@ -473,16 +498,21 @@ def list_conversations(user_id: str = Depends(get_current_user_id)):
 
 
 @router.get("/history")
-def get_chat_history(conversation_id: str, user_id: str = Depends(get_current_user_id)):
+def get_chat_history(
+    conversation_id: str,
+    response: Response,
+    limit: int = Query(50, ge=1, le=200),
+    before: str | None = None,
+    user_id: str = Depends(get_current_user_id),
+):
     _validate_conversation_owner(conversation_id, user_id)
 
     if has_sql():
         with get_sql_session() as session:
-            result = session.execute(
-                text("SELECT * FROM messages WHERE conversation_id = :cid ORDER BY created_at ASC"),
-                {"cid": conversation_id},
-            )
-            return [_hydrate_history_row(dict(row)) for row in result.mappings().all()]
+            page, has_more = _select_history_page(session, conversation_id, limit, before)
+        response.headers["X-Has-More"] = str(has_more).lower()
+        return [_hydrate_history_row(dict(row)) for row in page]
+    response.headers["X-Has-More"] = "false"
     return []
 
 
