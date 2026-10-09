@@ -10,10 +10,11 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.core.database import get_db, get_sql_session, has_sql
-from app.core.encryption import decrypt_text, encrypt_text
+from app.core.encryption import decrypt_text, encrypt_text, encryption_available
 from app.services.importance import ScoredFact, clean_fact_text, fact_key
 
 logger = logging.getLogger(__name__)
+_missing_encryption_logged = False
 
 
 def bumped_importance(old: float, new: float) -> float:
@@ -112,6 +113,12 @@ class FactStore:
             self.upsert_facts(user_id, llm_facts, source_message_id)
 
     def _list(self, user_id: str, limit: int, minimum: float | None = None) -> list[dict[str, Any]]:
+        global _missing_encryption_logged
+        if not encryption_available():
+            if not _missing_encryption_logged:
+                logger.warning("memory facts unavailable: encryption key missing")
+                _missing_encryption_logged = True
+            return []
         if not has_sql():
             self._unsupported()
             return []
@@ -137,6 +144,8 @@ class FactStore:
             try:
                 content = decrypt_text(row["fact"])
             except Exception:
+                continue
+            if content is None:
                 continue
             if row["extractor"] == "heuristic":
                 content = clean_fact_text(content)
