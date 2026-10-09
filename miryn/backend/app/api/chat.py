@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 import redis.asyncio as aioredis
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
@@ -532,13 +532,45 @@ def get_chat_history(
     before: str | None = None,
     user_id: str = Depends(get_current_user_id),
 ):
+    if before is not None:
+        try:
+            UUID(before)
+        except (AttributeError, TypeError, ValueError):
+            raise HTTPException(status_code=422, detail="before must be a message id")
+
     _validate_conversation_owner(conversation_id, user_id)
 
     if has_sql():
         with get_sql_session() as session:
+            if before is not None:
+                cursor_exists = session.execute(
+                    text(
+                        """
+                        SELECT 1 FROM messages
+                        WHERE conversation_id = :conversation_id
+                          AND CAST(id AS TEXT) = :before
+                        LIMIT 1
+                        """
+                    ),
+                    {"conversation_id": conversation_id, "before": before},
+                ).scalar()
+                if cursor_exists is None:
+                    raise HTTPException(status_code=422, detail="unknown cursor")
             page, has_more = _select_history_page(session, conversation_id, limit, before)
         response.headers["X-Has-More"] = str(has_more).lower()
         return [_hydrate_history_row(dict(row)) for row in page]
+    if before is not None:
+        db = get_db()
+        cursor_exists = (
+            db.table("messages")
+            .select("id")
+            .eq("conversation_id", conversation_id)
+            .eq("id", before)
+            .limit(1)
+            .execute()
+        )
+        if not cursor_exists.data:
+            raise HTTPException(status_code=422, detail="unknown cursor")
     response.headers["X-Has-More"] = "false"
     return []
 
