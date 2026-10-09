@@ -53,11 +53,11 @@ const FEATURES = [
   {
     slug: "sanctuary",
     icon: Heart,
-    name: "Mind Sanctuary",
+    name: "Sanctuary",
     tagline: "A quiet space to reset, breathe, and reflect.",
-    desc: "The Mind Sanctuary synthesizes your emotional state, cognitive load, and current life season into a reflective mirror. It features guided breathing exercises designed for grounding and mindfulness.",
+    desc: "Sanctuary brings together your emotional state, current life season and open threads. It includes guided breathing exercises for reset and reflection.",
     steps: [
-      "Navigate to Mind Sanctuary from the sidebar.",
+      "Navigate to Sanctuary from the sidebar.",
       "Review your Emotional Baseline and Cognitive Load indicators.",
       "Read your Current Life Season — a holistic phrase summarizing your present chapter.",
       "Engage in interactive breathing routines (Box, Relax, Coherence) with gentle pacing.",

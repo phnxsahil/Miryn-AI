@@ -151,7 +151,7 @@ export default function AppLayout({
             disabled={chatLoading}
             className="flex-1 ml-2 flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg text-primary hover:bg-[color:var(--theme-overlay)] transition-colors border border-[color:var(--theme-border)] justify-between disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <span>New Chat</span>
+            <span>New chat</span>
             <Plus size={16} className="text-dim" />
           </button>
 
@@ -169,7 +169,7 @@ export default function AppLayout({
               { href: "/identity", icon: Fingerprint, label: "Identity" },
               { href: "/memory", icon: Archive, label: "Memory" },
               { href: "/sanctuary", icon: HeartPulse, label: "Sanctuary" },
-              { href: "/onboarding", icon: Layers, label: "Getting started" },
+              { href: "/onboarding", icon: Layers, label: "Personalize" },
               { href: "/settings", icon: Settings, label: "Settings" },
             ].map((item) => (
               <Link key={item.href} href={item.href} onClick={closeMenu} className={navLinkClass(item.href)}>

@@ -77,9 +77,9 @@ export default function SanctuaryPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)] mb-0.5">Mind Sanctuary</p>
-          <h1 className="text-xl font-semibold text-[color:var(--theme-text)]">Your Mental Space</h1>
-          <p className="text-xs text-[color:var(--theme-dim)] mt-0.5">A quiet space to reflect, breathe, and clear your mental RAM</p>
+          <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)] mb-0.5">Sanctuary</p>
+          <h1 className="text-xl font-semibold text-[color:var(--theme-text)]">Your space</h1>
+          <p className="text-xs text-[color:var(--theme-dim)] mt-0.5">A quiet place to reflect, reset and see what&apos;s on your plate.</p>
         </div>
         <button onClick={() => { setRefreshing(true); void load(); }} disabled={refreshing} className="p-2 rounded-xl text-[color:var(--theme-dim)] hover:text-[color:var(--theme-muted)] hover:bg-[color:var(--theme-overlay)] transition-all disabled:opacity-50">
           <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
@@ -88,7 +88,7 @@ export default function SanctuaryPage() {
 
       {!hasLearnedData && (
         <div className="rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] px-6 py-12 text-center">
-          <p className="mx-auto max-w-md text-sm leading-6 text-[color:var(--text-dim)]">Miryn hasn&apos;t learned enough about you yet. Come back after a few conversations.</p>
+          <p className="mx-auto max-w-md text-sm leading-6 text-[color:var(--text-dim)]">Chat with Miryn a bit and this fills in with what&apos;s on your mind.</p>
           <Link href="/chat" className="mt-5 inline-flex items-center gap-1.5 text-sm text-[color:var(--accent)] transition-colors hover:underline">
             Start chatting with Miryn <ChevronRight size={14} />
           </Link>
@@ -148,7 +148,7 @@ export default function SanctuaryPage() {
             <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)]">Open Loops</p>
             <span className="text-xs text-[color:var(--accent)] font-mono">{openLoops.length} unresolved</span>
           </div>
-          <p className="text-xs text-[color:var(--theme-dim)] leading-relaxed">Unresolved threads taking up mental RAM. Closing them frees cognitive space.</p>
+          <p className="text-xs text-[color:var(--theme-dim)] leading-relaxed">Open threads on your mind. Closing them frees cognitive space.</p>
           <div className="space-y-2">
             {openLoops.map((loop, i) => (
               <div key={i} className="flex items-start gap-3 p-3 bg-[color:var(--theme-card)] rounded-xl border border-[color:var(--theme-border)]">
@@ -167,7 +167,7 @@ export default function SanctuaryPage() {
 
       {/* Breathing exercises */}
       <div className="space-y-3">
-        <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)]">Grounding Exercises</p>
+        <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)]">Reset Exercises</p>
         <div className="grid md:grid-cols-3 gap-3">
           <BreathingExercise name="Box Breathing" desc="4-4-4-4 rhythm to de-escalate stress and anchor focus." pattern="4-4-4-4" />
           <BreathingExercise name="Relaxation Breath" desc="4-7-8 pattern to activate the parasympathetic system." pattern="4-7-8" />

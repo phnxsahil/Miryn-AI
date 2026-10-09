@@ -30,7 +30,7 @@ export default function IdentityCard() {
       
       <header className="mb-10">
         <h1 className="text-4xl font-bold tracking-tight text-primary">Identity</h1>
-        <div className="mt-2 text-sm text-muted font-bold uppercase tracking-widest">Version {identity.version}</div>
+        {identity.version > 1 && <div className="mt-2 text-sm text-muted font-bold uppercase tracking-widest">Version {identity.version}</div>}
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

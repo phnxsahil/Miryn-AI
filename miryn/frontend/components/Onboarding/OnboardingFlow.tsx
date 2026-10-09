@@ -81,7 +81,7 @@ export default function OnboardingFlow() {
     );
   };
 
-  const handleSaveCalibration = async () => {
+  const handleSavePersonalization = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     setStatus(null);
@@ -105,7 +105,7 @@ export default function OnboardingFlow() {
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (e: unknown) {
-      setStatus(getErrorMessage(e, "Your calibration could not be saved. Please try again."));
+      setStatus(getErrorMessage(e, "Your personalization could not be saved. Please try again."));
     } finally {
       setIsSubmitting(false);
     }
@@ -120,15 +120,15 @@ export default function OnboardingFlow() {
         <header className="space-y-4 pb-6 border-b border-[color:var(--miryn-card-border)]">
           <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[color:var(--accent-wash)] border border-[color:var(--accent-edge)] text-xs text-[color:var(--miryn-moss)] font-medium">
             <Sliders size={14} />
-            <span>Companion Dynamic Tuning</span>
+            <span>Personalize Miryn</span>
           </div>
 
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-[color:var(--miryn-parchment)]">
-            Companion <span className="text-[color:var(--miryn-moss)]">Calibration</span>
+            Make Miryn <span className="text-[color:var(--miryn-moss)]">yours</span>
           </h1>
 
           <p className="text-base md:text-lg text-[color:var(--miryn-parchment-muted)] editorial-italic leading-relaxed">
-            Fine-tune how Miryn listens, reflects, and attunes to your emotional and cognitive rhythms.
+            Choose how Miryn talks with you. You can change this anytime.
           </p>
         </header>
 
@@ -143,7 +143,7 @@ export default function OnboardingFlow() {
             >
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 size={16} className="text-[color:var(--miryn-moss)]" />
-                <span>Companion calibration saved. Miryn is now tuned to this conversational dynamic.</span>
+                <span>Personalization saved. Miryn will use this conversational style.</span>
               </div>
               <Link href="/chat" className="text-[color:var(--miryn-moss)] hover:underline font-semibold">
                 Go to Chat →
@@ -251,16 +251,16 @@ export default function OnboardingFlow() {
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2 text-xs text-[color:var(--theme-dim)]">
               <Shield size={12} className="text-[color:var(--miryn-moss)]" />
-              <span>Zero-knowledge client-encrypted calibration</span>
+              <span>Zero-knowledge client-encrypted personalization</span>
             </div>
 
             <button
               type="button"
-              onClick={handleSaveCalibration}
+              onClick={handleSavePersonalization}
               disabled={isSubmitting}
               className="px-6 py-2.5 rounded-xl bg-[color:var(--miryn-parchment)] text-[color:var(--miryn-warm-black)] font-semibold text-xs hover:bg-[color:var(--miryn-moss)] hover:text-black transition-all shadow-md disabled:opacity-50"
             >
-              {isSubmitting ? "Calibrating..." : "Apply Calibration"}
+              {isSubmitting ? "Saving..." : "Save personalization"}
             </button>
           </div>
         </section>
