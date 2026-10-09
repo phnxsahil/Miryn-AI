@@ -30,11 +30,11 @@ function AuthFooter() {
         Conversations are encrypted in storage. Review or forget saved memories anytime.
       </p>
       <p className="mt-2.5 flex items-center justify-center gap-3 text-xs text-[color:var(--theme-muted)]">
-        <Link href="/terms" className="underline decoration-white/10 underline-offset-4 transition-colors hover:text-[color:var(--theme-text)]">
+        <Link href="/terms" className="inline-flex min-h-11 items-center px-2 underline decoration-white/10 underline-offset-4 transition-colors hover:text-[color:var(--theme-text)]">
           Terms
         </Link>
         <span aria-hidden="true" className="text-[color:var(--theme-text)]/20">·</span>
-        <Link href="/privacy" className="underline decoration-white/10 underline-offset-4 transition-colors hover:text-[color:var(--theme-text)]">
+        <Link href="/privacy" className="inline-flex min-h-11 items-center px-2 underline decoration-white/10 underline-offset-4 transition-colors hover:text-[color:var(--theme-text)]">
           Privacy
         </Link>
       </p>
@@ -88,7 +88,7 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
         />
 
         <header className="p-8 lg:p-10 relative z-10">
-          <Link href="/" className="inline-flex rounded-sm transition-opacity hover:opacity-80">
+          <Link href="/" className="inline-flex min-h-11 items-center rounded-sm transition-opacity hover:opacity-80">
             <MirynLogo size={28} showText glow />
           </Link>
         </header>
@@ -123,7 +123,7 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
       {/* ── Right panel ── */}
       <section className="flex min-h-dvh flex-col justify-start bg-[color:var(--theme-bg)] px-5 py-6 sm:px-8 md:px-10 lg:px-16">
         <header className="flex justify-center py-4 md:hidden">
-          <Link href="/" className="rounded-sm transition-opacity hover:opacity-80">
+          <Link href="/" className="inline-flex min-h-11 items-center rounded-sm transition-opacity hover:opacity-80">
             <MirynLogo size={26} showText glow />
           </Link>
         </header>

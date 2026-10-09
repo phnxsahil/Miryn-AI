@@ -80,7 +80,7 @@ export default function ForgotPasswordPage() {
           </form>
 
           <div className="text-center mt-6">
-            <Link href="/login" className="inline-flex items-center gap-1.5 py-2 text-xs text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">
+            <Link href="/login" className="inline-flex min-h-11 items-center gap-1.5 px-2 text-[13px] text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">
               <ArrowLeft size={13} /> Back to log in
             </Link>
           </div>

@@ -340,11 +340,11 @@ export default function SignupPage() {
             />
             <label htmlFor="accept-terms" className="flex min-h-10 items-start text-[13px] leading-relaxed text-[color:var(--miryn-parchment-muted)]">
               I agree to the{" "}
-              <Link href="/terms" className="inline-block py-2 text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
+              <Link href="/terms" className="inline-flex min-h-11 items-center px-1 text-[13px] text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
                 Terms
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="inline-block py-2 text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
+              <Link href="/privacy" className="inline-flex min-h-11 items-center px-1 text-[13px] text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
                 Privacy Policy
               </Link>
               .
@@ -369,7 +369,7 @@ export default function SignupPage() {
 
       <p className="text-center md:text-left text-[13px] text-[color:var(--miryn-parchment-muted)] mt-8 pl-1">
         Already have an account?{" "}
-        <Link href="/login" className="inline-block py-2 text-[color:var(--miryn-moss)] font-medium hover:underline">
+        <Link href="/login" className="inline-flex min-h-11 items-center px-2 text-[color:var(--miryn-moss)] font-medium hover:underline">
           Log in
         </Link>
       </p>
