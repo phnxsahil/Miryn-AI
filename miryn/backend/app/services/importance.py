@@ -178,19 +178,16 @@ def clean_fact_text(sentence: str) -> str:
 
 
 def make_conversation_title(message: str) -> str:
-    normalized = normalize_fact(message)
-    if len(normalized.strip()) < 3:
+    normalized = " ".join(message.strip().split())
+    if len(normalized) < 3:
         return "New chat"
     first = re.split(r"(?<=[.!?])\s+", normalized, maxsplit=1)[0].strip().rstrip(".!?")
-    if "?" in first or normalized.lstrip().startswith(("what ", "how ", "why ", "when ", "where ", "who ", "can ", "could ", "should ", "is ", "are ")):
-        title = first.rstrip("?")
-    else:
-        title = clean_fact_text(first).split("; ", 1)[0]
-    title = title.strip()
+    title = first.strip()
     if len(title) < 3:
         return "New chat"
     if len(title) > 40:
-        title = title[:40].rsplit(" ", 1)[0].rstrip(" ,;:.-") + "…"
+        boundary = title[:40].rsplit(" ", 1)[0].rstrip(" ,;:.-")
+        title = (boundary or title[:40]) + "…"
     return title[:1].upper() + title[1:]
 
 
