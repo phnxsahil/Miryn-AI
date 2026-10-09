@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowDown, Lightbulb, Loader2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useChatStore } from "@/lib/store";
-import type { Message, Notification, ToolRun } from "@/lib/types";
+import type { Notification, ToolRun } from "@/lib/types";
 import { getErrorMessage } from "@/lib/utils";
 import MessageBubble from "./MessageBubble";
 import InputBox from "./InputBox";
