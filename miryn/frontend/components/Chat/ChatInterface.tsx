@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowDown, Lightbulb, X } from "lucide-react";
 import { api } from "@/lib/api";
@@ -26,10 +26,15 @@ export default function ChatInterface() {
   const router = useRouter();
   const idFromUrl = useSearchParams().get("id");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<AbortController | null>(null);
   const ownRouteRef = useRef<string | null>(null);
   const historyRequestRef = useRef(0);
   const pinnedRef = useRef(true);
+  const userScrolledUpRef = useRef(false);
+  const previousScrollTopRef = useRef(0);
+  const previousStreamingRef = useRef(false);
   const [pinned, setPinned] = useState(true);
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [savedIndex, setSavedIndex] = useState<number | null>(null);
@@ -119,12 +124,36 @@ export default function ChatInterface() {
   }, [secondaryPanelsReady, setConflicts, setInsights, setNotifications]);
 
   const jumpToLatest = useCallback(() => {
-    const area = scrollRef.current;
-    if (area) area.scrollTop = area.scrollHeight;
+    bottomRef.current?.scrollIntoView({ block: "end" });
     pinnedRef.current = true;
+    userScrolledUpRef.current = false;
+    if (scrollRef.current) previousScrollTopRef.current = scrollRef.current.scrollTop;
     setPinned(true);
   }, []);
-  useEffect(() => { if (pinnedRef.current) jumpToLatest(); }, [messages, jumpToLatest]);
+  useLayoutEffect(() => {
+    if (!pinnedRef.current) return;
+    bottomRef.current?.scrollIntoView({ block: "end" });
+  }, [messages, streaming]);
+  useLayoutEffect(() => {
+    if (!previousStreamingRef.current || streaming || userScrolledUpRef.current) {
+      previousStreamingRef.current = streaming;
+      return;
+    }
+    previousStreamingRef.current = false;
+    const frame = window.requestAnimationFrame(() => {
+      if (!userScrolledUpRef.current) bottomRef.current?.scrollIntoView({ block: "end" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [streaming]);
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (pinnedRef.current) bottomRef.current?.scrollIntoView({ block: "end" });
+    });
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, []);
   useEffect(() => () => requestRef.current?.abort(), []);
 
   const confirmSaved = async (id: string, assistantContent: string, assistantIndex: number) => {
@@ -242,11 +271,19 @@ export default function ChatInterface() {
         <div ref={scrollRef} onScroll={() => {
           const area = scrollRef.current;
           if (!area) return;
-          const atBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 80;
-          pinnedRef.current = atBottom;
-          setPinned(atBottom);
-        }} className="h-full overflow-y-auto px-4 py-6 md:px-8 md:py-8">
-          <div className="mx-auto w-full max-w-3xl">
+          const gap = area.scrollHeight - area.scrollTop - area.clientHeight;
+          if (area.scrollTop < previousScrollTopRef.current && gap > 80) {
+            userScrolledUpRef.current = true;
+            pinnedRef.current = false;
+            setPinned(false);
+          } else if (gap < 24) {
+            userScrolledUpRef.current = false;
+            pinnedRef.current = true;
+            setPinned(true);
+          }
+          previousScrollTopRef.current = area.scrollTop;
+        }} className="h-full overflow-y-auto px-4 pb-28 pt-6 md:px-8 md:pb-28 md:pt-8">
+          <div ref={contentRef} className="mx-auto w-full max-w-3xl">
             {loading && !streaming && messages.length === 0 && <p className="py-10 text-sm text-[color:var(--theme-muted)]">Loading conversation…</p>}
             {messages.length === 0 && !loading && !status && (
               <div className="flex min-h-[min(520px,60vh)] flex-col justify-center py-12">
@@ -260,7 +297,7 @@ export default function ChatInterface() {
             <div className="space-y-7" aria-live="off">
               {messages.map((message, index) => <MessageBubble key={message.timestamp + "-" + index} message={message} isStreaming={streaming && index === streamingIndex} saved={index === savedIndex} stopped={index === stoppedIndex} />)}
             </div>
-            <div className="h-8" />
+            <div ref={bottomRef} aria-hidden="true" className="h-px" />
           </div>
         </div>
         {!pinned && messages.length > 0 && <button type="button" onClick={jumpToLatest} className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] px-3 py-2 text-xs shadow-lg"><ArrowDown size={14} /> Jump to latest</button>}
