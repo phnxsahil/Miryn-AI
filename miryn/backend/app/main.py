@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.gzip import GZipMiddleware
 import logging
 import os
 from time import perf_counter
@@ -66,6 +67,7 @@ allow_origins.extend([
 allow_origins = list(dict.fromkeys(allow_origins))
 
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
