@@ -305,10 +305,9 @@ async def send_message(request: ChatRequest, user_id: str = Depends(get_current_
     await _enforce_message_rate_limit(user_id)
 
     if has_sql():
+        if not conversation_id:
+            conversation_id = _create_conversation_with_fallback(user_id, request.message[:50])
         with get_sql_session() as session:
-            if not conversation_id:
-                conversation_id = _create_conversation_with_fallback(user_id, request.message[:50], sql_session=session)
-
             try:
                 result = await orchestrator.handle_message(
                     user_id=user_id,
