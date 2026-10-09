@@ -110,6 +110,16 @@ class EmbeddingService:
         Returns:
             Tuple[List[float], str]: (embedding vector, source label).
         """
+        from app.services.llm_service import (
+            LLMService,
+            _gemini_quota_error,
+            _mark_global_quota_dead,
+            _retry_delay_seconds,
+        )
+
+        if LLMService.quota_dead():
+            return self._hash_embed(text), "hash_fallback"
+
         client = self._ensure_gemini()
         if client:
             try:
@@ -137,6 +147,9 @@ class EmbeddingService:
                             return self._compress(list(embedding)), "gemini"
                     except Exception as exc:
                         last_error = exc
+                        if _gemini_quota_error(exc):
+                            _mark_global_quota_dead(_retry_delay_seconds(exc))
+                            return self._hash_embed(text), "hash_fallback"
                         continue
                 if last_error:
                     self.logger.warning("Gemini embedding failed, fallback to hash: %s", last_error)
