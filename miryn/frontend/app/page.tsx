@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import LandingNav from "./landing/LandingNav";
 import styles from "./landing/LandingPage.module.css";
 
@@ -16,6 +17,40 @@ const moods = [
   ["Feeling blue", "It looks like something’s weighing on your mind.", "#8bb8ef"],
   ["Lost in thought", "Feeling a little anxious? Take a deep breath.", "#c5a4dd"],
 ] as const;
+
+const posts = [
+  ["Mental Health", "Sep 24, 2026", "The Quiet Mind: How Continuous Context Reduces Daily Anxiety & Cognitive Overload", "Discover why repeatedly re-explaining yourself causes decision fatigue, and how an AI companion that remembers your emotional rhythms fosters grounding.", "/landing/blog/persistent-memory-human-ai-collaboration", "/assets/A4rnasqJDMazGtLN9cqF0u3G37Y.webp"],
+  ["Personal Growth", "Sep 18, 2026", "Tracking the Arc: How Versioned Identity Models Illuminate Personal Evolution", "Explore how tracking versioned beliefs, recurring behavioral patterns, and open loops over weeks reveals genuine personal growth and mental clarity.", "/landing/blog/open-loops-accountability", "/assets/owwQD0I3Dmy0SkNNeVvRmInAiPg.webp"],
+  ["Technical Architecture", "Sep 10, 2026", "Under the Hood: 384-Dim pgvector, Zero-Knowledge Fernet & Sub-1.5s Recall", "A technical breakdown of our hybrid memory layer: combining Redis transient caches, 384-dim pgvector embeddings, and zero-knowledge Fernet encryption.", "/landing/blog/zero-knowledge-memory-architecture", "/assets/dLmIWoKYLcvi1tADPgJRWp5Xk.webp"],
+] as const;
+
+const faqs = [
+  ["What is Miryn AI?", "Miryn is a personal AI companion with an evolving identity model and persistent memory. It learns your preferences, tracks your goals, and remembers details across conversations."],
+  ["How does Miryn remember past conversations?", "Miryn uses a 3-tier memory pipeline—transient, 7-day vector episodic, and core long-term memory—to retrieve relevant context in real time whenever you talk."],
+  ["Is my conversation history private and secure?", "Yes. Stored memory logs and context payloads are encrypted using Fernet AES encryption standards. Your data belongs strictly to you and is never sold or shared."],
+  ["Can I view or delete what Miryn knows about me?", "Yes. You have complete control over your identity profile and can view, edit, or clear memories, open loops, or traits at any time from your account settings."],
+  ["How is Miryn different from standard AI assistants?", "Standard AI tools reset after every thread. Miryn runs an active identity reflection engine that synthesizes your habits, goals, and values across sessions."],
+  ["Is Miryn free to start?", "Yes. You can get started with Miryn for free and experience persistent AI companionship right away."],
+] as const;
+
+export const metadata: Metadata = {
+  title: "Miryn AI — Persistent Memory & Evolving AI Companion",
+  description: "Miryn is a private AI companion that remembers your goals, values, and patterns, then brings the right context back as you learn and evolve together.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Miryn AI — Persistent Memory & Evolving AI Companion",
+    description: "A private AI companion that remembers, learns, and evolves with you.",
+    url: "/",
+    type: "website",
+    images: [{ url: "/assets/YvyHGDMBNlHMvnGhZ52M3DnFDYc.webp", width: 849, height: 1200, alt: "Abstract Miryn AI memory texture" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Miryn AI — Persistent Memory & Evolving AI Companion",
+    description: "A private AI companion that remembers, learns, and evolves with you.",
+    images: ["/assets/YvyHGDMBNlHMvnGhZ52M3DnFDYc.webp"],
+  },
+};
 
 export default function LandingPage() {
   return (
@@ -134,8 +169,43 @@ export default function LandingPage() {
           </CapabilityRow>
         </div>
       </section>
+
+      <section id="insights" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
+        <p className="font-editorial text-sm uppercase tracking-[0.22em] text-[#A3A3A3]">INSIGHTS &amp; BLOG</p>
+        <div className="mt-5 flex flex-col justify-between gap-6 sm:flex-row sm:items-end"><h2 className="max-w-3xl font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Exploring the Future of Personal AI &amp; Memory</h2><a href="/landing/blog" className="inline-flex min-h-11 shrink-0 items-center font-editorial text-sm text-[#A3A3A3] hover:text-[#FAFAFA]">Explore All Insights →</a></div>
+        <div className="mt-12 grid gap-5 lg:grid-cols-3">
+          {posts.map(([category, date, title, excerpt, href, image]) => <a key={href} href={href} className="group rounded-3xl border border-white/10 bg-white/[0.03] p-3 transition-colors hover:border-white/25"><div className="relative aspect-[1.55] overflow-hidden rounded-2xl"><Image src={image} alt="" fill sizes="(max-width: 1024px) 90vw, 380px" className="object-cover transition-transform duration-500 group-hover:scale-105" /></div><div className="p-3"><p className="text-xs text-[#A3A3A3]">{category} <span className="px-1 text-[#525252]">·</span> {date}</p><h3 className="mt-4 font-editorial text-[22px] leading-tight text-[#FAFAFA]">{title}</h3><p className="mt-3 text-sm leading-6 text-[#A3A3A3]">{excerpt}</p><p className="mt-6 text-xs text-[#525252]">Miryn AI</p></div></a>)}
+        </div>
+      </section>
+
+      <section id="faq" className="mx-auto max-w-4xl px-5 py-20 sm:px-8 lg:py-28">
+        <p className="font-editorial text-sm uppercase tracking-[0.22em] text-[#A3A3A3]">FREQUENTLY ASKED QUESTIONS</p>
+        <h2 className="mt-5 font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Everything You Need to Know About Miryn</h2>
+        <div className="mt-12 space-y-2">
+          {faqs.map(([question, answer]) => <details key={question} className="group rounded-2xl border border-white/10 bg-white/[0.03]"><summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-5 px-5 font-editorial text-lg text-[#FAFAFA] [&::-webkit-details-marker]:hidden"><span>{question}</span><span className="text-2xl font-ui font-light text-[#525252] transition-transform group-open:rotate-45">+</span></summary><p className="max-w-3xl px-5 pb-5 text-sm leading-7 text-[#A3A3A3]">{answer}</p></details>)}
+        </div>
+      </section>
+
+      <section id="contact" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
+        <div className="rounded-[2rem] border border-white/10 bg-[#151515] px-6 py-16 text-center sm:px-12 lg:py-24"><h2 className="font-editorial text-4xl tracking-[-0.04em] sm:text-6xl">We’d Love to Hear From You</h2><p className="mx-auto mt-5 max-w-xl text-base leading-7 text-[#A3A3A3] sm:text-lg">Have questions, suggestions, or feedback about Miryn? Our team is here to assist you.</p><a href="mailto:hello@miryn.ai" className="mt-8 inline-flex min-h-12 items-center justify-center rounded-full bg-[#FAFAFA] px-7 font-editorial text-base text-[#0A0A0A]">Send Message</a></div>
+      </section>
+
+      <footer className="border-t border-white/10">
+        <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[1.5fr_1fr_1fr]">
+          <div><a href="/" className="font-editorial text-2xl text-[#FAFAFA]">Miryn AI</a><p className="mt-4 max-w-xs text-sm leading-6 text-[#A3A3A3]">Empowering Personal Growth Through Persistent Intelligence.</p></div>
+          <FooterColumn title="Sections" links={[["About", "#about"], ["Features", "#features"], ["Insights", "#insights"], ["FAQ's", "#faq"], ["Contact", "#contact"]]} />
+          <FooterColumn title="Pages" links={[["Insights", "/landing/blog"], ["Privacy Policy", "/privacy"], ["Terms of Service", "/terms"], ["Security Overview", "/privacy"], ["Contact", "#contact"]]} />
+        </div>
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 border-t border-white/10 px-5 py-6 text-xs text-[#525252] sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>Miryn AI</span><span>© 2026 Miryn AI Inc. All rights reserved. · Designed &amp; Built by <a href="https://sharmasahil.me" target="_blank" rel="noopener noreferrer" className="text-[#A3A3A3] underline underline-offset-4">Sahil Sharma</a></span></div>
+      </footer>
+
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faqs.map(([name, text]) => ({ "@type": "Question", name, acceptedAnswer: { "@type": "Answer", text } })) }) }} />
     </main>
   );
+}
+
+function FooterColumn({ title, links }: { title: string; links: readonly (readonly [string, string])[] }) {
+  return <div><p className="font-editorial text-base text-[#FAFAFA]">{title}</p><div className="mt-3 flex flex-col items-start">{links.map(([label, href]) => <a key={`${title}-${label}`} href={href} className="flex min-h-11 items-center text-sm text-[#A3A3A3] transition-colors hover:text-[#FAFAFA]">{label}</a>)}</div></div>;
 }
 
 function ChartCard({ title, label, ticks, points, area }: { title: string; label: string; ticks: string[]; points: string; area: string }) {
