@@ -28,12 +28,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Depth System ────────────────────────────────────────────────────────────
-   Layer 0 — Ground Canvas: #212121 (neutral charcoal)
-   Layer 1 — Inset/Sidebar: #171717 (deep neutral)
-   Layer 2 — Surface/Card:  #2f2f2f (elevated interaction surface)
-   Primary Action:          #ffffff (solid white with black text)
-──────────────────────────────────────────────────────────────────────────── */
+/* --- Theme tokens ------------------------------------------------------
+  One source of truth: --bg-page, --bg-panel, --text-primary, --text-dim,
+  --accent, --border. All --theme-* names are aliases of these (or derived
+  surfaces: sidebar, card, input). Components must use var(--...) and never
+  hard-code colors. Dark: page #232321, panel #292926, card #302f2b,
+  sidebar #1c1c1a, text #f2efe7, dim text #b7b3a9, accent #0ea782.
+  Light: page #f5f2e9, panel #fbf9f2, text #20211d, dim text #655f53,
+  accent #61724f. Tints of the accent come from --accent-wash*, --accent-edge,
+  --accent-glow (built on --theme-accent-rgb). Add a new color by adding a
+  token here, not a literal in a component.
+------------------------------------------------------------------------ */
 
 :root {
   --font-editorial: "Gambarino", Georgia, "Times New Roman", serif;
