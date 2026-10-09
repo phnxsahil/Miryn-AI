@@ -5,7 +5,7 @@ import os
 DB_URL = "sqlite:///./miryn_demo.db"
 engine = sqlalchemy.create_engine(DB_URL)
 
-sql_file = "migrations/000_sqlite_init.sql"
+sql_file = "sqlite/000_sqlite_init.sql"
 if not os.path.exists(sql_file):
     print(f"Error: {sql_file} not found")
     exit(1)

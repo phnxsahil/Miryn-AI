@@ -53,15 +53,22 @@ Frontend:
 
 ### 2) Apply database schema
 
-If you start Postgres via Docker Compose for the first time, migrations are automatically applied from `backend/migrations`.
+- Fresh Docker volume: `docker compose -f miryn/docker-compose.yml up -d postgres` applies `backend/migrations/001..011` automatically (only when the volume is empty).
+- Existing volume: initdb does not run again, so apply new migrations manually. All migrations are idempotent, so re-running is safe:
 
-If the container already existed, run:
+  ```sh
+  docker compose -f miryn/docker-compose.yml exec -T postgres sh -c 'for f in /docker-entrypoint-initdb.d/*.sql; do echo "== $f"; psql -U postgres -d miryn -v ON_ERROR_STOP=1 -q -f "$f" || exit 1; done'
+  ```
 
-```
-docker compose -f miryn/docker-compose.yml exec -T postgres psql -U postgres -d miryn -f /docker-entrypoint-initdb.d/001_init.sql
-```
+  On PowerShell, run each file separately if the shell loop is awkward, for example:
 
-If using Supabase, run `backend/migrations/001_init.sql` in the Supabase SQL editor.
+  ```sh
+  docker compose -f miryn/docker-compose.yml exec -T postgres psql -U postgres -d miryn -f /docker-entrypoint-initdb.d/011_memory_facts.sql
+  ```
+
+  Run files `002` through `011` in order. If the database user or name differs from `postgres`/`miryn`, use `POSTGRES_USER` and `POSTGRES_DB` from `.env`.
+- Supabase: run the files in `backend/migrations` in order in the SQL editor, starting with `001`.
+- SQLite demo only: `python init_db.py` (uses `backend/sqlite/000_sqlite_init.sql`).
 
 ### 3) Run with Docker Compose
 
