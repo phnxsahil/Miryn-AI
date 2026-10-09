@@ -589,6 +589,10 @@ class ApiClient {
     return this.request("/chat/sanctuary/persona") as Promise<SanctuaryPersona>;
   }
 
+  async getSanctuaryData(): Promise<SanctuaryPersona> {
+    return this.getSanctuaryPersona();
+  }
+
   async postSanctuaryCheckin(payload: { emotion: string; energy?: string; notes?: string }): Promise<SanctuaryCheckinResponse> {
     return this.request("/chat/sanctuary/checkin", {
       method: "POST",

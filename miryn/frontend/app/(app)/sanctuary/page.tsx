@@ -2,21 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import type { SanctuaryPersona } from "@/lib/types";
 import { Heart, Brain, Zap, Wind, RefreshCw, ChevronRight } from "lucide-react";
 import LoadingState from "@/components/ui/LoadingState";
 import Link from "next/link";
-
-interface SanctuaryData {
-  summary?: string;
-  current_life_season?: string;
-  current_values?: string[];
-  active_open_loops?: { description?: string; title?: string }[];
-  beliefs?: unknown[];
-  patterns?: unknown[];
-  conflicts?: unknown[];
-  emotional_baseline?: string;
-  cognitive_load?: string;
-}
 
 function BreathingExercise({ name, desc, pattern }: { name: string; desc: string; pattern: string }) {
   const [active, setActive] = useState(false);
@@ -57,13 +46,13 @@ function BreathingExercise({ name, desc, pattern }: { name: string; desc: string
 }
 
 export default function SanctuaryPage() {
-  const [data, setData] = useState<SanctuaryData | null>(null);
+  const [data, setData] = useState<SanctuaryPersona | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = async () => {
     try {
-      const d = await api.getSanctuaryData?.() as SanctuaryData | null;
+      const d = await api.getSanctuaryData();
       setData(d);
     } catch { setData(null); }
     finally { setLoading(false); setRefreshing(false); }
@@ -73,13 +62,13 @@ export default function SanctuaryPage() {
 
   if (loading) return <LoadingState label="Loading your sanctuary—" />;
 
-  const openLoops = data?.active_open_loops?.map(l => l.description || l.title || "").filter(Boolean) ?? [];
-  const values = data?.current_values ?? [];
+  const openLoops = data?.active_open_loops?.map(l => l.topic).filter(Boolean) ?? [];
+  const values = data?.core_anchors?.map(anchor => anchor.label) ?? [];
   const hasLearnedData = Boolean(data && (
     openLoops.length > 0 ||
-    data.beliefs?.length ||
-    data.patterns?.length ||
-    data.conflicts?.length
+    data.beliefs.length ||
+    data.patterns.length ||
+    data.conflicts.length
   ));
 
   return (
@@ -109,8 +98,8 @@ export default function SanctuaryPage() {
       {/* Status cards */}
       <div className="grid gap-3 md:grid-cols-3">
         {[
-          { label: "Emotional Baseline", value: data?.emotional_baseline || "Grounded", icon: Heart, color: "var(--theme-accent)" },
-          { label: "Cognitive Load", value: data?.cognitive_load || "Light", icon: Brain, color: "var(--theme-accent)" },
+          { label: "Emotional Baseline", value: data?.primary_emotion || "", icon: Heart, color: "var(--theme-accent)" },
+          { label: "Cognitive Load", value: data?.cognitive_load || "", icon: Brain, color: "var(--theme-accent)" },
           { label: "Open Loops", value: `${openLoops.length} active`, icon: Zap, color: "var(--accent)" },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-2xl p-5">
@@ -124,18 +113,18 @@ export default function SanctuaryPage() {
       </div>
 
       {/* Life season */}
-      {data?.current_life_season && (
+      {data?.life_season && (
         <div className="bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-2xl p-5">
           <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)] mb-2">Current Life Season</p>
-          <p className="text-sm text-[color:var(--theme-muted)] leading-relaxed italic">&ldquo;{data.current_life_season}&rdquo;</p>
+          <p className="text-sm text-[color:var(--theme-muted)] leading-relaxed italic">&ldquo;{data.life_season}&rdquo;</p>
         </div>
       )}
 
       {/* Summary */}
-      {data?.summary && (
+      {data?.grounding_recommendation && (
         <div className="bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-2xl p-5">
           <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)] mb-2">Living Mirror</p>
-          <p className="text-sm text-[color:var(--theme-muted)] leading-relaxed">{data.summary}</p>
+          <p className="text-sm text-[color:var(--theme-muted)] leading-relaxed">{data.grounding_recommendation}</p>
         </div>
       )}
 

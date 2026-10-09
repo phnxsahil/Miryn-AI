@@ -103,7 +103,7 @@ export default function PrivacyPolicy() {
     <div className="min-h-dvh bg-[color:var(--miryn-warm-black)] font-ui text-[color:var(--text-primary)] antialiased">
       <nav className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[color:var(--miryn-card-border)] bg-[rgba(11,12,9,0.9)] px-6 backdrop-blur lg:px-12">
         <Link href="/" className="rounded-sm transition-opacity hover:opacity-80">
-          <MirynLogo size={22} showText isDark />
+          <MirynLogo size={22} showText />
         </Link>
         <Link href="/" className="text-[13px] text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">
           ← Back to home
