@@ -77,16 +77,45 @@ export default function ChatInterface() {
   }, [secondaryPanelsReady, setPendingTools, setNotifications]);
   useEffect(() => {
     if (!secondaryPanelsReady) return;
-    const source = new EventSource(api.getChatEventsUrl());
-    source.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (payload.type === "reflection.ready") setInsights(payload.payload || null);
-        if (payload.type === "identity.conflict") setConflicts(payload.payload || []);
-        if (payload.type === "notification.new") setNotifications((prev) => [payload.payload as Notification, ...prev]);
-      } catch { /* Ignore malformed background events. */ }
+    let active = true;
+    let retryDelay = 1000;
+    let retryTimer: number | null = null;
+    let controller: AbortController | null = null;
+
+    const connect = async () => {
+      while (active) {
+        controller = new AbortController();
+        try {
+          for await (const payload of api.chatEvents(controller.signal)) {
+            if (!active) return;
+            retryDelay = 1000;
+            if (payload.type === "reflection.ready") setInsights(payload.payload || null);
+            if (payload.type === "identity.conflict") {
+              const conflictPayload = Array.isArray(payload.payload)
+                ? payload.payload as Array<{ statement: string; conflict_with: string; severity?: number }>
+                : [];
+              setConflicts(conflictPayload);
+            }
+            if (payload.type === "notification.new") setNotifications((prev) => [payload.payload as Notification, ...prev]);
+          }
+        } catch (error) {
+          if (!active || controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) return;
+        }
+        if (!active) return;
+        await new Promise<void>((resolve) => {
+          retryTimer = window.setTimeout(resolve, retryDelay);
+        });
+        retryTimer = null;
+        retryDelay = Math.min(retryDelay * 2, 15000);
+      }
     };
-    return () => source.close();
+
+    void connect();
+    return () => {
+      active = false;
+      controller?.abort();
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
+    };
   }, [secondaryPanelsReady, setConflicts, setInsights, setNotifications]);
 
   const jumpToLatest = useCallback(() => {

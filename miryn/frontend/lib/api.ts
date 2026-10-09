@@ -417,9 +417,71 @@ class ApiClient {
     }
   }
 
-  getChatEventsUrl(): string {
-    if (!this.token) this.loadToken();
-    return API_URL + "/chat/events/stream" + (this.token ? "?token=" + encodeURIComponent(this.token) : "");
+  async *chatEvents(signal?: AbortSignal): AsyncGenerator<Record<string, unknown>> {
+    if (!this.token) {
+      this.loadToken();
+    }
+
+    const send = () => fetch(`${API_URL}/chat/events/stream`, {
+      headers: {
+        Accept: "text/event-stream",
+        ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+      },
+      signal,
+    });
+    let res: Response;
+    try {
+      res = await send();
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      throw new Error("Could not connect to Miryn events.");
+    }
+
+    if ((res.status === 401 || res.status === 403) && this.refreshTokenValue && !signal?.aborted) {
+      try {
+        const refreshed = await this.refreshSession();
+        this.setSession(refreshed);
+        res = await send();
+      } catch {
+        this.setSession(null);
+        throw new Error("Session expired. Please log in again.");
+      }
+    }
+
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        this.clearToken();
+        throw new Error("Session expired. Please log in again.");
+      }
+      throw new Error((await this.parseError(res)) || "Event stream unavailable.");
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) {
+      throw new Error("Event stream unavailable");
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer = (buffer + decoder.decode(value, { stream: true })).replace(/\r\n/g, "\n");
+        const frames = buffer.split("\n\n");
+        buffer = frames.pop() || "";
+        for (const frame of frames) {
+          const data = frame
+            .split("\n")
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.slice(5).trimStart())
+            .join("\n");
+          if (data) yield JSON.parse(data) as Record<string, unknown>;
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
   }
 
   async getChatHistory(conversationId: string) {

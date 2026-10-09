@@ -1,7 +1,3 @@
-"use client";
-
-import React from "react";
-
 export default function LandingPage() {
   return (
     <main className="fixed inset-0 w-screen h-[100dvh] overflow-hidden bg-[color:var(--theme-bg)]">

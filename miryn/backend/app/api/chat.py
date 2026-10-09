@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 
@@ -12,7 +12,7 @@ from app.core.cache import drain_events, publish_event
 from app.core.database import get_db, get_sql_session, has_sql
 from app.core.cache import redis_client
 from app.core.encryption import decrypt_text
-from app.core.security import get_current_user_id, get_user_id_from_token
+from app.core.security import get_current_user_id
 from app.config import settings
 from app.schemas.chat import ChatRequest, ChatResponse, PinUpdate, TitleUpdate
 from app.services.importance import score_message_heuristic
@@ -428,18 +428,10 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
 
 
 @router.get("/events/stream")
-async def stream_events(
-    token: str = Query(...),
-):
-    # ponytail: SSE can't use Authorization headers, so we require a token query param.
-    # Removed raw user_id param — that was an IDOR vulnerability.
-    resolved_user_id = get_user_id_from_token(token)
-    if not resolved_user_id:
-        raise HTTPException(status_code=401, detail="Invalid or missing chat events token")
-
+async def stream_events(user_id: str = Depends(get_current_user_id)):
     async def event_generator():
         while True:
-            events = await asyncio.to_thread(drain_events, resolved_user_id, 50)
+            events = await asyncio.to_thread(drain_events, user_id, 50)
             if events:
                 for event in events:
                     yield f"data: {json.dumps(event)}\n\n"
