@@ -4,7 +4,6 @@ from typing import Any, Dict, List
 
 from sqlalchemy import text
 
-from app.core.cache import publish_event, enqueue_job
 from app.core.database import get_db, has_sql, get_sql_session
 
 

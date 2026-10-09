@@ -33,7 +33,7 @@ class ReflectionEngine:
 
         # ponytail: one LLM call instead of three — 66% cost reduction on reflection
         entities, emotions, topics = await self._extract_all(conversation)
-        patterns = await self._detect_patterns(user_id, topics, emotions)
+        patterns = await self._detect_patterns(user_id, topics)
         insights = await self._generate_insights(patterns)
 
         return {
@@ -143,14 +143,13 @@ class ReflectionEngine:
         parsed = self.llm.parse_json_response(response)
         return parsed if isinstance(parsed, list) else []
 
-    async def _detect_patterns(self, user_id: str, current_topics: List[str], current_emotions: Dict) -> Dict:
+    async def _detect_patterns(self, user_id: str, current_topics: List[str]) -> Dict:
         """
         Detects topic co-occurrences and temporal emotional patterns from a user's recent message history.
         
         Parameters:
             user_id (str): Identifier of the user whose message history will be analyzed.
             current_topics (List[str]): Current conversation topics to compare against historical topic pairs.
-            current_emotions (Dict): Current conversation emotion summary (used together with historical emotions to derive temporal patterns).
         
         Returns:
             Dict: A dictionary with two keys:
