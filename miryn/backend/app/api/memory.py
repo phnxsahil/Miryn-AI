@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 import json
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from app.core.database import get_db, has_sql, get_sql_session
@@ -102,11 +103,11 @@ def export_user_data(
     identity = identity_engine.get_identity(user_id)
     memories = _get_all_memories(user_id, limit, offset)
     return JSONResponse(
-        content={
+        content=jsonable_encoder({
             "identity": identity,
             "memories": memories,
             "exported_at": datetime.now(timezone.utc).isoformat(),
-        },
+        }),
         headers={"Content-Disposition": "attachment; filename=miryn_data.json"},
     )
 

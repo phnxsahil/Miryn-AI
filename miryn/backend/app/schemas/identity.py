@@ -1,4 +1,5 @@
-from typing import Optional, Dict, Any, List
+from datetime import datetime
+from typing import Union, Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 
 
@@ -13,7 +14,7 @@ class IdentityOpenLoop(BaseModel):
     topic: str
     status: str = "open"
     importance: int = 1
-    last_mentioned: Optional[str] = None
+    last_mentioned: Optional[Union[datetime, str]] = None
 
 
 class IdentityPattern(BaseModel):

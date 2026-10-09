@@ -1,6 +1,7 @@
 """Background worker for reflection tasks."""
 
 import asyncio
+import json
 from app.services.reflection_engine import ReflectionEngine
 from app.services.llm_service import LLMService
 from app.services.identity_engine import IdentityEngine
@@ -50,4 +51,5 @@ def analyze_reflection(user_id: str, conversation: dict):
         identity_engine.track_open_loop(user_id, topic, importance=importance)
 
     publish_event(user_id, {"type": "reflection.ready", "payload": result})
-    return result
+    # Celery's JSON serializer rejects datetimes
+    return json.loads(json.dumps(result, default=str))

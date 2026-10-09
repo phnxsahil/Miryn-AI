@@ -423,7 +423,7 @@ def list_conversations(user_id: str = Depends(get_current_user_id)):
                     SELECT c.id, c.title, c.is_pinned, c.created_at, c.updated_at, COUNT(m.id) AS message_count
                     FROM conversations c
                     LEFT JOIN messages m ON m.conversation_id = c.id
-                    WHERE c.user_id = :user_id AND (c.is_deleted = 0 OR c.is_deleted = false OR c.is_deleted IS NULL)
+                    WHERE c.user_id = :user_id AND (c.is_deleted = false OR c.is_deleted IS NULL)
                     GROUP BY c.id, c.title, c.is_pinned, c.created_at, c.updated_at
                     ORDER BY c.updated_at DESC
                     """
@@ -481,7 +481,7 @@ def update_pin(conversation_id: str, payload: PinUpdate, user_id: str = Depends(
         with get_sql_session() as session:
             session.execute(
                 text("UPDATE conversations SET is_pinned = :pinned, updated_at = :now WHERE id = :cid"),
-                {"pinned": 1 if payload.pinned else 0, "cid": conversation_id, "now": now},
+                {"pinned": bool(payload.pinned), "cid": conversation_id, "now": now},
             )
     else:
         get_db().table("conversations").update({"is_pinned": payload.pinned, "updated_at": now}).eq("id", conversation_id).execute()
@@ -495,8 +495,8 @@ def clear_all_conversations(user_id: str = Depends(get_current_user_id)):
     if has_sql():
         with get_sql_session() as session:
             session.execute(
-                text("UPDATE conversations SET is_deleted = 1, updated_at = :now WHERE user_id = :user_id"),
-                {"user_id": user_id, "now": now},
+                text("UPDATE conversations SET is_deleted = :deleted, updated_at = :now WHERE user_id = :user_id"),
+                {"user_id": user_id, "now": now, "deleted": True},
             )
             return {"status": "success", "cleared": True}
     db = get_db()
@@ -511,8 +511,8 @@ def delete_conversation(conversation_id: str, user_id: str = Depends(get_current
     if has_sql():
         with get_sql_session() as session:
             session.execute(
-                text("UPDATE conversations SET is_deleted = 1, updated_at = :now WHERE id = :cid"),
-                {"cid": conversation_id, "now": now},
+                text("UPDATE conversations SET is_deleted = :deleted, updated_at = :now WHERE id = :cid"),
+                {"cid": conversation_id, "now": now, "deleted": True},
             )
     else:
         get_db().table("conversations").update({"is_deleted": True, "updated_at": now}).eq("id", conversation_id).execute()

@@ -188,17 +188,18 @@ class LLMService:
         full_prompt = self._build_user_prompt(context_text, user_message)
 
         if self.provider == "openai":
-            async with self.client.chat.completions.stream(
+            stream = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": full_prompt},
                 ],
                 max_tokens=500,
-            ) as stream:
-                async for chunk in stream:
-                    if chunk.choices[0].delta.content:
-                        yield chunk.choices[0].delta.content
+                stream=True,
+            )
+            async for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
             return
 
         if self.provider == "anthropic":

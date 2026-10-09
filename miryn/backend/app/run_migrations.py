@@ -30,6 +30,9 @@ def main():
         sys.exit(0)
 
     sql_files = sorted(migrations_dir.glob("*.sql"))
+    if not database_url.startswith("sqlite"):
+        # 000_sqlite_init.sql is SQLite-only and fails on Postgres
+        sql_files = [f for f in sql_files if "sqlite" not in f.name]
     if not sql_files:
         print("No migration files found")
         sys.exit(0)
