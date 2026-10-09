@@ -1,9 +1,10 @@
 import Image from "next/image";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { Metadata } from "next";
 import HeroCards from "./landing/HeroCards";
 import LandingNav from "./landing/LandingNav";
 import MoodCarousel from "./landing/MoodCarousel";
+import Reveal from "./landing/Reveal";
 import SpectrumOrb from "./landing/SpectrumOrb";
 import ToolIcons from "./landing/ToolIcons";
 import WaveChart from "./landing/WaveChart";
@@ -85,36 +86,42 @@ export default function LandingPage() {
         <ToolIcons />
       </section>
 
-      <section id="about" className="mx-auto grid max-w-6xl gap-10 px-5 py-20 sm:px-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center lg:gap-20 lg:py-28">
-        <div>
-          <p className="font-editorial text-sm uppercase tracking-[0.22em] text-[#A3A3A3]">ABOUT MIRYN</p>
-          <h2 className="mt-5 font-editorial text-4xl leading-tight tracking-[-0.03em] sm:text-5xl">A companion that keeps the thread.</h2>
+      <section id="about" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
+        <div className="about-intro">
+          <Reveal className="section-heading section-heading--center">
+            <p className="section-eyebrow section-eyebrow--about"><i />ABOUT MIRYN</p>
+          </Reveal>
+          <Reveal as="p" className="about-reveal mt-8 font-editorial text-3xl leading-[1.25] tracking-[-0.03em] text-[#FAFAFA] sm:text-4xl">
+            {"Traditional AI tools reset every time you close the tab. Miryn is different. We built Miryn around an evolving identity engine that learns who you are over time—tracking your core beliefs, behavior patterns, emotions, and unresolved goals so every interaction feels deeply personal and continuous.".split(" ").map((word, index) => <span className="about-word" style={{ "--word-index": index } as CSSProperties} key={`${word}-${index}`}>{word} </span>)}
+          </Reveal>
         </div>
-        <div className="grid gap-7 sm:grid-cols-[.9fr_1.1fr] sm:items-center">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-3xl border border-white/10 bg-[#151515]">
+        <div className="about-second-row mt-14 grid gap-8 lg:grid-cols-[.85fr_1.15fr] lg:items-center lg:gap-20">
+          <Reveal>
+            <h2 className="font-editorial text-4xl leading-tight tracking-[-0.03em] sm:text-5xl">A companion that keeps the thread.</h2>
+          </Reveal>
+          <Reveal>
+          <div className="relative aspect-[16/9] overflow-hidden rounded-3xl border border-white/10 bg-[#151515] sm:aspect-[4/3]">
             <Image src="/assets/A4rnasqJDMazGtLN9cqF0u3G37Y.webp" alt="Soft abstract waves" fill sizes="(max-width: 640px) 90vw, 360px" className="object-cover opacity-75" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A]/80 via-transparent to-white/10" />
             <span className="absolute bottom-5 left-5 font-editorial text-lg">Memory, with a pulse.</span>
           </div>
-          <p className="text-base leading-8 text-[#A3A3A3] sm:text-lg">
-            Traditional AI tools reset every time you close the tab. Miryn is different. We built Miryn around an evolving identity engine that learns who you are over time—tracking your core beliefs, behavior patterns, emotions, and unresolved goals so every interaction feels deeply personal and continuous.
-          </p>
+          </Reveal>
         </div>
       </section>
 
       <section id="features" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
-        <div className="max-w-3xl">
-          <p className="font-editorial text-sm uppercase tracking-[0.22em] text-[#A3A3A3]">CORE HIGHLIGHTS</p>
+        <Reveal className="max-w-3xl">
+          <p className="section-eyebrow section-eyebrow--highlights"><i />CORE HIGHLIGHTS</p>
           <h2 className="mt-5 font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Core systems for continuous understanding</h2>
-        </div>
+        </Reveal>
 
         <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map(([title, value, description]) => (
-            <article key={title} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+          {stats.map(([title, value, description], index) => (
+            <Reveal as="article" key={title} delay={index * 70} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
               <h3 className="min-h-10 text-[13.5px] leading-5 text-[#A3A3A3]">{title}</h3>
               <p className="mt-5 font-editorial text-5xl tracking-[-0.04em] text-[#FAFAFA]">{value}</p>
               <p className="mt-3 text-[13px] leading-5 text-[#A3A3A3]/75">{description}</p>
-            </article>
+            </Reveal>
           ))}
         </div>
 
@@ -125,8 +132,10 @@ export default function LandingPage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
-        <p className="font-editorial text-sm uppercase tracking-[0.22em] text-[#A3A3A3]">CORE CAPABILITIES</p>
-        <h2 className="mt-5 max-w-3xl font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Everything You Need in a Lifelong AI Companion</h2>
+        <Reveal>
+          <p className="section-eyebrow section-eyebrow--capabilities"><i />CORE CAPABILITIES</p>
+          <h2 className="mt-5 max-w-3xl font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Everything You Need in a Lifelong AI Companion</h2>
+        </Reveal>
 
         <div className="mt-16 space-y-24 lg:space-y-32">
           <CapabilityRow title="Personality That Adapts to You" copy="Miryn logs versioned traits, values, core beliefs, and emotional nuances. Over time, Miryn tailors its communication style to match your preferences and emotional state.">
@@ -175,34 +184,34 @@ export default function LandingPage() {
       </section>
 
       <section id="insights" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
-        <p className="font-editorial text-sm uppercase tracking-[0.22em] text-[#A3A3A3]">INSIGHTS &amp; BLOG</p>
+        <Reveal><p className="section-eyebrow section-eyebrow--insights"><i />INSIGHTS &amp; BLOG</p></Reveal>
         <div className="mt-5 flex flex-col justify-between gap-6 sm:flex-row sm:items-end"><h2 className="max-w-3xl font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Exploring the Future of Personal AI &amp; Memory</h2><a href="/landing/blog/index.html" className="inline-flex min-h-11 shrink-0 items-center font-editorial text-sm text-[#A3A3A3] hover:text-[#FAFAFA]">Explore All Insights →</a></div>
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
-          {posts.map(([category, date, title, excerpt, href, image], index) => <a key={href} href={href} className="group rounded-3xl border border-white/10 bg-white/[0.03] p-3 transition-colors hover:border-white/25"><div className="relative aspect-[1.55] overflow-hidden rounded-2xl">{index === 2 ? <div className="blog-art blog-art--hood" aria-hidden="true" /> : <Image src={image} alt="" fill sizes="(max-width: 1024px) 90vw, 380px" className="object-cover transition-transform duration-500 group-hover:scale-105" />}</div><div className="p-3"><p className="text-xs text-[#A3A3A3]">{category} <span className="px-1 text-[#525252]">·</span> {date}</p><h3 className="mt-4 font-editorial text-[22px] leading-tight text-[#FAFAFA]">{title}</h3><p className="mt-3 text-sm leading-6 text-[#A3A3A3]">{excerpt}</p><p className="mt-6 text-xs text-[#525252]">Miryn AI</p></div></a>)}
+          {posts.map(([category, date, title, excerpt, href, image], index) => <Reveal key={href} delay={index * 70}><a href={href} className="group block rounded-3xl border border-white/10 bg-white/[0.03] p-3 transition-colors hover:border-white/25"><div className="relative aspect-[1.55] overflow-hidden rounded-2xl">{index === 2 ? <div className="blog-art blog-art--hood" aria-hidden="true" /> : <Image src={image} alt="" fill sizes="(max-width: 1024px) 90vw, 380px" className="object-cover transition-transform duration-500 group-hover:scale-105" />}</div><div className="p-3"><p className="text-xs text-[#A3A3A3]">{category} <span className="px-1 text-[#525252]">·</span> {date}</p><h3 className="mt-4 font-editorial text-[22px] leading-tight text-[#FAFAFA]">{title}</h3><p className="mt-3 text-sm leading-6 text-[#A3A3A3]">{excerpt}</p><p className="mt-6 text-xs text-[#525252]">Miryn AI</p></div></a></Reveal>)}
         </div>
       </section>
 
       <section id="faq" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
-        <p className="font-editorial text-sm uppercase tracking-[0.22em] text-[#A3A3A3]">FREQUENTLY ASKED QUESTIONS</p>
+        <Reveal><p className="section-eyebrow section-eyebrow--faq"><i />FREQUENTLY ASKED QUESTIONS</p></Reveal>
         <h2 className="mt-5 font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Everything You Need to Know About Miryn</h2>
         <div className="faq-grid mt-12">
           {[faqs.slice(0, 3), faqs.slice(3)].map((column, columnIndex) => <div className="faq-column" key={columnIndex}>
-            {column.map(([question, answer]) => <details key={question} className="faq-row group"><summary><span>{question}</span><span className="faq-plus" aria-hidden="true">+</span></summary><p>{answer}</p></details>)}
+            {column.map(([question, answer], index) => <Reveal key={question} delay={index * 70}><details className="faq-row group"><summary><span>{question}</span><span className="faq-plus" aria-hidden="true">+</span></summary><p>{answer}</p></details></Reveal>)}
           </div>)}
         </div>
       </section>
 
       <section id="contact" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
-        <div className="contact-card rounded-[2rem] border border-white/10 bg-[#151515] px-6 py-16 text-center sm:px-12 lg:py-24"><div className="contact-aurora" aria-hidden="true" /><h2 className="relative font-editorial text-4xl tracking-[-0.04em] sm:text-6xl">We’d Love to Hear From You</h2><p className="relative mx-auto mt-5 max-w-xl text-base leading-7 text-[#A3A3A3] sm:text-lg">Have questions, suggestions, or feedback about Miryn? Our team is here to assist you.</p><a href="mailto:hello@miryn.ai" className="relative mt-8 inline-flex min-h-12 items-center justify-center rounded-full bg-[#FAFAFA] px-7 font-editorial text-base text-[#0A0A0A]">Send Message</a></div>
+        <Reveal className="contact-card rounded-[2rem] border border-white/10 bg-[#151515] px-6 py-16 text-center sm:px-12 lg:py-24"><div className="contact-aurora" aria-hidden="true" /><h2 className="relative font-editorial text-4xl tracking-[-0.04em] sm:text-6xl">We’d Love to Hear From You</h2><p className="relative mx-auto mt-5 max-w-xl text-base leading-7 text-[#A3A3A3] sm:text-lg">Have questions, suggestions, or feedback about Miryn? Our team is here to assist you.</p><a href="mailto:hello@miryn.ai" className="relative mt-8 inline-flex min-h-12 items-center justify-center rounded-full bg-[#FAFAFA] px-7 font-editorial text-base text-[#0A0A0A]">Send Message</a></Reveal>
       </section>
 
       <footer className="border-t border-white/10">
         <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[1.5fr_1fr_1fr]">
-          <div><a href="/" className="font-editorial text-2xl text-[#FAFAFA]">Miryn AI</a><p className="mt-4 max-w-xs text-sm leading-6 text-[#A3A3A3]">Empowering Personal Growth Through Persistent Intelligence.</p></div>
-          <FooterColumn title="Sections" links={[["About", "#about"], ["Features", "#features"], ["Insights", "#insights"], ["FAQ's", "#faq"], ["Contact", "#contact"]]} />
-          <FooterColumn title="Pages" links={[["Insights", "/landing/blog/index.html"], ["Privacy Policy", "/privacy"], ["Terms of Service", "/terms"], ["Security Overview", "/privacy"], ["Contact", "#contact"]]} />
+          <Reveal><div><a href="/" className="font-editorial text-2xl text-[#FAFAFA]">Miryn AI</a><p className="mt-4 max-w-xs text-sm leading-6 text-[#A3A3A3]">Empowering Personal Growth Through Persistent Intelligence.</p></div></Reveal>
+          <Reveal><FooterColumn title="Sections" links={[["About", "#about"], ["Features", "#features"], ["Insights", "#insights"], ["FAQ's", "#faq"], ["Contact", "#contact"]]} /></Reveal>
+          <Reveal><FooterColumn title="Pages" links={[["Insights", "/landing/blog/index.html"], ["Privacy Policy", "/privacy"], ["Terms of Service", "/terms"], ["Security Overview", "/privacy"], ["Contact", "#contact"]]} /></Reveal>
         </div>
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 border-t border-white/10 px-5 py-6 text-xs text-[#525252] sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>Miryn AI</span><span>© 2026 Miryn AI Inc. All rights reserved. · Designed &amp; Built by <a href="https://sharmasahil.me" target="_blank" rel="noopener noreferrer" className="text-[#A3A3A3] underline underline-offset-4">Sahil Sharma</a></span></div>
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 border-t border-white/10 px-5 py-6 text-xs text-[#525252] sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>Miryn AI</span><span>© 2026 Miryn AI Inc. All rights reserved. · Designed &amp; Built by <a href="https://sharmasahil.me" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-[#A3A3A3] underline underline-offset-4">Sahil Sharma</a></span></div>
       </footer>
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faqs.map(([name, text]) => ({ "@type": "Question", name, acceptedAnswer: { "@type": "Answer", text } })) }) }} />
@@ -216,9 +225,9 @@ function FooterColumn({ title, links }: { title: string; links: readonly (readon
 
 function CapabilityRow({ title, copy, reverse = false, children }: { title: string; copy: string; reverse?: boolean; children: ReactNode }) {
   return (
-    <div className={`grid items-center gap-10 lg:grid-cols-2 lg:gap-20 ${reverse ? "lg:[&>*:first-child]:order-2" : ""}`}>
+    <Reveal as="div" className={`grid items-center gap-10 lg:grid-cols-2 lg:gap-20 ${reverse ? "lg:[&>*:first-child]:order-2" : ""}`}>
       <div><h3 className="font-editorial text-4xl leading-tight tracking-[-0.03em] text-[#FAFAFA]">{title}</h3><p className="mt-5 max-w-xl text-base leading-8 text-[#A3A3A3] sm:text-lg">{copy}</p></div>
       <div>{children}</div>
-    </div>
+    </Reveal>
   );
 }

@@ -72,6 +72,8 @@
   backdrop-filter: blur(14px);
 }
 
+.landing-nav--scrolled { background: rgba(15, 15, 15, .82); border-color: rgba(255, 255, 255, .14); }
+
 .landing-brand {
   display: inline-flex;
   min-height: 44px;
@@ -111,6 +113,28 @@
 .landing section {
   scroll-margin-top: 96px;
 }
+
+html.js .landing-reveal[data-reveal] {
+  opacity: 0;
+  transform: translateY(20px) scale(.985);
+  transition: opacity .62s cubic-bezier(.2, .7, .2, 1), transform .62s cubic-bezier(.2, .7, .2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+html.js .landing-reveal[data-reveal].is-revealed { opacity: 1; transform: none; }
+
+.section-heading--center { text-align: center; }
+.section-eyebrow { display: inline-flex; min-height: 36px; align-items: center; gap: 9px; padding: 6px 12px; border: 1px solid rgba(255, 255, 255, .08); border-radius: 999px; background: rgba(255, 255, 255, .055); font-family: var(--font-editorial); font-size: 20px; line-height: 1; letter-spacing: .02em; color: rgba(255, 255, 255, .76); }
+.section-eyebrow i { display: block; width: 8px; height: 8px; flex: none; border-radius: 50%; background: #9bbdff; box-shadow: 0 0 13px currentColor; }
+.section-eyebrow--highlights i { background: #a7e5bd; color: #a7e5bd; }
+.section-eyebrow--capabilities i { background: #ed9bd4; color: #ed9bd4; }
+.section-eyebrow--insights i { background: #f1b56f; color: #f1b56f; }
+.section-eyebrow--faq i { background: #b7a0ee; color: #b7a0ee; }
+.about-intro { max-width: 1080px; margin: 0 auto; }
+.about-reveal { max-width: 1000px; margin-right: auto; margin-left: auto; text-align: center; }
+.about-word { display: inline; color: rgba(255, 255, 255, .36); opacity: .38; transition: color .5s ease, opacity .5s ease; transition-delay: calc(var(--word-index) * 24ms); }
+.about-reveal.is-revealed .about-word { color: #fafafa; opacity: 1; }
+.about-second-row > .landing-reveal { height: 100%; }
 
 .hero-copy {
   position: relative;
@@ -286,6 +310,7 @@
 .heroGrid {
   background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
   background-size: 56px 56px;
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 85%);
   mask-image: linear-gradient(to bottom, black, transparent 85%);
 }
 
@@ -321,6 +346,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html.js .landing-reveal[data-reveal],
+  html.js .landing-reveal[data-reveal].is-revealed { opacity: 1; transform: none; transition: none; }
   .reveal,
   .revealDelay,
   .spectrum-orb,
@@ -328,6 +355,7 @@
   .mood-orb,
   .wave-chart__line,
   .contact-aurora { animation: none; }
+  .about-word { opacity: 1; color: #fafafa; transition: none; }
 }
 
 @media (max-width: 640px) {

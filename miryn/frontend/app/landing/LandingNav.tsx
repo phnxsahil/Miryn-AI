@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const links = [
   ["About", "#about"],
@@ -12,10 +12,18 @@ const links = [
 
 export default function LandingNav() {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <header className="landing-nav-wrap">
-      <nav className="landing-nav">
+      <nav className={`landing-nav${scrolled ? " landing-nav--scrolled" : ""}`}>
         <a href="/" className="landing-brand" onClick={() => setOpen(false)}>
           <svg className="landing-brand__mark" viewBox="0 0 28 28" fill="none" aria-hidden="true">
             <path d="M3 16.5C6.1 7.8 10.7 7.8 13.2 14.2C15.9 21.2 20.6 20.8 25 10.8" stroke="#F3C7A7" strokeWidth="1.7" strokeLinecap="round" />
