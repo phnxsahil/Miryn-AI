@@ -140,7 +140,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
         <Link
           href={`/chat?id=${conversation.id}`}
           onClick={onItemClick}
-          className={`conversation-item flex flex-1 min-w-0 items-center justify-between rounded-lg px-2.5 py-2 pe-8 text-left transition-colors ${
+          className={`conversation-item flex min-h-11 md:min-h-9 flex-1 min-w-0 items-center justify-between rounded-lg px-2.5 py-2 pe-8 text-left transition-colors ${
             isActive
               ? "conversation-item-active text-[color:var(--theme-text)] font-medium bg-[color:var(--theme-overlay)]"
               : "text-[color:var(--theme-muted)] hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)]"
@@ -166,7 +166,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
                 : { id: conversation.id, top: rect.bottom + 4, right: Math.max(12, window.innerWidth - rect.right) }
             );
           }}
-          className="absolute end-0.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded text-[color:var(--theme-dim)] opacity-100 transition-all hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)] md:h-7 md:w-7 md:opacity-40 md:group-hover:opacity-100 md:focus:opacity-100"
+          className="absolute end-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded text-[color:var(--theme-dim)] opacity-100 transition-all hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)] md:h-7 md:w-7 md:opacity-40 md:group-hover:opacity-100 md:focus:opacity-100"
         >
           <MoreVertical size={14} strokeWidth={2} aria-hidden="true" />
         </button>
@@ -218,7 +218,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
         <button
           type="button"
           onClick={() => setConfirmClearAll(true)}
-          className="-my-2 min-h-9 px-2 py-2 text-[11px] uppercase tracking-wider text-[color:var(--theme-dim)] hover:text-red-400 transition-colors"
+          className="-my-2 min-h-11 md:min-h-9 px-2 py-2 text-[11px] uppercase tracking-wider text-[color:var(--theme-dim)] hover:text-red-400 transition-colors"
           title="Clear all past chats"
         >
           Clear all

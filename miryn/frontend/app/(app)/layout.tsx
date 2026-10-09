@@ -97,10 +97,10 @@ export default function AppLayout({
   return (
     <div className="h-[100dvh] bg-[color:var(--theme-bg)] text-[color:var(--theme-text)] flex flex-col md:flex-row font-ui overflow-hidden">
       {/* Mobile Header */}
-      <header className="md:hidden border-b border-[color:var(--theme-border)] px-3 py-2 flex items-center justify-between bg-[color:var(--theme-bg)] z-40">
+      <header className="md:hidden border-b border-[color:var(--theme-border)] px-3 py-1 flex items-center justify-between bg-[color:var(--theme-bg)] z-40">
         <button
           onClick={toggleMenu}
-          className="p-2 text-[color:var(--theme-dim)] hover:text-[color:var(--theme-text)] transition-colors"
+          className="flex h-11 w-11 items-center justify-center p-2 text-[color:var(--theme-dim)] hover:text-[color:var(--theme-text)] transition-colors"
           aria-label="Toggle menu"
         >
           {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -109,7 +109,7 @@ export default function AppLayout({
         <button
           onClick={createConversation}
           disabled={chatLoading}
-          className="p-2 text-[color:var(--theme-dim)] hover:text-[color:var(--theme-text)] transition-colors"
+          className="flex h-11 w-11 items-center justify-center p-2 text-[color:var(--theme-dim)] hover:text-[color:var(--theme-text)] transition-colors"
           aria-label="New chat"
         >
           <Plus size={20} />
