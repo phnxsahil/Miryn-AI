@@ -64,3 +64,16 @@ def block_real_llm():
 
     yield
     monkeypatch.undo()
+
+
+@pytest.fixture(autouse=True)
+def reset_llm_quota_state():
+    from app.services import llm_service
+
+    with llm_service._quota_lock:
+        llm_service._quota_dead_until = 0.0
+        llm_service._model_quota_dead_until.clear()
+    yield
+    with llm_service._quota_lock:
+        llm_service._quota_dead_until = 0.0
+        llm_service._model_quota_dead_until.clear()

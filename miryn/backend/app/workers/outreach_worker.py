@@ -8,7 +8,7 @@ from sqlalchemy import text
 from app.core.cache import publish_event
 from app.core.database import get_db, get_sql_session, has_sql
 from app.services.email_service import send_checkin
-from app.services.llm_service import LLMService
+from app.services.llm_service import LLMService, QuotaExhausted
 from app.services.outreach_scheduler import OutreachScheduler
 from app.workers.celery_app import celery_app
 
@@ -19,17 +19,28 @@ async def generate_checkin_message(user_id: str, loop_topic: str) -> str:
     """
     Generate a personalized check-in message using LLM.
     """
+    if LLMService.quota_dead():
+        logger.info("Skipping outreach generation for user %s while Gemini quota cooldown is active", user_id)
+        return ""
     prompt = f"""You are Miryn checking in with a user.
 They mentioned "{loop_topic}" in a past conversation but never resolved it.
 Write a single warm, natural opening message (2-3 sentences max) to reconnect.
 Don't be pushy. Just open the door.
 Return only the message text, nothing else."""
-    return await llm.generate(prompt)
+    try:
+        return await llm.generate(prompt)
+    except QuotaExhausted:
+        logger.info("Skipping outreach generation for user %s after Gemini quota exhaustion", user_id)
+        return ""
 
 async def process_outreach():
     """
     Find stale loops, generate personalized messages, and send them.
     """
+    if LLMService.quota_dead():
+        logger.info("Skipping outreach while Gemini quota cooldown is active")
+        return 0
+
     scheduler = OutreachScheduler()
     discovered_items = scheduler.scan()
     
@@ -43,6 +54,8 @@ async def process_outreach():
             if item["type"] == "open_loop":
                 topic = item["topic"]
                 message = await generate_checkin_message(user_id, topic)
+                if not message:
+                    continue
                 note_type = "open_loop_followup"
                 payload = {"topic": topic, "message": message}
             else:

@@ -19,6 +19,7 @@ from app.schemas.chat import ChatRequest, ChatResponse, PinUpdate, TitleUpdate
 from app.services.importance import make_conversation_title, score_message_heuristic
 from app.services.fact_store import FactStore
 from app.services.memory_layer import chat_tier_for
+from app.services.llm_service import QuotaExhausted
 from app.services.orchestrator import ConversationOrchestrator
 from app.workers.reflection_worker import analyze_reflection
 
@@ -26,6 +27,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 orchestrator = ConversationOrchestrator()
 logger = logging.getLogger(__name__)
+BUSY_REPLY = "I'm a bit busy right now - give me a minute and try again."
 
 
 async def _enforce_message_rate_limit(user_id: str) -> None:
@@ -315,6 +317,29 @@ async def _background_stream_postprocess(
         logger.exception("Background conflict detection failed for user %s", user_id)
 
 
+async def _store_stream_user_message(
+    user_id: str,
+    message: str,
+    conversation_id: str,
+    user_msg_id: str,
+    idempotency_key: str | None,
+    importance: float,
+) -> None:
+    await orchestrator.memory.store_conversation(
+        user_id=user_id,
+        role="user",
+        content=message,
+        conversation_id=conversation_id,
+        message_id=user_msg_id,
+        metadata={
+            "logged_at": datetime.now(timezone.utc).isoformat(),
+            "importance": importance,
+            "memory_tier": chat_tier_for(importance),
+        },
+        idempotency_key=idempotency_key,
+    )
+
+
 async def _store_stream_facts(user_id: str, facts, source_message_id: str) -> None:
     if not facts:
         return
@@ -427,6 +452,23 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
                     continue
                 chunks.append(chunk)
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+        except QuotaExhausted:
+            logger.info("Gemini quota exhausted for user %s; returning busy reply", user_id)
+            _fire_and_forget(
+                _store_stream_user_message(
+                    user_id=user_id,
+                    message=request.message,
+                    conversation_id=conversation_id,
+                    user_msg_id=user_msg_id,
+                    idempotency_key=request.idempotency_key,
+                    importance=importance,
+                ),
+                "store_busy_user_message",
+                user_id,
+            )
+            yield f"data: {json.dumps({'chunk': BUSY_REPLY})}\n\n"
+            yield f"data: {json.dumps({'done': True, 'conversation_id': conversation_id})}\n\n"
+            return
         except Exception as exc:
             logger.exception("Streaming response failed for user %s", user_id)
             yield f"data: {json.dumps({'error': _sanitize_error(exc)})}\n\n"

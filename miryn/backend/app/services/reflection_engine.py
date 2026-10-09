@@ -2,9 +2,12 @@ from typing import Dict, List, Any
 from collections import Counter
 from datetime import datetime, timedelta
 import json
+import logging
 from sqlalchemy import text
 from app.services.llm_service import LLMService
 from app.core.database import get_db, has_sql, get_sql_session
+
+logger = logging.getLogger(__name__)
 
 
 class ReflectionEngine:
@@ -18,6 +21,16 @@ class ReflectionEngine:
         from a conversation. Uses a single LLM call for entity+emotion+topic extraction
         to reduce cost and latency.
         """
+        if LLMService.quota_dead():
+            logger.info("Skipping reflection for user %s while Gemini quota cooldown is active", user_id)
+            return {
+                "entities": [],
+                "emotions": {},
+                "topics": [],
+                "patterns": {},
+                "insights": "",
+            }
+
         # ponytail: one LLM call instead of three — 66% cost reduction on reflection
         entities, emotions, topics = await self._extract_all(conversation)
         patterns = await self._detect_patterns(user_id, topics, emotions)
@@ -33,6 +46,9 @@ class ReflectionEngine:
 
     async def _extract_all(self, conversation: Dict) -> tuple:
         """Combined extraction: entities + emotions + topics in one LLM call."""
+        if LLMService.quota_dead():
+            logger.info("Skipping reflection extraction while Gemini quota cooldown is active")
+            return [], {}, []
         payload = self._conversation_payload(conversation)
         prompt = (
             "You will be given a JSON payload describing a conversation. "
@@ -63,6 +79,9 @@ class ReflectionEngine:
         """
         if not beliefs or not new_statement:
             return []
+        if LLMService.quota_dead():
+            logger.info("Skipping contradiction detection while Gemini quota cooldown is active")
+            return []
         prompt = (
             "Given the user's existing beliefs and a new statement, detect contradictions. "
             "Return a JSON array of objects with: statement, conflict_with, severity (0-1). "
@@ -77,6 +96,9 @@ class ReflectionEngine:
         """
         Extracts key entities (people, places, organizations, concepts) mentioned in a conversation.
         """
+        if LLMService.quota_dead():
+            logger.info("Skipping entity extraction while Gemini quota cooldown is active")
+            return []
         payload = self._conversation_payload(conversation)
         prompt = (
             "You will be given a JSON payload describing a conversation. "
@@ -90,6 +112,9 @@ class ReflectionEngine:
         return parsed if isinstance(parsed, list) else []
 
     async def _extract_emotions(self, conversation: Dict) -> Dict:
+        if LLMService.quota_dead():
+            logger.info("Skipping emotion extraction while Gemini quota cooldown is active")
+            return {"primary_emotion": "neutral", "intensity": 0.5, "secondary_emotions": []}
         payload = self._conversation_payload(conversation)
         prompt = (
             "Analyze the emotional tone of the following conversation JSON payload. "
@@ -103,6 +128,9 @@ class ReflectionEngine:
         return parsed if isinstance(parsed, dict) else {"primary_emotion": "neutral", "intensity": 0.5, "secondary_emotions": []}
 
     async def _extract_topics(self, conversation: Dict) -> List[str]:
+        if LLMService.quota_dead():
+            logger.info("Skipping topic extraction while Gemini quota cooldown is active")
+            return []
         payload = self._conversation_payload(conversation)
         prompt = (
             "Identify the main discussion topics from the conversation JSON payload below. "
@@ -233,6 +261,9 @@ class ReflectionEngine:
 
     async def _generate_insights(self, patterns: Dict) -> str:
         if not patterns.get("topic_co_occurrences") and not patterns.get("temporal_emotional_patterns"):
+            return ""
+        if LLMService.quota_dead():
+            logger.info("Skipping reflection insight generation while Gemini quota cooldown is active")
             return ""
 
         prompt = f"""

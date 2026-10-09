@@ -7,11 +7,13 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { Check, Copy } from "lucide-react";
 
-function MessageBubble({ message, isStreaming = false, saved = false, stopped = false }: {
+function MessageBubble({ message, isStreaming = false, saved = false, stopped = false, errorNotice = false, onRetry }: {
   message: Message;
   isStreaming?: boolean;
   saved?: boolean;
   stopped?: boolean;
+  errorNotice?: boolean;
+  onRetry?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -28,7 +30,7 @@ function MessageBubble({ message, isStreaming = false, saved = false, stopped = 
     </div>
   );
   return (
-    <div className="group min-w-0 text-[15px] leading-7 text-[color:var(--theme-text)] md:text-base">
+    <div className={`group min-w-0 text-[15px] leading-7 text-[color:var(--theme-text)] md:text-base ${errorNotice ? "rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-4 py-3" : ""}`} role={errorNotice ? "alert" : undefined}>
       {isStreaming && !message.content ? (
         <span role="status" aria-label="Miryn is thinking" className="inline-flex items-center gap-1.5 py-2 text-[color:var(--theme-muted)]">
           <span className="chat-thinking-dot" /><span className="chat-thinking-dot" /><span className="chat-thinking-dot" />
@@ -41,6 +43,11 @@ function MessageBubble({ message, isStreaming = false, saved = false, stopped = 
       )}
       {saved && <p className="mt-2 text-xs text-[color:var(--theme-muted)]">Saved to memory</p>}
       {stopped && <p className="mt-2 text-xs text-[color:var(--theme-muted)]">Response stopped</p>}
+      {errorNotice && onRetry && (
+        <button type="button" onClick={onRetry} className="mt-3 inline-flex min-h-11 items-center rounded-lg bg-[color:var(--theme-card)] px-4 text-sm font-medium text-[color:var(--theme-text)] transition-colors hover:bg-[color:var(--theme-overlay)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--theme-accent)]">
+          Retry
+        </button>
+      )}
       {!isStreaming && !!message.content && (
         <button type="button" onClick={copy} aria-label="Copy response" className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs text-[color:var(--theme-muted)] opacity-0 transition-opacity hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)] focus:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100">
           {copied ? <Check size={14} /> : <Copy size={14} />}{copied ? "Copied" : "Copy"}

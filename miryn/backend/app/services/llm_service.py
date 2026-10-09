@@ -6,8 +6,79 @@ import os
 import logging
 import json
 import re
+import threading
+import time
 from pathlib import Path
 from app.config import settings
+
+
+class QuotaExhausted(RuntimeError):
+    """Gemini's configured fallback chain is temporarily out of quota."""
+
+
+_quota_lock = threading.Lock()
+_quota_dead_until = 0.0
+_model_quota_dead_until: dict[str, float] = {}
+
+
+def _gemini_quota_error(exc: Exception) -> bool:
+    code = getattr(exc, "code", None)
+    status = getattr(exc, "status", None)
+    try:
+        if int(code) == 429:
+            return True
+    except (TypeError, ValueError):
+        pass
+    status_value = str(getattr(status, "name", status)).upper() if status is not None else ""
+    if status_value == "RESOURCE_EXHAUSTED":
+        return True
+    error_text = str(exc).lower()
+    return any(marker in error_text for marker in ("quota", "resource_exhausted", "rate limit", "rate_limit", "429"))
+
+
+def _retry_delay_seconds(exc: Exception) -> float:
+    error_text = str(exc)
+    patterns = (
+        r"retry\s+in\s+(\d+(?:\.\d+)?)\s*s",
+        r"retry[_ ]?delay\D+(\d+(?:\.\d+)?)\s*s?",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, error_text, re.IGNORECASE)
+        if match:
+            return max(10.0, min(300.0, float(match.group(1))))
+    return 60.0
+
+
+def _quota_dead() -> bool:
+    global _quota_dead_until
+    now = time.monotonic()
+    with _quota_lock:
+        if _quota_dead_until and now >= _quota_dead_until:
+            _quota_dead_until = 0.0
+        return _quota_dead_until > now
+
+
+def _mark_global_quota_dead(delay: float) -> None:
+    global _quota_dead_until
+    with _quota_lock:
+        _quota_dead_until = max(_quota_dead_until, time.monotonic() + delay)
+
+
+def _mark_model_quota_dead(model: str, delay: float) -> None:
+    with _quota_lock:
+        _model_quota_dead_until[model] = max(
+            _model_quota_dead_until.get(model, 0.0),
+            time.monotonic() + delay,
+        )
+
+
+def _model_is_quota_dead(model: str) -> bool:
+    with _quota_lock:
+        dead_until = _model_quota_dead_until.get(model, 0.0)
+        if dead_until and time.monotonic() >= dead_until:
+            _model_quota_dead_until.pop(model, None)
+            return False
+        return dead_until > time.monotonic()
 
 
 def _gemini_retryable(exc: Exception) -> bool:
@@ -55,6 +126,41 @@ def _gemini_retryable(exc: Exception) -> bool:
 
 
 class LLMService:
+    @classmethod
+    def quota_dead(cls) -> bool:
+        return _quota_dead()
+
+    @classmethod
+    def _clear_quota_breaker(cls) -> None:
+        global _quota_dead_until
+        with _quota_lock:
+            _quota_dead_until = 0.0
+
+    def _raise_if_quota_dead(self) -> None:
+        if self.provider == "gemini" and self.quota_dead():
+            raise QuotaExhausted("Gemini quota cooldown active")
+
+    def _gemini_models_available(self) -> list[str]:
+        return [
+            model
+            for model in dict.fromkeys(self.gemini_fallback_models)
+            if not _model_is_quota_dead(model)
+        ]
+
+    def _all_gemini_models_quota_exhausted(
+        self,
+        models: list[str],
+        quota_failures: list[Exception],
+    ) -> bool:
+        if models and len(quota_failures) == len(models):
+            _mark_global_quota_dead(max((_retry_delay_seconds(exc) for exc in quota_failures), default=60.0))
+            return True
+        if not models:
+            _mark_global_quota_dead(60.0)
+            return True
+        return False
+
+
     def __init__(self):
         self.provider = settings.LLM_PROVIDER
         self.logger = logging.getLogger(__name__)
@@ -114,6 +220,8 @@ class LLMService:
         system_prompt: Optional[str] = None,
         max_tokens: int = 1000,
     ) -> str:
+        self._raise_if_quota_dead()
+
         async def _generate_inner() -> str:
             if self.provider == "openai":
                 messages = []
@@ -158,7 +266,12 @@ class LLMService:
                 if system_prompt:
                     contents = f"{system_prompt}\n\n{prompt}"
                 last_exc: Exception | None = None
-                for candidate_model in dict.fromkeys(self.gemini_fallback_models):
+                quota_failures: list[Exception] = []
+                candidate_models = self._gemini_models_available()
+                if not candidate_models:
+                    _mark_global_quota_dead(60.0)
+                    raise QuotaExhausted("Gemini quota cooldown active")
+                for candidate_model in candidate_models:
                     try:
                         response = await self.client.aio.models.generate_content(
                             model=candidate_model,
@@ -169,6 +282,7 @@ class LLMService:
                             ),
                         )
                         self.model = candidate_model
+                        self._clear_quota_breaker()
                         try:
                             return response.text or ""
                         except Exception as exc:
@@ -177,10 +291,15 @@ class LLMService:
                     except Exception as exc:
                         last_exc = exc
                         if _gemini_retryable(exc):
+                            if _gemini_quota_error(exc):
+                                _mark_model_quota_dead(candidate_model, _retry_delay_seconds(exc))
+                                quota_failures.append(exc)
                             self.logger.warning("Gemini model %s unavailable/quota, trying fallback.", candidate_model)
                             continue
                         self.logger.exception("Gemini generation failed for model %s", candidate_model)
                         raise
+                if self._all_gemini_models_quota_exhausted(candidate_models, quota_failures):
+                    raise QuotaExhausted("Gemini quota exhausted across all configured models") from last_exc
                 if last_exc:
                     raise last_exc
                 raise RuntimeError("Gemini generation failed without exception")
@@ -218,6 +337,7 @@ class LLMService:
         )
 
     async def stream_chat(self, context: dict, user_message: str, identity: dict):
+        self._raise_if_quota_dead()
         system_prompt = self._build_system_prompt(identity)
         context_text = self._format_context(context)
         full_prompt = self._build_user_prompt(context_text, user_message)
@@ -255,7 +375,12 @@ class LLMService:
             if system_prompt:
                 contents = f"{system_prompt}\n\n{full_prompt}"
             
-            for candidate_model in dict.fromkeys(self.gemini_fallback_models):
+            quota_failures: list[Exception] = []
+            candidate_models = self._gemini_models_available()
+            if not candidate_models:
+                _mark_global_quota_dead(60.0)
+                raise QuotaExhausted("Gemini quota cooldown active")
+            for candidate_model in candidate_models:
                 text_chars = 0
                 finish_reason = None
                 try:
@@ -284,6 +409,7 @@ class LLMService:
                         except Exception:
                             finish_reason = None
                     if text_chars:
+                        self._clear_quota_breaker()
                         return
                     self.logger.warning(
                         "Gemini stream returned no text for %s (finish_reason=%s)",
@@ -292,13 +418,20 @@ class LLMService:
                     )
                 except Exception as exc:
                     if text_chars:
+                        if _gemini_quota_error(exc):
+                            _mark_model_quota_dead(candidate_model, _retry_delay_seconds(exc))
                         self.logger.exception("Gemini streaming failed after output for model %s", candidate_model)
                         return
                     if _gemini_retryable(exc):
+                        if _gemini_quota_error(exc):
+                            _mark_model_quota_dead(candidate_model, _retry_delay_seconds(exc))
+                            quota_failures.append(exc)
                         self.logger.warning("Gemini stream model %s unavailable/quota, trying fallback.", candidate_model)
                         continue
                     self.logger.exception("Gemini streaming failed for model %s", candidate_model)
                     raise
+            if self._all_gemini_models_quota_exhausted(candidate_models, quota_failures):
+                raise QuotaExhausted("Gemini quota exhausted across all configured models") from quota_failures[-1]
             try:
                 fallback = await self.generate(full_prompt, system_prompt=system_prompt, max_tokens=500)
             except Exception:

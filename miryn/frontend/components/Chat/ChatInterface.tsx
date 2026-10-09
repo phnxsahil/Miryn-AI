@@ -39,6 +39,7 @@ export default function ChatInterface() {
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [savedIndex, setSavedIndex] = useState<number | null>(null);
   const [stoppedIndex, setStoppedIndex] = useState<number | null>(null);
+  const [assistantErrorIndex, setAssistantErrorIndex] = useState<number | null>(null);
   const [historyRetry, setHistoryRetry] = useState(0);
   const [hasEarlierMessages, setHasEarlierMessages] = useState(false);
   const [loadingEarlierMessages, setLoadingEarlierMessages] = useState(false);
@@ -57,6 +58,7 @@ export default function ChatInterface() {
     let active = true;
     setSavedIndex(null);
     setStoppedIndex(null);
+    setAssistantErrorIndex(null);
     setStatus(null);
     setInsights(null);
     setConflicts([]);
@@ -230,6 +232,7 @@ export default function ChatInterface() {
     setStreamingIndex(assistantIndex);
     setSavedIndex(null);
     setStoppedIndex(null);
+    setAssistantErrorIndex(null);
     setStatus(null);
     setLoading(true);
     setStreaming(true);
@@ -237,10 +240,17 @@ export default function ChatInterface() {
     const controller = new AbortController();
     requestRef.current = controller;
     let completed = false;
+    let assistantError = false;
     let newId: string | undefined;
     try {
       for await (const event of api.streamMessage(content, conversationId || undefined, controller.signal)) {
-        if (event.error) throw new Error(event.error);
+        if (event.error) {
+          setMessages((current) => current.map((message, index) => index === assistantIndex ? { ...message, content: event.error || "Miryn could not finish the reply." } : message));
+          setAssistantErrorIndex(assistantIndex);
+          assistantError = true;
+          completed = true;
+          break;
+        }
         if (event.chunk) updateStreamingMessage(event.chunk);
         if (event.done) {
           newId = event.conversation_id;
@@ -258,7 +268,7 @@ export default function ChatInterface() {
         router.replace("/chat?id=" + newId);
       }
       const assistantContent = useChatStore.getState().messages[assistantIndex]?.content || "";
-      if (assistantContent && (newId || conversationId)) void confirmSaved((newId || conversationId)!, assistantContent, assistantIndex);
+      if (assistantContent && !assistantError && (newId || conversationId)) void confirmSaved((newId || conversationId)!, assistantContent, assistantIndex);
     } catch (error) {
       if (newId && !conversationId) {
         ownRouteRef.current = newId;
@@ -349,7 +359,7 @@ export default function ChatInterface() {
               </div>
             )}
             <div className="space-y-7" aria-live="off">
-              {messages.map((message, index) => <MessageBubble key={message.timestamp + "-" + index} message={message} isStreaming={streaming && index === streamingIndex} saved={index === savedIndex} stopped={index === stoppedIndex} />)}
+              {messages.map((message, index) => <MessageBubble key={message.timestamp + "-" + index} message={message} isStreaming={streaming && index === streamingIndex} saved={index === savedIndex} stopped={index === stoppedIndex} errorNotice={index === assistantErrorIndex} onRetry={index === assistantErrorIndex ? retry : undefined} />)}
             </div>
             <div ref={bottomRef} aria-hidden="true" className="h-px" />
           </div>

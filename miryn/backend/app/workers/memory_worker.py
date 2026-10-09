@@ -1,10 +1,13 @@
 import asyncio
+import logging
 from datetime import datetime, timedelta
 from sqlalchemy import text
 from app.workers.celery_app import celery_app
 from app.core.database import get_db, has_sql, get_sql_session
-from app.services.llm_service import LLMService
+from app.services.llm_service import LLMService, QuotaExhausted
 from app.core.encryption import decrypt_text
+
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task(name="memory.gc")
@@ -42,6 +45,9 @@ def nightly_summarize():
     Returns:
         dict: A mapping with the key "summaries" and an integer value for the number of user summaries processed.
     """
+    if LLMService.quota_dead():
+        logger.info("Skipping memory summaries while Gemini quota cooldown is active")
+        return {"summaries": 0}
     llm = LLMService()
     cutoff = datetime.utcnow() - timedelta(days=1)
 
@@ -135,9 +141,16 @@ async def _summarize(llm: LLMService, messages: list) -> str:
     """
     if not messages:
         return ""
+    if LLMService.quota_dead():
+        logger.info("Skipping memory summary while Gemini quota cooldown is active")
+        return ""
     prompt = (
         "Summarize the user's last 24h of conversation in 3-5 concise bullets. "
         "Focus on goals, concerns, and key events.\n\n"
         f"Messages:\n{messages}"
     )
-    return await llm.generate(prompt, max_tokens=300)
+    try:
+        return await llm.generate(prompt, max_tokens=300)
+    except QuotaExhausted:
+        logger.info("Skipping memory summary after Gemini quota exhaustion")
+        return ""

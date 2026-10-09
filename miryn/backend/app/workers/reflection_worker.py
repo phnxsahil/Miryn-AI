@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 from app.services.reflection_engine import ReflectionEngine
 from app.services.llm_service import LLMService
 from app.services.identity_engine import IdentityEngine
@@ -11,12 +12,18 @@ from app.config import settings
 from app.core.cache import publish_event
 from app.workers.celery_app import celery_app
 
+logger = logging.getLogger(__name__)
+
 
 @celery_app.task(name="reflection.analyze")
 def analyze_reflection(user_id: str, conversation: dict, source_message_id: str | None = None, user_message: str | None = None):
     """
     Run reflection analysis for a user's conversation and publish a readiness event.
     """
+    if LLMService.quota_dead():
+        logger.info("Skipping reflection task for user %s while Gemini quota cooldown is active", user_id)
+        return {"entities": [], "emotions": {}, "topics": [], "patterns": {}, "insights": ""}
+
     llm = LLMService()
     engine = ReflectionEngine(llm)
     identity_engine = IdentityEngine()
@@ -54,12 +61,11 @@ def analyze_reflection(user_id: str, conversation: dict, source_message_id: str 
         identity_engine.track_open_loop(user_id, topic, importance=importance)
 
     source_text = user_message or conversation.get("user")
-    if source_message_id and source_text and settings.IMPORTANCE_USE_LLM and llm_is_usable(llm):
+    if source_message_id and source_text and settings.IMPORTANCE_USE_LLM and llm_is_usable(llm) and not LLMService.quota_dead():
         try:
             refined_facts = asyncio.run(score_message_llm(llm, source_text))
             FactStore().replace_heuristic_for_message(user_id, source_message_id, refined_facts)
         except Exception:
-            logger = __import__("logging").getLogger(__name__)
             logger.warning("Importance LLM refinement failed for user %s", user_id)
 
     publish_event(user_id, {"type": "reflection.ready", "payload": result})
