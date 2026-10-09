@@ -1,24 +1,33 @@
 import unittest
 from unittest.mock import MagicMock, patch
-import json
+import importlib
+import pytest
 import sys
 import os
 
-# Create more elaborate mocks to handle sqlalchemy.exc
-sqlalchemy_mock = MagicMock()
-sqlalchemy_exc_mock = MagicMock()
-sqlalchemy_mock.exc = sqlalchemy_exc_mock
-
-# Mock the dependencies before importing IdentityEngine
-sys.modules['app.core.database'] = MagicMock()
-sys.modules['app.services.identity'] = MagicMock()
-sys.modules['sqlalchemy'] = sqlalchemy_mock
-sys.modules['sqlalchemy.exc'] = sqlalchemy_exc_mock
-sys.modules['sqlalchemy.orm'] = MagicMock()
-
-# Now we can import IdentityEngine
 sys.path.append(os.path.join(os.getcwd(), 'miryn/backend'))
-from app.services.identity_engine import IdentityEngine
+
+
+@pytest.fixture(scope="module", autouse=True)
+def mocked_identity_engine_import():
+    sqlalchemy_mock = MagicMock()
+    sqlalchemy_exc_mock = MagicMock()
+    sqlalchemy_mock.exc = sqlalchemy_exc_mock
+    mocked_modules = {
+        "app.core.database": MagicMock(),
+        "app.services.identity": MagicMock(),
+        "sqlalchemy": sqlalchemy_mock,
+        "sqlalchemy.exc": sqlalchemy_exc_mock,
+        "sqlalchemy.orm": MagicMock(),
+    }
+
+    sys.modules.pop("app.services.identity_engine", None)
+    with patch.dict(sys.modules, mocked_modules):
+        module = importlib.import_module("app.services.identity_engine")
+        globals()["IdentityEngine"] = module.IdentityEngine
+        yield
+
+    sys.modules.pop("app.services.identity_engine", None)
 
 class TestIdentityEvolutionLog(unittest.TestCase):
     def setUp(self):
