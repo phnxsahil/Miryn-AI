@@ -144,7 +144,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="bg-[color:var(--theme-card)] rounded-2xl border border-[color:var(--theme-border)] px-5 divide-y divide-white/[0.04]">
-              <Row label="Name"><span className="text-sm text-[color:var(--theme-muted)]">{displayName}</span></Row>
+              <Row label="Name" hint="Profile name is currently read-only."><span className="text-sm text-[color:var(--theme-muted)]">{displayName || "Not set"}</span></Row>
               <Row label="Email"><span className="text-sm text-[color:var(--theme-dim)]">{user?.email}</span></Row>
             </div>
           </div>
