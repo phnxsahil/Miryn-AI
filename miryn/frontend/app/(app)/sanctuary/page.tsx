@@ -11,6 +11,9 @@ interface SanctuaryData {
   current_life_season?: string;
   current_values?: string[];
   active_open_loops?: { description?: string; title?: string }[];
+  beliefs?: unknown[];
+  patterns?: unknown[];
+  conflicts?: unknown[];
   emotional_baseline?: string;
   cognitive_load?: string;
 }
@@ -72,6 +75,12 @@ export default function SanctuaryPage() {
 
   const openLoops = data?.active_open_loops?.map(l => l.description || l.title || "").filter(Boolean) ?? [];
   const values = data?.current_values ?? [];
+  const hasLearnedData = Boolean(data && (
+    openLoops.length > 0 ||
+    data.beliefs?.length ||
+    data.patterns?.length ||
+    data.conflicts?.length
+  ));
 
   return (
     <div className="flex flex-col gap-6 px-6 md:px-10 py-8 max-w-4xl mx-auto w-full">
@@ -87,8 +96,18 @@ export default function SanctuaryPage() {
         </button>
       </div>
 
+      {!hasLearnedData && (
+        <div className="rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] px-6 py-12 text-center">
+          <p className="mx-auto max-w-md text-sm leading-6 text-[color:var(--text-dim)]">Miryn hasn&apos;t learned enough about you yet. Come back after a few conversations.</p>
+          <Link href="/chat" className="mt-5 inline-flex items-center gap-1.5 text-sm text-[color:var(--accent)] transition-colors hover:underline">
+            Start chatting with Miryn <ChevronRight size={14} />
+          </Link>
+        </div>
+      )}
+
+      {hasLearnedData && <>
       {/* Status cards */}
-      <div className="grid md:grid-cols-3 gap-3">
+      <div className="grid gap-3 md:grid-cols-3">
         {[
           { label: "Emotional Baseline", value: data?.emotional_baseline || "Grounded", icon: Heart, color: "var(--theme-accent)" },
           { label: "Cognitive Load", value: data?.cognitive_load || "Light", icon: Brain, color: "var(--theme-accent)" },
@@ -154,14 +173,7 @@ export default function SanctuaryPage() {
         </div>
       )}
 
-      {!data && (
-        <div className="text-center py-16 text-[color:var(--theme-dim)] text-sm space-y-2">
-          <p>Your sanctuary builds over time through conversation.</p>
-          <Link href="/chat" className="inline-flex items-center gap-1.5 text-[color:var(--theme-accent)] hover:text-[color:var(--theme-accent)] transition-colors text-sm">
-            Start chatting with Miryn <ChevronRight size={14} />
-          </Link>
-        </div>
-      )}
+      </>}
 
       {/* Breathing exercises */}
       <div className="space-y-3">
