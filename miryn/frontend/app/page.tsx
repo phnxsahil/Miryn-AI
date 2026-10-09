@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import LandingNav from "./landing/LandingNav";
+import SpectrumOrb from "./landing/SpectrumOrb";
 import styles from "./landing/LandingPage.module.css";
 
 const stats = [
@@ -59,6 +60,7 @@ export default function LandingPage() {
 
       <section id="hero" className="relative isolate mx-auto max-w-7xl px-5 pb-24 pt-20 sm:px-8 sm:pt-28 lg:px-12 lg:pb-32 lg:pt-32">
         <div className={`${styles.heroGrid} pointer-events-none absolute inset-x-0 top-0 -z-10 h-[680px]`} />
+        <SpectrumOrb />
         <div className="mx-auto max-w-4xl text-center">
           <div className={`${styles.reveal} mx-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-[#A3A3A3]`}>
             <span aria-hidden="true">✦</span> Introducing Miryn AI — Next-Gen Companion
