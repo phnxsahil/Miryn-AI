@@ -89,15 +89,17 @@
     command: celery -A app.workers.celery_app beat --loglevel=info
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      target: dev
     ports:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - WATCHPACK_POLLING=true
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    command: npm run dev
 
   redis:
     image: redis:7-alpine

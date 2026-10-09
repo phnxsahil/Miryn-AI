@@ -6,6 +6,16 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --production=false
 
+# --- Dev stage (docker compose only) ---
+FROM node:20-alpine AS dev
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+EXPOSE 3000
+CMD ["npm", "run", "dev", "--", "-H", "0.0.0.0"]
+
 # --- Stage 2: Build ---
 FROM node:20-alpine AS builder
 WORKDIR /app
