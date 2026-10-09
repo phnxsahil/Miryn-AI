@@ -3,12 +3,13 @@ import json
 import logging
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
+import redis.asyncio as aioredis
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 
-from app.core.cache import drain_events, publish_event
+from app.core.cache import publish_event
 from app.core.database import get_db, get_sql_session, has_sql
 from app.core.cache import redis_client
 from app.core.encryption import decrypt_text
@@ -453,16 +454,42 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
 
 
 @router.get("/events/stream")
-async def stream_events(user_id: str = Depends(get_current_user_id)):
+async def stream_events(
+    request: Request,
+    since: str | None = Query(None),
+    last_event_id: str | None = Header(None),
+    user_id: str = Depends(get_current_user_id),
+):
     async def event_generator():
-        while True:
-            events = await asyncio.to_thread(drain_events, user_id, 50)
-            if events:
-                for event in events:
-                    yield f"data: {json.dumps(event)}\n\n"
-            else:
-                yield ": keep-alive\n\n"
-            await asyncio.sleep(0.5)
+        client = aioredis.from_url(settings.REDIS_URL, decode_responses=True, socket_connect_timeout=1, socket_timeout=20)
+        pubsub = client.pubsub()
+        try:
+            channel = f"events:{user_id}"
+            await pubsub.subscribe(channel)
+            if last_event_id or since:
+                backlog = await client.lrange(f"events_backlog:{user_id}", -10, -1)
+                for event in backlog:
+                    yield f"data: {event}\n\n"
+            while not await request.is_disconnected():
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=15.0)
+                if message and message.get("data"):
+                    yield f"data: {message['data']}\n\n"
+                else:
+                    yield ": keep-alive\n\n"
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.warning("Chat event subscription failed for user %s", user_id, exc_info=True)
+        finally:
+            try:
+                await pubsub.unsubscribe(f"events:{user_id}")
+            except Exception:
+                pass
+            try:
+                await pubsub.close()
+            except Exception:
+                pass
+            await client.close()
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 

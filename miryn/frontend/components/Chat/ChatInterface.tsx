@@ -43,6 +43,8 @@ export default function ChatInterface() {
   const [hasEarlierMessages, setHasEarlierMessages] = useState(false);
   const [loadingEarlierMessages, setLoadingEarlierMessages] = useState(false);
   const lastMessageRef = useRef<string | null>(null);
+  const seenEventIdsRef = useRef(new Set<string>());
+  const lastEventIdRef = useRef<string | null>(null);
 
   useEffect(() => { api.loadToken(); }, []);
   useEffect(() => {
@@ -125,8 +127,18 @@ export default function ChatInterface() {
       while (active) {
         controller = new AbortController();
         try {
-          for await (const payload of api.chatEvents(controller.signal)) {
+          for await (const payload of api.chatEvents(controller.signal, lastEventIdRef.current)) {
             if (!active) return;
+            const eventId = typeof payload.id === "string" ? payload.id : null;
+            if (eventId) {
+              if (seenEventIdsRef.current.has(eventId)) continue;
+              seenEventIdsRef.current.add(eventId);
+              if (seenEventIdsRef.current.size > 200) {
+                const oldest = seenEventIdsRef.current.values().next().value;
+                if (oldest) seenEventIdsRef.current.delete(oldest);
+              }
+              lastEventIdRef.current = eventId;
+            }
             retryDelay = 1000;
             if (payload.type === "reflection.ready") setInsights(payload.payload || null);
             if (payload.type === "identity.conflict") {

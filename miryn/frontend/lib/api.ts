@@ -420,7 +420,7 @@ class ApiClient {
     }
   }
 
-  async *chatEvents(signal?: AbortSignal): AsyncGenerator<Record<string, unknown>> {
+  async *chatEvents(signal?: AbortSignal, lastEventId?: string | null): AsyncGenerator<Record<string, unknown>> {
     if (!this.token) {
       this.loadToken();
     }
@@ -429,6 +429,7 @@ class ApiClient {
       headers: {
         Accept: "text/event-stream",
         ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+        ...(lastEventId ? { "Last-Event-ID": lastEventId } : {}),
       },
       signal,
     });
