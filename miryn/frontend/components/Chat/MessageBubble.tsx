@@ -47,7 +47,7 @@ function MessageBubble({ message, isStreaming = false, saved = false, stopped = 
         </button>
       )}
       {!isStreaming && !!message.content && (
-        <button type="button" onClick={copy} aria-label="Copy response" className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs text-[color:var(--theme-muted)] opacity-0 transition-opacity hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)] focus:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100">
+        <button type="button" onClick={copy} aria-label="Copy response" className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-xs md:min-h-9 text-[color:var(--theme-muted)] opacity-0 transition-opacity hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)] focus:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100">
           {copied ? <Check size={14} /> : <Copy size={14} />}{copied ? "Copied" : "Copy"}
         </button>
       )}

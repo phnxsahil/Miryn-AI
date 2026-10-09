@@ -42,7 +42,7 @@ export default function AppLayout({
 
   const navLinkClass = (href: string) => {
     const isActive = pathname.startsWith(href);
-    return `group flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 relative ${
+    return `group flex min-h-11 items-center gap-3 py-2 px-3 rounded-lg md:min-h-9 transition-all duration-200 relative ${
       isActive
         ? "bg-[color:var(--theme-overlay)] text-[color:var(--theme-text)] font-medium"
         : "text-[color:var(--theme-dim)] hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)]"
@@ -149,13 +149,13 @@ export default function AppLayout({
           <button
             onClick={createConversation}
             disabled={chatLoading}
-            className="flex-1 ml-2 flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg text-primary hover:bg-[color:var(--theme-overlay)] transition-colors border border-[color:var(--theme-border)] justify-between disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex-1 ml-2 flex min-h-11 items-center gap-2 px-3 py-2 text-sm md:min-h-9 font-medium rounded-lg text-primary hover:bg-[color:var(--theme-overlay)] transition-colors border border-[color:var(--theme-border)] justify-between disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span>New chat</span>
             <Plus size={16} className="text-dim" />
           </button>
 
-          <button onClick={closeMenu} className="md:hidden p-2 text-dim hover:text-primary ml-2">
+          <button onClick={closeMenu} className="md:hidden flex h-11 w-11 items-center justify-center p-2 text-dim hover:text-primary ml-2">
             <X size={20} />
           </button>
         </div>
@@ -201,7 +201,7 @@ export default function AppLayout({
               </button>
             </div>
           )}
-          <button type="button" aria-label="Account menu" aria-expanded={isAccountMenuOpen} onClick={() => setIsAccountMenuOpen((open) => !open)} className="group flex w-full items-center gap-3 rounded-lg p-2 text-left transition-all hover:bg-[color:var(--theme-overlay)]">
+          <button type="button" aria-label="Account menu" aria-expanded={isAccountMenuOpen} onClick={() => setIsAccountMenuOpen((open) => !open)} className="group flex min-h-11 w-full items-center gap-3 rounded-lg p-2 text-left transition-all hover:bg-[color:var(--theme-overlay)]">
             <div className="flex h-8 w-8 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-sm font-bold text-accent">
               {user?.full_name?.trim()?.[0]?.toUpperCase() || user?.email?.trim()?.[0]?.toUpperCase() || "M"}
             </div>

@@ -206,7 +206,7 @@ export default function InputBox({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled}
-            className="mb-0.5 flex h-10 w-10 items-center justify-center rounded-full p-2 text-[color:var(--theme-dim)] transition-all shrink-0 hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)]"
+            className="mb-0.5 flex h-11 w-11 items-center justify-center rounded-full p-2 text-[color:var(--theme-dim)] transition-all shrink-0 hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)]"
             title="Attach a text file"
             aria-label="Attach files"
           >
@@ -233,7 +233,7 @@ export default function InputBox({
           <button
             type={streaming ? "button" : "submit"}
             onClick={streaming ? onStop : undefined}
-            className={`mb-0.5 mr-0.5 flex h-10 w-10 items-center justify-center rounded-full p-2 transition-all shrink-0 ${
+            className={`mb-0.5 mr-0.5 flex h-11 w-11 items-center justify-center rounded-full p-2 transition-all shrink-0 ${
               canSend || streaming
                 ? "bg-[color:var(--theme-accent)] text-[color:var(--theme-accent-contrast)] hover:opacity-90"
                 : "bg-[color:var(--theme-overlay)] text-[color:var(--theme-dim)] cursor-not-allowed"

@@ -342,7 +342,7 @@ export default function ChatInterface() {
           <div ref={contentRef} className="mx-auto w-full max-w-3xl">
             {hasEarlierMessages && messages.length > 0 && (
               <div className="mb-6 flex justify-center">
-                <button type="button" onClick={() => void loadEarlierMessages()} disabled={loadingEarlierMessages} className="inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm text-[color:var(--theme-muted)] transition-colors hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)] disabled:cursor-wait disabled:opacity-60">
+                <button type="button" onClick={() => void loadEarlierMessages()} disabled={loadingEarlierMessages} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-[color:var(--theme-muted)] transition-colors hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)] disabled:cursor-wait disabled:opacity-60">
                   {loadingEarlierMessages && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
                   {loadingEarlierMessages ? "Loading earlier messages…" : "Load earlier messages"}
                 </button>
