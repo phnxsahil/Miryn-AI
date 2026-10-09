@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     # If Celery isn't available, run reflection inline (very slow). Keep disabled for snappy chat.
     ENABLE_REFLECTION_SYNC_FALLBACK: bool = False
 
+    # Importance scoring
+    IMPORTANCE_CORE_THRESHOLD: float = 0.75
+    IMPORTANCE_USE_LLM: bool = True
+    IMPORTANCE_MAX_FACTS_PER_MESSAGE: int = 3
+
     # App
     FRONTEND_URL: str = "http://localhost:3000"
     BACKEND_URL: str = "http://localhost:8000"

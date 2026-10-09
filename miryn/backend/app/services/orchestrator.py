@@ -3,6 +3,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict
+from uuid import uuid4
 
 from app.config import settings
 from app.core.cache import publish_event
@@ -10,6 +11,8 @@ from app.services.identity_engine import IdentityEngine
 from app.services.llm_service import LLMService
 from app.services.memory_layer import MemoryLayer
 from app.services.reflection_engine import ReflectionEngine
+from app.services.fact_store import FactStore
+from app.services.importance import score_message_heuristic
 from app.workers.reflection_worker import analyze_reflection
 
 
@@ -68,6 +71,11 @@ class ConversationOrchestrator:
             "memories": memories,
             "patterns": {},
         }
+        try:
+            context["known_facts"] = [fact["content"] for fact in FactStore().list_top(user_id, 8)]
+        except Exception:
+            self.logger.exception("Known-fact retrieval failed for user %s", user_id)
+            context["known_facts"] = []
 
         # ponytail: fire-and-forget tasks must NOT receive sql_session — the
         # caller's `with get_sql_session()` block closes before these run.
@@ -81,6 +89,33 @@ class ConversationOrchestrator:
                     self.logger.exception("%s task failed for user %s", label, user_id)
 
             task.add_done_callback(_done)
+
+        user_msg_id = str(uuid4())
+        heuristic_facts = score_message_heuristic(message)
+
+        _fire_and_forget(
+            self.memory.store_conversation(
+                user_id=user_id,
+                role="user",
+                content=message,
+                conversation_id=conversation_id,
+                metadata={
+                    "logged_at": datetime.now(timezone.utc).isoformat(),
+                    "importance": max((fact.importance for fact in heuristic_facts), default=0.1),
+                },
+                idempotency_key=idempotency_key,
+                message_id=user_msg_id,
+            ),
+            "store_user_message",
+        )
+
+        async def _store_facts():
+            try:
+                await asyncio.to_thread(FactStore().upsert_facts, user_id, heuristic_facts, user_msg_id)
+            except Exception:
+                self.logger.exception("Fact storage failed for user %s", user_id)
+
+        _fire_and_forget(_store_facts(), "store_user_facts")
 
         conflicts: list = []
         if settings.ENABLE_INLINE_CONFLICT_DETECTION:
@@ -165,18 +200,6 @@ class ConversationOrchestrator:
         _fire_and_forget(
             self.memory.store_conversation(
                 user_id=user_id,
-                role="user",
-                content=message,
-                conversation_id=conversation_id,
-                metadata={"logged_at": datetime.now(timezone.utc).isoformat()},
-                idempotency_key=idempotency_key,
-            ),
-            "store_user_message",
-        )
-
-        _fire_and_forget(
-            self.memory.store_conversation(
-                user_id=user_id,
                 role="assistant",
                 content=response,
                 conversation_id=conversation_id,
@@ -189,7 +212,7 @@ class ConversationOrchestrator:
         insights: Dict = {}
 
         try:
-            await asyncio.to_thread(analyze_reflection.delay, user_id, conversation_data)
+            await asyncio.to_thread(analyze_reflection.delay, user_id, conversation_data, user_msg_id)
             await asyncio.to_thread(publish_event, user_id, {"type": "reflection.queued"})
         except Exception:
             self.logger.exception("Failed to queue reflection task for user %s", user_id)

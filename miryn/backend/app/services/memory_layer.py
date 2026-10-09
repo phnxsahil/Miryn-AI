@@ -49,6 +49,7 @@ class MemoryLayer:
         conversation_id: str,
         metadata: Dict[str, Any] | None = None,
         idempotency_key: str | None = None,
+        message_id: str | None = None,
         sql_session: Any | None = None,
     ):
         """
@@ -86,6 +87,7 @@ class MemoryLayer:
                     meta,
                     tier,
                     idempotency_key,
+                    message_id,
                     embedding_source,
                     sql_session,
                 )
@@ -482,6 +484,7 @@ class MemoryLayer:
         metadata: Dict[str, Any],
         tier: str,
         idempotency_key: str | None,
+        message_id: str | None,
         embedding_source: str,
         sql_session: Any | None = None,
     ) -> None:
@@ -516,6 +519,7 @@ class MemoryLayer:
             vector_literal = self._vector_literal(embedding)
             params = {
                 "user_id": user_id,
+                "message_id": message_id,
                 "conversation_id": conversation_id,
                 "role": role,
                 "content": payload["content"],
@@ -554,7 +558,7 @@ class MemoryLayer:
             if existing.data:
                 return
 
-        self.supabase.table("messages").insert({
+        supabase_payload = {
             "user_id": user_id,
             "conversation_id": conversation_id,
             "role": role,
@@ -569,7 +573,10 @@ class MemoryLayer:
             "encryption_version": 1,
             "idempotency_key": idempotency_key,
             "embedding_source": embedding_source,
-        }).execute()
+        }
+        if message_id is not None:
+            supabase_payload["id"] = message_id
+        self.supabase.table("messages").insert(supabase_payload).execute()
 
     def _execute_message_insert_sql(self, session: Any, params: Dict[str, Any]) -> None:
         statement = text(
@@ -607,6 +614,18 @@ class MemoryLayer:
                 RETURNING *
                 """
             )
+        if params.get("message_id") is not None:
+            statement = text(
+                statement.text.replace(
+                    "user_id, conversation_id",
+                    "id, user_id, conversation_id",
+                    1,
+                ).replace(
+                    ":user_id, :conversation_id",
+                    ":message_id, :user_id, :conversation_id",
+                    1,
+                )
+            )
         try:
             session.execute(statement, params)
             return
@@ -628,8 +647,7 @@ class MemoryLayer:
             for key, value in params.items()
             if key not in {"idempotency_key", "embedding_source"}
         }
-        session.execute(
-            text(
+        legacy_statement = text(
                 """
                 INSERT INTO messages (
                     user_id, conversation_id, role, content, embedding, metadata,
@@ -642,9 +660,20 @@ class MemoryLayer:
                 )
                 RETURNING *
                 """
-            ),
-            legacy_params,
-        )
+            )
+        if params.get("message_id") is not None:
+            legacy_statement = text(
+                legacy_statement.text.replace(
+                    "user_id, conversation_id",
+                    "id, user_id, conversation_id",
+                    1,
+                ).replace(
+                    ":user_id, :conversation_id",
+                    ":message_id, :user_id, :conversation_id",
+                    1,
+                )
+            )
+        session.execute(legacy_statement, legacy_params)
 
     def _build_cache_key(self, user_id: str, query: str, conversation_id: str | None) -> str:
         """

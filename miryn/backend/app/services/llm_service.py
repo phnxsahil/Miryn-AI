@@ -427,8 +427,12 @@ Formatting requirements:
 
     def _format_context(self, context: dict) -> str:
         memories = context.get("memories", [])
+        known_facts = context.get("known_facts", [])
 
         context_parts = []
+        if known_facts:
+            context_parts.append("What you know about this user (stable facts, use naturally, do not recite):")
+            context_parts.extend(f"- {fact}" for fact in known_facts[:8])
         if memories:
             context_parts.append("Relevant past conversations:")
             for mem in memories[:5]:

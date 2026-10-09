@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 import json
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -9,9 +10,11 @@ from app.core.security import get_current_user_id
 from uuid import uuid4
 from app.core.encryption import decrypt_text, encrypt_text
 from app.services.identity_engine import IdentityEngine
+from app.services.fact_store import FactStore
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 identity_engine = IdentityEngine()
+logger = logging.getLogger(__name__)
 
 
 def _hydrate_message(row: dict) -> dict:
@@ -102,10 +105,12 @@ def export_user_data(
     limit = _clamp_limit(limit)
     identity = identity_engine.get_identity(user_id)
     memories = _get_all_memories(user_id, limit, offset)
+    facts = FactStore().list_top(user_id, limit)
     return JSONResponse(
         content=jsonable_encoder({
             "identity": identity,
             "memories": memories,
+            "facts": facts,
             "exported_at": datetime.now(timezone.utc).isoformat(),
         }),
         headers={"Content-Disposition": "attachment; filename=miryn_data.json"},
@@ -119,97 +124,35 @@ def get_memory(
     user_id: str = Depends(get_current_user_id),
 ):
     limit = _clamp_limit(limit)
-    now = datetime.now(timezone.utc)
-
+    facts = FactStore().list_core(user_id, limit)
+    emotions: list[dict] = []
     if has_sql():
         with get_sql_session() as session:
-            facts_rows = session.execute(
+            rows = session.execute(
                 text(
                     """
-                    SELECT id, content, content_encrypted, metadata, metadata_encrypted, memory_tier, importance_score, created_at
-                    FROM messages
+                    SELECT id, primary_emotion, intensity, created_at
+                    FROM identity_emotions
                     WHERE user_id = :user_id
-                      AND role = 'assistant'
-                      AND memory_tier = 'core'
-                      AND (delete_at IS NULL OR delete_at > :now)
                     ORDER BY created_at DESC
-                    LIMIT :limit OFFSET :offset
+                    LIMIT :limit
                     """
                 ),
-                {"user_id": user_id, "now": now, "limit": limit, "offset": offset},
+                {"user_id": user_id, "limit": min(limit, 10)},
             ).mappings().all()
-
-            recent_rows = session.execute(
-                text(
-                    """
-                    SELECT id, content, content_encrypted, metadata, metadata_encrypted, memory_tier, importance_score, created_at
-                    FROM messages
-                    WHERE user_id = :user_id
-                      AND (delete_at IS NULL OR delete_at > :now)
-                    ORDER BY created_at DESC
-                    LIMIT :limit OFFSET :offset
-                    """
-                ),
-                {"user_id": user_id, "now": now, "limit": min(limit, 10), "offset": offset},
-            ).mappings().all()
-
-            emotion_rows = session.execute(
-                text(
-                    """
-                    SELECT id, content, content_encrypted, metadata, metadata_encrypted, memory_tier, importance_score, created_at
-                    FROM messages
-                    WHERE user_id = :user_id
-                      AND (delete_at IS NULL OR delete_at > :now)
-                      AND (
-                        (metadata->'emotions'->>'primary_emotion') IS NOT NULL
-                        OR (metadata->>'primary_emotion') IS NOT NULL
-                      )
-                    ORDER BY created_at DESC
-                    LIMIT :limit OFFSET :offset
-                    """
-                ),
-                {"user_id": user_id, "now": now, "limit": limit, "offset": offset},
-            ).mappings().all()
-
-        facts = [_hydrate_message(dict(row)) for row in facts_rows]
-        recent = [_hydrate_message(dict(row)) for row in recent_rows]
-        emotions = []
-        for row in emotion_rows:
-            item = _hydrate_message(dict(row))
-            if _has_primary_emotion(item.get("metadata")):
-                emotions.append(item)
-
-        return {
-            "facts": [_strip_memory_fields(item) for item in facts],
-            "emotions": [_strip_memory_fields(item) for item in emotions],
-            "recent": [_strip_memory_fields(item) for item in recent],
-        }
-
-    db = get_db()
-    base = (
-        db.table("messages")
-        .select("id, content, content_encrypted, metadata, metadata_encrypted, memory_tier, importance_score, created_at, role, delete_at")
-        .eq("user_id", user_id)
-        .or_(f"delete_at.is.null,delete_at.gt.{now.isoformat()}")
-        .order("created_at", desc=True)
-        .range(offset, offset + limit - 1)
-        .execute()
-    )
-    rows = base.data or []
-    hydrated = [_hydrate_message(row) for row in rows]
-
-    facts = [
-        item for item in hydrated
-        if item.get("memory_tier") == "core" and item.get("role") == "assistant"
-    ]
-    emotions = [item for item in hydrated if _has_primary_emotion(item.get("metadata"))]
-    recent = hydrated[: min(limit, 10)]
-
-    return {
-        "facts": [_strip_memory_fields(item) for item in facts],
-        "emotions": [_strip_memory_fields(item) for item in emotions],
-        "recent": [_strip_memory_fields(item) for item in recent],
-    }
+        emotions = [
+            {
+                "id": str(row["id"]),
+                "content": f"Felt {row['primary_emotion']} ({row['intensity']})",
+                "memory_tier": "episodic",
+                "importance_score": None,
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
+    else:
+        logger.warning("memory_facts: supabase backend not supported")
+    return {"facts": facts, "emotions": emotions, "recent": []}
 
 
 @router.delete("/purge/episodic")
@@ -246,6 +189,9 @@ def purge_episodic_memories(user_id: str = Depends(get_current_user_id)):
 def delete_memory(message_id: str, user_id: str = Depends(get_current_user_id)):
     now = datetime.now(timezone.utc)
 
+    if FactStore().soft_delete(user_id, message_id):
+        return {"message": "Memory removed"}
+
     if has_sql():
         with get_sql_session() as session:
             result = session.execute(
@@ -279,42 +225,7 @@ def create_memory(payload: dict, user_id: str = Depends(get_current_user_id)):
     content = payload.get("content", "").strip()
     if not content:
         raise HTTPException(status_code=400, detail="Memory content cannot be empty")
-    tier = payload.get("memory_tier", "core")
-    importance = float(payload.get("importance_score", 0.8))
-    memory_id = str(uuid4())
-    now = datetime.now(timezone.utc)
-    content_encrypted = encrypt_text(content)
-
-    if has_sql():
-        with get_sql_session() as session:
-            session.execute(
-                text(
-                    """
-                    INSERT INTO messages (id, user_id, role, content, content_encrypted, memory_tier, importance_score, created_at)
-                    VALUES (:id, :user_id, 'assistant', :content, :content_encrypted, :tier, :importance, :now)
-                    """
-                ),
-                {
-                    "id": memory_id,
-                    "user_id": user_id,
-                    "content": content,
-                    "content_encrypted": content_encrypted,
-                    "tier": tier,
-                    "importance": importance,
-                    "now": now
-                }
-            )
-            return {"status": "success", "id": memory_id, "content": content, "memory_tier": tier, "importance_score": importance}
-
-    db = get_db()
-    db.table("messages").insert({
-        "id": memory_id,
-        "user_id": user_id,
-        "role": "assistant",
-        "content": content,
-        "content_encrypted": content_encrypted,
-        "memory_tier": tier,
-        "importance_score": importance,
-        "created_at": now.isoformat()
-    }).execute()
-    return {"status": "success", "id": memory_id, "content": content, "memory_tier": tier, "importance_score": importance}
+    fact = FactStore().create_manual(user_id, content)
+    if fact is None:
+        return {"status": "unavailable"}
+    return {"status": "success", **fact}
