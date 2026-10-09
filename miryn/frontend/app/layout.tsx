@@ -7,9 +7,9 @@ export const metadata: Metadata = {
   title: "Miryn AI — Persistent Memory & Evolving AI Companion",
   description: "An AI companion that remembers, learns, and evolves with you. Powered by 3-tier memory architecture and dynamic identity engine.",
   icons: {
-    icon: "/icon.png",
-    shortcut: "/icon.png",
-    apple: "/icon.png",
+    icon: "/miryn-logo.png",
+    shortcut: "/miryn-logo.png",
+    apple: "/miryn-logo.png",
   },
 };
 

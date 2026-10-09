@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
 import MirynLogo from "@/components/MirynLogo";
 
 type AuthShellProps = {
@@ -43,89 +42,34 @@ function AuthFooter() {
   );
 }
 
-// ── Animated chat demo ────────────────────────────────────────────────────────
-const CHAT_SEQUENCE = [
-  {
-    role: "miryn" as const,
-    tag: "MEMORY RECALL · 7d VECTOR",
-    text: "You mentioned last Tuesday that your project deadline is this Friday. How is it looking?",
-    delay: 400,
-  },
-  {
-    role: "user" as const,
-    text: "Still behind. Haven't started the final section yet.",
-    delay: 1600,
-  },
-  {
-    role: "miryn" as const,
-    tag: "IDENTITY · BEHAVIOR PATTERN",
-    text: "That tracks — you tend to front-load research and push execution late. Let's block 90 minutes today for the draft.",
-    delay: 3000,
-  },
-  {
-    role: "user" as const,
-    text: "Okay, let's do it.",
-    delay: 4600,
-  },
-];
-
-type BubbleItem = (typeof CHAT_SEQUENCE)[number];
-
-function ChatBubble({ item, visible }: { item: BubbleItem; visible: boolean }) {
-  const style: React.CSSProperties = {
-    opacity: visible ? 1 : 0,
-    transform: visible ? "translateY(0)" : "translateY(12px)",
-    transition: "opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-  };
-
-  if (item.role === "miryn") {
-    return (
-      <div className="flex items-start gap-3" style={style}>
-        <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] flex items-center justify-center shadow-md">
+function StaticChat() {
+  return (
+    <div className="flex flex-col gap-3.5 rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] p-5">
+      <div className="flex items-start gap-3">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] shadow-md">
           <Image src="/miryn-logo.png" alt="Miryn" width={32} height={32} className="object-cover" />
         </div>
-        <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-[color:var(--theme-surface)] border border-[color:var(--theme-border)] px-4 py-3 shadow-lg">
-          {"tag" in item && item.tag && (
-            <div className="mb-2 inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-[color:var(--theme-accent)] bg-[color:var(--theme-accent)]/10 border border-[color:var(--theme-accent)]/20 rounded-full px-2.5 py-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--theme-accent-strong)] animate-pulse" />
-              {item.tag}
-            </div>
-          )}
-          {"tag" in item && item.tag && <br />}
-          <p className="text-[13px] leading-relaxed text-[color:var(--theme-text)] font-sans">{item.text}</p>
+        <div className="max-w-[85%] rounded-2xl rounded-tl-sm border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-4 py-3 shadow-lg">
+          <p className="mb-2 font-mono text-[9px] uppercase tracking-wider text-[color:var(--accent)]">Memory recall · 7d vector</p>
+          <p className="font-sans text-[13px] leading-relaxed text-[color:var(--theme-text)]">You mentioned last Tuesday that your project deadline is this Friday.</p>
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div className="flex justify-end" style={style}>
-      <div className="max-w-[78%] rounded-2xl rounded-tr-sm bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] px-4 py-3 shadow-md">
-        <p className="text-[13px] leading-relaxed text-[color:var(--theme-text)] font-sans">{item.text}</p>
+      <div className="flex justify-end">
+        <div className="max-w-[78%] rounded-2xl rounded-tr-sm border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] px-4 py-3 shadow-md">
+          <p className="font-sans text-[13px] leading-relaxed text-[color:var(--theme-text)]">It is getting close. How is it looking?</p>
+        </div>
+      </div>
+      <div className="flex items-start gap-3">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] shadow-md">
+          <Image src="/miryn-logo.png" alt="Miryn" width={32} height={32} className="object-cover" />
+        </div>
+        <div className="max-w-[85%] rounded-2xl rounded-tl-sm border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-4 py-3 shadow-lg">
+          <p className="font-sans text-[13px] leading-relaxed text-[color:var(--theme-text)]">We can make a plan from where you are. Want to block the first 90 minutes today?</p>
+        </div>
       </div>
     </div>
   );
 }
-
-function AnimatedChat() {
-  const [visibleCount, setVisibleCount] = useState(0);
-
-  useEffect(() => {
-    const timers = CHAT_SEQUENCE.map((item, i) =>
-      window.setTimeout(() => setVisibleCount((c) => Math.max(c, i + 1)), item.delay)
-    );
-    return () => timers.forEach(clearTimeout);
-  }, []);
-
-  return (
-    <div className="flex flex-col gap-3.5 bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] p-5 rounded-2xl">
-      {CHAT_SEQUENCE.map((item, i) => (
-        <ChatBubble key={i} item={item} visible={i < visibleCount} />
-      ))}
-    </div>
-  );
-}
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function AuthShell({ children, title, subtitle }: AuthShellProps) {
   return (
@@ -149,7 +93,7 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
           </Link>
         </header>
 
-        <div className="flex flex-1 flex-col justify-center px-10 pb-[10vh] lg:px-14 relative z-10 gap-8">
+        <div className="relative z-10 flex flex-1 flex-col justify-start gap-8 px-10 pt-0 lg:px-14">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[color:var(--theme-overlay)] border border-[color:var(--theme-border)] mb-4">
               <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--theme-accent)]" />
@@ -166,7 +110,7 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
             </p>
           </div>
 
-          <AnimatedChat />
+          <StaticChat />
 
           <div className="flex items-center justify-between text-[color:var(--theme-dim)] text-[10px] font-mono tracking-wider">
             <span>{"// 384-DIM PGVECTOR"}</span>
@@ -177,14 +121,14 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
       </aside>
 
       {/* ── Right panel ── */}
-      <section className="flex min-h-dvh flex-col bg-[color:var(--theme-bg)] px-5 py-6 sm:px-8 md:px-10 lg:px-16 justify-center">
+      <section className="flex min-h-dvh flex-col justify-start bg-[color:var(--theme-bg)] px-5 py-6 sm:px-8 md:px-10 lg:px-16">
         <header className="flex justify-center py-4 md:hidden">
           <Link href="/" className="rounded-sm transition-opacity hover:opacity-80">
             <MirynLogo size={26} showText glow />
           </Link>
         </header>
 
-        <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col justify-center py-6">
+        <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col justify-start py-6 md:pt-8">
           <main>
             {title ? (
               <div className="mb-6 text-center">

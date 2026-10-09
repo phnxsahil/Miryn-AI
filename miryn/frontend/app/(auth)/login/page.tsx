@@ -181,8 +181,8 @@ export default function LoginPage() {
         </Link>
       </p>
 
-      <details className="mt-7 border-t border-[color:var(--miryn-card-border)] pt-4">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm text-[color:var(--miryn-parchment-muted)] marker:hidden focus-visible:outline-offset-4">
+      <details className="mt-7">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-[color:var(--miryn-card-border)] bg-[color:var(--miryn-surface)] px-4 text-sm font-medium text-[color:var(--text-dim)] transition-colors hover:bg-[color:var(--miryn-card)] marker:hidden focus-visible:outline-offset-4">
           <Zap size={14} aria-hidden="true" style={{ color: "var(--miryn-moss)" }} />
           Explore a demo account
         </summary>
