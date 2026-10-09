@@ -70,3 +70,6 @@ launch_probe.log
 
 # Reports temporary files
 reports/render_tmp/
+
+# Local landing visual references
+miryn/frontend/docs/screens/
