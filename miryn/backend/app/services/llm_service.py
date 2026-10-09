@@ -5,8 +5,53 @@ import asyncio
 import os
 import logging
 import json
+import re
 from pathlib import Path
 from app.config import settings
+
+
+def _gemini_retryable(exc: Exception) -> bool:
+    code = getattr(exc, "code", None)
+    status = getattr(exc, "status", None)
+    try:
+        code_value = int(code) if code is not None else None
+    except (TypeError, ValueError):
+        code_value = None
+    status_value = str(getattr(status, "name", status)).upper() if status is not None else None
+
+    retryable_codes = {404, 429, 500, 502, 503, 504}
+    retryable_statuses = {
+        "NOT_FOUND",
+        "RESOURCE_EXHAUSTED",
+        "UNAVAILABLE",
+        "DEADLINE_EXCEEDED",
+        "INTERNAL",
+    }
+    if code_value in retryable_codes or status_value in retryable_statuses:
+        return True
+    if code is not None or status is not None:
+        return False
+
+    error_text = str(exc).lower()
+    return any(
+        marker in error_text
+        for marker in (
+            "429",
+            "quota",
+            "resource_exhausted",
+            "rate limit",
+            "rate_limit",
+            "unavailable",
+            "overloaded",
+            "high demand",
+            "deadline",
+            "not found",
+            "503",
+            "500",
+            "502",
+            "504",
+        )
+    )
 
 
 class LLMService:
@@ -44,9 +89,9 @@ class LLMService:
                 return name if name.startswith("models/") else f"models/{name}"
             self.gemini_fallback_models = list(dict.fromkeys([
                 _with_prefix(settings.GEMINI_MODEL),
-                "models/gemini-3.8-flash",
+                "models/gemini-flash-latest",
+                "models/gemini-3.5-flash",
                 "models/gemini-2.5-flash",
-                "models/gemini-3.1-pro-preview",
             ]))
         elif self.provider == "vertex":
             from vertexai import init as vertex_init
@@ -131,20 +176,10 @@ class LLMService:
                             return ""
                     except Exception as exc:
                         last_exc = exc
-                        err = str(exc).lower()
-                        is_unavailable = "not found" in err or "not supported" in err or "404" in err
-                        is_quota = "429" in err or "quota" in err or "resource_exhausted" in err or "rate" in err
-                        # 503 UNAVAILABLE ("high demand") is transient and usually
-                        # per-model. Aborting the chain on it is what produced the
-                        # generic "trouble responding" reply instead of an answer.
-                        is_transient = (
-                            "503" in err or "500" in err or "502" in err or "504" in err
-                            or "unavailable" in err or "overloaded" in err
-                            or "high demand" in err or "deadline" in err
-                        )
-                        if is_unavailable or is_quota or is_transient:
+                        if _gemini_retryable(exc):
                             self.logger.warning("Gemini model %s unavailable/quota, trying fallback.", candidate_model)
                             continue
+                        self.logger.exception("Gemini generation failed for model %s", candidate_model)
                         raise
                 if last_exc:
                     raise last_exc
@@ -220,8 +255,9 @@ class LLMService:
             if system_prompt:
                 contents = f"{system_prompt}\n\n{full_prompt}"
             
-            last_exc: Exception | None = None
             for candidate_model in dict.fromkeys(self.gemini_fallback_models):
+                text_chars = 0
+                finish_reason = None
                 try:
                     stream_response = self.client.aio.models.generate_content_stream(
                         model=candidate_model,
@@ -230,35 +266,55 @@ class LLMService:
                     )
                     if asyncio.iscoroutine(stream_response):
                         stream_response = await stream_response
-                    self.model = candidate_model
                     async for chunk in stream_response:
                         text = None
                         try:
                             text = chunk.text
-                        except Exception:
-                            self.logger.warning("Gemini chunk had no text: %s", chunk)
+                        except Exception as exc:
+                            self.logger.warning("Gemini chunk text unavailable for model %s: %s", candidate_model, exc)
                             continue
                         if text:
+                            text_chars += len(text)
+                            self.model = candidate_model
                             yield text
-                    return
-                except Exception as exc:
-                    last_exc = exc
-                    err = str(exc).lower()
-                    is_unavailable = "not found" in err or "not supported" in err or "404" in err
-                    is_quota = "429" in err or "quota" in err or "resource_exhausted" in err or "rate" in err
-                    is_transient = (
-                        "503" in err or "500" in err or "502" in err or "504" in err
-                        or "unavailable" in err or "overloaded" in err
-                        or "high demand" in err or "deadline" in err
+                        try:
+                            candidates = getattr(chunk, "candidates", None) or []
+                            if candidates:
+                                finish_reason = getattr(candidates[0], "finish_reason", None)
+                        except Exception:
+                            finish_reason = None
+                    if text_chars:
+                        return
+                    self.logger.warning(
+                        "Gemini stream returned no text for %s (finish_reason=%s)",
+                        candidate_model,
+                        finish_reason,
                     )
-                    if is_unavailable or is_quota or is_transient:
+                except Exception as exc:
+                    if text_chars:
+                        self.logger.exception("Gemini streaming failed after output for model %s", candidate_model)
+                        return
+                    if _gemini_retryable(exc):
                         self.logger.warning("Gemini stream model %s unavailable/quota, trying fallback.", candidate_model)
                         continue
-                    self.logger.exception("Gemini streaming failed")
+                    self.logger.exception("Gemini streaming failed for model %s", candidate_model)
                     raise
-            if last_exc:
-                self.logger.exception("All Gemini fallback models failed")
-                raise last_exc
+            try:
+                fallback = await self.generate(full_prompt, system_prompt=system_prompt, max_tokens=500)
+            except Exception:
+                self.logger.exception("Gemini streaming fallback generation failed")
+                raise
+            self.logger.warning("Gemini streaming unavailable, served non-streaming reply")
+            pending = ""
+            for token in re.findall(r"\S+\s*", fallback):
+                if pending and len(pending) + len(token) > 36:
+                    yield pending
+                    await asyncio.sleep(0)
+                    pending = ""
+                pending += token
+            if pending:
+                yield pending
+                await asyncio.sleep(0)
             return
 
         if self.provider == "vertex":

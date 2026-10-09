@@ -406,6 +406,8 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
             yield f"data: {json.dumps({'error': _sanitize_error(exc)})}\n\n"
             return
 
+        if not chunks:
+            logger.warning("Stream produced no chunks for user %s", user_id)
         response_text = "".join(chunks).strip() or "I'm taking a little longer than usual. Please try again in a moment."
         _fire_and_forget(
             _background_stream_postprocess(
