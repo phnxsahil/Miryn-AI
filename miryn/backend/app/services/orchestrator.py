@@ -9,7 +9,7 @@ from app.config import settings
 from app.core.cache import publish_event
 from app.services.identity_engine import IdentityEngine
 from app.services.llm_service import LLMService
-from app.services.memory_layer import MemoryLayer
+from app.services.memory_layer import MemoryLayer, chat_tier_for
 from app.services.reflection_engine import ReflectionEngine
 from app.services.fact_store import FactStore
 from app.services.importance import score_message_heuristic
@@ -92,6 +92,7 @@ class ConversationOrchestrator:
 
         user_msg_id = str(uuid4())
         heuristic_facts = score_message_heuristic(message)
+        importance = max((fact.importance for fact in heuristic_facts), default=0.1)
 
         _fire_and_forget(
             self.memory.store_conversation(
@@ -101,7 +102,8 @@ class ConversationOrchestrator:
                 conversation_id=conversation_id,
                 metadata={
                     "logged_at": datetime.now(timezone.utc).isoformat(),
-                    "importance": max((fact.importance for fact in heuristic_facts), default=0.1),
+                    "importance": importance,
+                    "memory_tier": chat_tier_for(importance),
                 },
                 idempotency_key=idempotency_key,
                 message_id=user_msg_id,
@@ -170,6 +172,7 @@ class ConversationOrchestrator:
                     role="assistant",
                     content=fallback,
                     conversation_id=conversation_id,
+                    metadata={"importance": 0.2, "memory_tier": chat_tier_for(0.2)},
                     idempotency_key=self._assistant_idempotency_key(idempotency_key),
                 ),
                 "store_timeout_fallback",
@@ -186,6 +189,7 @@ class ConversationOrchestrator:
                     role="assistant",
                     content=fallback,
                     conversation_id=conversation_id,
+                    metadata={"importance": 0.2, "memory_tier": chat_tier_for(0.2)},
                     idempotency_key=self._assistant_idempotency_key(idempotency_key),
                 ),
                 "store_llm_error_fallback",
@@ -203,6 +207,7 @@ class ConversationOrchestrator:
                 role="assistant",
                 content=response,
                 conversation_id=conversation_id,
+                metadata={"importance": 0.2, "memory_tier": chat_tier_for(0.2)},
                 idempotency_key=self._assistant_idempotency_key(idempotency_key),
             ),
             "store_assistant_message",

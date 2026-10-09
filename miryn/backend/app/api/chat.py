@@ -17,6 +17,7 @@ from app.config import settings
 from app.schemas.chat import ChatRequest, ChatResponse, PinUpdate, TitleUpdate
 from app.services.importance import score_message_heuristic
 from app.services.fact_store import FactStore
+from app.services.memory_layer import chat_tier_for
 from app.services.orchestrator import ConversationOrchestrator
 from app.workers.reflection_worker import analyze_reflection
 
@@ -253,6 +254,7 @@ async def _background_stream_postprocess(
             metadata={
                 "logged_at": datetime.now(timezone.utc).isoformat(),
                 "importance": importance if importance is not None else 0.5,
+                "memory_tier": chat_tier_for(importance if importance is not None else 0.5),
             },
             idempotency_key=idempotency_key,
         )
@@ -261,7 +263,7 @@ async def _background_stream_postprocess(
             role="assistant",
             content=response,
             conversation_id=conversation_id,
-            metadata={"importance": 0.2},
+            metadata={"importance": 0.2, "memory_tier": chat_tier_for(0.2)},
             idempotency_key=f"{idempotency_key}:assistant" if idempotency_key else None,
         )
     except Exception:

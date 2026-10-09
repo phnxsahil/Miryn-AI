@@ -14,6 +14,10 @@ from app.core.embeddings import embedding_service
 from app.core.encryption import encrypt_text, decrypt_text
 
 
+def chat_tier_for(importance: float) -> str:
+    return "core" if importance >= 0.8 else "episodic"
+
+
 class MemoryLayer:
     """
     Multi-tiered memory retrieval system.
