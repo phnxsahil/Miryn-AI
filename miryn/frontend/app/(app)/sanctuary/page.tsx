@@ -92,7 +92,7 @@ export default function SanctuaryPage() {
         {[
           { label: "Emotional Baseline", value: data?.emotional_baseline || "Grounded", icon: Heart, color: "var(--theme-accent)" },
           { label: "Cognitive Load", value: data?.cognitive_load || "Light", icon: Brain, color: "var(--theme-accent)" },
-          { label: "Open Loops", value: `${openLoops.length} active`, icon: Zap, color: "#a78bfa" },
+          { label: "Open Loops", value: `${openLoops.length} active`, icon: Zap, color: "var(--accent)" },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-2">
@@ -137,13 +137,13 @@ export default function SanctuaryPage() {
         <div className="bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-2xl p-5 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)]">Open Loops</p>
-            <span className="text-xs text-[#a78bfa] font-mono">{openLoops.length} unresolved</span>
+            <span className="text-xs text-[color:var(--accent)] font-mono">{openLoops.length} unresolved</span>
           </div>
           <p className="text-xs text-[color:var(--theme-dim)] leading-relaxed">Unresolved threads taking up mental RAM. Closing them frees cognitive space.</p>
           <div className="space-y-2">
             {openLoops.map((loop, i) => (
               <div key={i} className="flex items-start gap-3 p-3 bg-[color:var(--theme-card)] rounded-xl border border-[color:var(--theme-border)]">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#a78bfa] shrink-0 mt-1.5" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[color:var(--accent)] shrink-0 mt-1.5" />
                 <p className="text-sm text-[color:var(--theme-muted)]">{loop}</p>
               </div>
             ))}

@@ -20,7 +20,7 @@ function formatFileSize(bytes: number): string {
 
 function getFileIcon(filename: string) {
   if (filename.match(/\.(ts|tsx|js|jsx|py|sql|json|html|css|yaml|yml|sh|env)$/i)) {
-    return <FileCode size={13} className="text-[#2dd4bf] shrink-0" />;
+    return <FileCode size={13} className="text-[color:var(--accent)] shrink-0" />;
   }
   return <FileText size={13} className="text-[color:var(--theme-accent)] shrink-0" />;
 }

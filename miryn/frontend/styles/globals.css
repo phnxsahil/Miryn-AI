@@ -42,27 +42,33 @@
 }
 
 [data-theme="dark"] {
-  --theme-bg: #232321;
+  --bg-page: #232321;
+  --bg-panel: #292926;
+  --text-primary: #f2efe7;
+  --text-dim: #b7b3a9;
+  --accent: #0ea782;
+  --border: rgba(245, 242, 232, 0.11);
+  --theme-bg: var(--bg-page);
   --theme-bg-rgb: 35 35 33;
   --theme-sidebar: #1c1c1a;
   --theme-sidebar-border: rgba(245, 242, 232, 0.07);
-  --theme-surface: #292926;
+  --theme-surface: var(--bg-panel);
   --theme-surface-rgb: 41 41 38;
   --theme-card: #302f2b;
   --theme-card-rgb: 48 47 43;
   --theme-card-hover: #383732;
   --theme-input: #282825;
-  --theme-border: rgba(245, 242, 232, 0.11);
+  --theme-border: var(--border);
   --theme-border-rgb: 245 242 232;
-  --theme-text: #f2efe7;
+  --theme-text: var(--text-primary);
   --theme-text-rgb: 242 239 231;
-  --theme-muted: #b7b3a9;
+  --theme-muted: var(--text-dim);
   --theme-muted-rgb: 183 179 169;
-  --theme-dim: #918d83;
-  --theme-dim-rgb: 145 141 131;
-  --theme-accent: #0ea782;
+  --theme-dim: var(--text-dim);
+  --theme-dim-rgb: 183 179 169;
+  --theme-accent: var(--accent);
   --theme-accent-rgb: 14 167 130;
-  --theme-accent-strong: #0ea782;
+  --theme-accent-strong: var(--accent);
   --theme-accent-strong-rgb: 14 167 130;
   --theme-accent-contrast: #17221c;
   --theme-ember: #0ea782;
@@ -84,27 +90,33 @@
 }
 
 [data-theme="light"] {
-  --theme-bg: #f5f2e9;
+  --bg-page: #f5f2e9;
+  --bg-panel: #fbf9f2;
+  --text-primary: #20211d;
+  --text-dim: #655f53;
+  --accent: #61724f;
+  --border: rgba(42, 43, 34, 0.13);
+  --theme-bg: var(--bg-page);
   --theme-bg-rgb: 245 242 233;
   --theme-sidebar: #ebe7dc;
   --theme-sidebar-border: rgba(42, 43, 34, 0.08);
-  --theme-surface: #fbf9f2;
+  --theme-surface: var(--bg-panel);
   --theme-surface-rgb: 251 249 242;
   --theme-card: #fffdf7;
   --theme-card-rgb: 255 253 247;
   --theme-card-hover: #f0ede4;
   --theme-input: #fffdf7;
-  --theme-border: rgba(42, 43, 34, 0.13);
+  --theme-border: var(--border);
   --theme-border-rgb: 42 43 34;
-  --theme-text: #20211d;
+  --theme-text: var(--text-primary);
   --theme-text-rgb: 32 33 29;
-  --theme-muted: #655f53;
+  --theme-muted: var(--text-dim);
   --theme-muted-rgb: 101 95 83;
-  --theme-dim: #817b6e;
-  --theme-dim-rgb: 129 123 110;
-  --theme-accent: #61724f;
+  --theme-dim: var(--text-dim);
+  --theme-dim-rgb: 101 95 83;
+  --theme-accent: var(--accent);
   --theme-accent-rgb: 97 114 79;
-  --theme-accent-strong: #61724f;
+  --theme-accent-strong: var(--accent);
   --theme-accent-strong-rgb: 97 114 79;
   --theme-accent-contrast: #f7f2e6;
   --theme-terracotta: #a6533d;
@@ -133,14 +145,10 @@
   --card: var(--theme-card);
   --card-border: var(--theme-border);
   --glass: var(--theme-surface);
-  --border: var(--theme-border);
-  --accent: var(--theme-accent);
   --accent-interactive: var(--theme-accent-strong);
   --accent-glow: color-mix(in srgb, var(--theme-accent-strong) 12%, transparent);
-  --text-primary: var(--theme-text);
   --text-muted: var(--theme-muted);
-  --text-dim: var(--theme-dim);
-  --text-ghost: var(--theme-dim);
+  --text-ghost: var(--text-dim);
   --error-bg: var(--theme-danger-bg);
   --error-text: var(--theme-danger-text);
   --error-border: var(--theme-danger-border);
@@ -458,7 +466,8 @@
 }
 
 .mono-label {
-  @apply font-mono text-[11px] uppercase tracking-wider text-[#737373];
+  @apply font-mono text-[11px] uppercase tracking-wider;
+  color: var(--text-dim);
 }
 
 /* Ink grain — chalk tooth on the wall. Three composited gradient layers instead
