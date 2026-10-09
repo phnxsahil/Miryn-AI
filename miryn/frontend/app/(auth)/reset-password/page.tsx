@@ -51,7 +51,7 @@ function ResetPasswordForm() {
     return (
       <div className="text-center space-y-4">
         <AuthError message="This reset link is incomplete or invalid." />
-        <Link href="/forgot-password" className="text-[color:var(--miryn-parchment)] hover:underline text-xs inline-block">
+        <Link href="/forgot-password" className="inline-block py-2 text-[color:var(--miryn-parchment)] hover:underline text-xs">
           Request a new reset link →
         </Link>
       </div>
@@ -138,7 +138,7 @@ export default function ResetPasswordPage() {
       </Suspense>
 
       <div className="text-center mt-6">
-        <Link href="/login" className="text-xs text-[color:var(--miryn-parchment-muted)] hover:text-[color:var(--miryn-parchment)] transition-colors inline-flex items-center gap-1.5">
+        <Link href="/login" className="inline-flex items-center gap-1.5 py-2 text-xs text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">
           <ArrowLeft size={13} /> Back to log in
         </Link>
       </div>

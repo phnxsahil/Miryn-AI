@@ -50,7 +50,7 @@ function StaticChat() {
           <Image src="/miryn-logo.png" alt="Miryn" width={32} height={32} className="object-cover" />
         </div>
         <div className="max-w-[85%] rounded-2xl rounded-tl-sm border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-4 py-3 shadow-lg">
-          <p className="mb-2 font-mono text-[9px] uppercase tracking-wider text-[color:var(--accent)]">Memory recall · 7d vector</p>
+          <p className="mb-2 font-mono text-xs uppercase tracking-wider text-[color:var(--accent)]">Memory recall · 7d vector</p>
           <p className="font-sans text-[13px] leading-relaxed text-[color:var(--theme-text)]">You mentioned last Tuesday that your project deadline is this Friday.</p>
         </div>
       </div>
@@ -97,7 +97,7 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[color:var(--theme-overlay)] border border-[color:var(--theme-border)] mb-4">
               <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--theme-accent)]" />
-              <span className="font-mono text-[10px] uppercase tracking-widest text-[color:var(--theme-muted)]">
+              <span className="font-mono text-xs uppercase tracking-widest text-[color:var(--theme-muted)]">
                 Persistent Intelligence
               </span>
             </div>
@@ -112,7 +112,7 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
 
           <StaticChat />
 
-          <div className="flex items-center justify-between text-[color:var(--theme-dim)] text-[10px] font-mono tracking-wider">
+          <div className="flex items-center justify-between text-[color:var(--theme-dim)] text-xs font-mono tracking-wider">
             <span>{"// 384-DIM PGVECTOR"}</span>
             <span>FERNET ENCRYPTED</span>
             <span>&lt;1.5S HYBRID RETRIEVAL</span>

@@ -12,7 +12,7 @@ const answers = [
 export default function FAQPage() {
   return (
     <main className="landing-faq-page">
-      <Link href="/" className="text-sm">← Back to Miryn</Link>
+      <Link href="/" className="inline-block py-2 text-sm">← Back to Miryn</Link>
       <h1>Questions about Miryn</h1>
       {answers.map(([question, answer]) => (
         <section key={question}>
@@ -21,9 +21,9 @@ export default function FAQPage() {
         </section>
       ))}
       <p className="flex flex-wrap gap-x-2">
-        <Link href="/privacy">Privacy policy</Link>
+        <Link href="/privacy" className="inline-block py-2">Privacy policy</Link>
         <span aria-hidden="true">·</span>
-        <Link href="/signup">Try Miryn</Link>
+        <Link href="/signup" className="inline-block py-2">Try Miryn</Link>
       </p>
     </main>
   );

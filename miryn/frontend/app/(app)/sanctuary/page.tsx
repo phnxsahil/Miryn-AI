@@ -37,7 +37,7 @@ function BreathingExercise({ name, desc, pattern }: { name: string; desc: string
           <span className="text-sm font-medium text-[color:var(--theme-accent)]">{phase}</span>
         </div>
       ) : (
-        <button onClick={start} className="flex items-center gap-2 text-xs font-medium text-[color:var(--theme-accent)] hover:text-[color:var(--theme-accent)] transition-colors">
+        <button onClick={start} className="-my-3 inline-flex min-h-10 items-center gap-2 py-3 text-xs font-medium text-[color:var(--theme-accent)] transition-colors hover:text-[color:var(--theme-accent)]">
           <Wind size={13} />Begin {name}
         </button>
       )}
@@ -81,7 +81,7 @@ export default function SanctuaryPage() {
           <h1 className="text-xl font-semibold text-[color:var(--theme-text)]">Your space</h1>
           <p className="text-xs text-[color:var(--theme-dim)] mt-0.5">A quiet place to reflect, reset and see what&apos;s on your plate.</p>
         </div>
-        <button onClick={() => { setRefreshing(true); void load(); }} disabled={refreshing} className="p-2 rounded-xl text-[color:var(--theme-dim)] hover:text-[color:var(--theme-muted)] hover:bg-[color:var(--theme-overlay)] transition-all disabled:opacity-50">
+        <button onClick={() => { setRefreshing(true); void load(); }} disabled={refreshing} className="flex h-10 w-10 items-center justify-center rounded-xl p-2 text-[color:var(--theme-dim)] transition-all hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-muted)] disabled:opacity-50">
           <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
         </button>
       </div>

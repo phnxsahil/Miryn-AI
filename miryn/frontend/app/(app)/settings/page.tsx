@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type { Session, User } from "@/lib/types";
@@ -36,15 +36,12 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      style={{ height: 22, width: 40 }}
-      className={`relative rounded-full transition-colors duration-200 focus:outline-none ${checked ? "bg-[color:var(--theme-accent)]" : "bg-white/10"}`}
-    >
-      <span className={`absolute top-0.5 left-0.5 w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? "translate-x-[18px]" : "translate-x-0"}`} />
-    </button>
+    <label className="flex min-h-11 min-w-11 cursor-pointer items-center justify-end">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="sr-only" />
+      <span role="switch" aria-checked={checked} className={`relative block h-[22px] w-[40px] rounded-full transition-colors duration-200 focus-within:ring-2 focus-within:ring-[color:var(--theme-accent)] ${checked ? "bg-[color:var(--theme-accent)]" : "bg-white/10"}`}>
+        <span className={`absolute top-0.5 left-0.5 h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? "translate-x-[18px]" : "translate-x-0"}`} />
+      </span>
+    </label>
   );
 }
 
@@ -64,6 +61,11 @@ export default function SettingsPage() {
   const [push, setPush] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [exporting, setExporting] = useState(false);
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    activeTabRef.current?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [section]);
 
   useEffect(() => {
     (async () => {
@@ -114,10 +116,10 @@ export default function SettingsPage() {
       )}
 
       {/* Sidebar */}
-      <aside className="settings-nav flex w-full shrink-0 gap-1 overflow-x-auto border-b border-[color:var(--theme-border)] px-3 py-3 md:w-48 md:flex-col md:overflow-visible md:border-b-0 md:py-8">
+      <aside className="settings-nav flex w-full shrink-0 snap-x snap-proximity gap-1 overflow-x-auto border-b border-[color:var(--theme-border)] px-3 py-3 [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)] md:w-48 md:flex-col md:overflow-visible md:border-b-0 md:py-8 md:[mask-image:none]">
         <p className="hidden px-3 mb-3 text-[10.5px] font-mono uppercase tracking-widest text-[color:var(--theme-dim)] md:block">Account</p>
         {NAV.map(({ id, label, icon: Icon }) => (
-          <button key={id} onClick={() => setSection(id)} className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors md:w-full ${section === id ? "bg-[color:var(--theme-overlay)] text-[color:var(--theme-text)]" : "text-[color:var(--theme-dim)] hover:text-[color:var(--theme-muted)] hover:bg-[color:var(--theme-overlay)]"}`}>
+          <button key={id} ref={section === id ? activeTabRef : undefined} onClick={() => setSection(id)} className={`flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors md:w-full ${section === id ? "bg-[color:var(--theme-overlay)] text-[color:var(--theme-text)]" : "text-[color:var(--theme-dim)] hover:text-[color:var(--theme-muted)] hover:bg-[color:var(--theme-overlay)]"}`}>
             <Icon size={15} className={section === id ? "text-[color:var(--theme-accent)]" : ""} />
             {label}
           </button>
@@ -168,7 +170,7 @@ export default function SettingsPage() {
                 <div key={`${s.timestamp}-${s.ip ?? "unknown"}-${index}`} className="flex items-center gap-3 bg-[color:var(--theme-card)] border border-[color:var(--theme-border)] rounded-2xl px-4 py-3">
                   <Laptop size={15} className="text-[color:var(--theme-dim)] shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="flex items-center gap-2 text-sm text-[color:var(--theme-text)] truncate">{s.device ?? "Unknown device"}{index === 0 && <span className="rounded-full bg-[color:var(--theme-accent)]/10 px-1.5 py-0.5 text-[10px] font-medium text-[color:var(--theme-accent)]">This device</span>}</p>
+                    <p className="flex items-center gap-2 text-sm text-[color:var(--theme-text)] truncate">{s.device ?? "Unknown device"}{index === 0 && <span className="rounded-full bg-[color:var(--theme-accent)]/10 px-1.5 py-0.5 text-xs font-medium text-[color:var(--theme-accent)]">This device</span>}</p>
                     <p className="text-xs text-[color:var(--theme-dim)] mt-0.5">{s.ip ?? "IP not recorded"} · {s.timestamp ? new Date(s.timestamp).toLocaleString() : ""}</p>
                   </div>
                 </div>
@@ -199,7 +201,7 @@ export default function SettingsPage() {
               <Row label="Theme" hint="Dark or light interface">
                 <div className="flex gap-2">
                   {(["dark","light"] as const).map(t => (
-                    <button key={t} onClick={() => setTheme(t)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${theme === t ? "bg-[color:var(--theme-accent)]/10 border-[color:var(--theme-accent)]/25 text-[color:var(--theme-accent)]" : "border-[color:var(--theme-border)] text-[color:var(--theme-dim)] hover:text-[color:var(--theme-muted)]"}`}>
+                    <button key={t} onClick={() => setTheme(t)} className={`flex min-h-10 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-all ${theme === t ? "bg-[color:var(--theme-accent)]/10 border-[color:var(--theme-accent)]/25 text-[color:var(--theme-accent)]" : "border-[color:var(--theme-border)] text-[color:var(--theme-dim)] hover:text-[color:var(--theme-muted)]"}`}>
                       {t === "dark" ? <Moon size={12} /> : <Sun size={12} />}
                       {t.charAt(0).toUpperCase() + t.slice(1)}
                     </button>

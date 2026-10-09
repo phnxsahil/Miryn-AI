@@ -112,7 +112,7 @@ export default function OnboardingFlow() {
   };
 
   return (
-    <div className="min-h-screen bg-[color:var(--miryn-warm-black)] text-[color:var(--text-primary)] p-6 md:p-14 relative overflow-x-hidden font-ui">
+    <div className="relative min-h-screen overflow-hidden bg-[color:var(--miryn-warm-black)] p-6 font-ui text-[color:var(--text-primary)] md:p-14">
       <ThoughtWall preset="onboarding" className="opacity-30" />
 
       <div className="max-w-4xl mx-auto relative z-10 space-y-10">

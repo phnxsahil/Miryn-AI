@@ -49,7 +49,7 @@ export default function MirynLogo({
           }}
         >
           Miryn
-          <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[color:var(--theme-overlay)] text-[color:var(--theme-accent)] font-semibold tracking-wider">
+          <span className="text-xs uppercase font-mono px-1.5 py-0.5 rounded bg-[color:var(--theme-overlay)] text-[color:var(--theme-accent)] font-semibold tracking-wider">
             AI
           </span>
         </span>

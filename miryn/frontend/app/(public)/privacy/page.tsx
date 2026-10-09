@@ -105,7 +105,7 @@ export default function PrivacyPolicy() {
         <Link href="/" className="rounded-sm transition-opacity hover:opacity-80">
           <MirynLogo size={22} showText />
         </Link>
-        <Link href="/" className="text-[13px] text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">
+        <Link href="/" className="inline-block py-2 text-[13px] text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">
           ← Back to home
         </Link>
       </nav>
@@ -197,8 +197,8 @@ export default function PrivacyPolicy() {
         <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--miryn-card-border)] pt-6">
           <span className="text-[12px] text-[color:var(--text-dim)]">© 2026 Miryn Technologies, Inc.</span>
           <div className="flex gap-5 text-[12px]">
-            <Link href="/terms" className="text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">Terms of Service</Link>
-            <Link href="/" className="text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">Home</Link>
+        <Link href="/terms" className="inline-block py-2 text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">Terms of Service</Link>
+        <Link href="/" className="inline-block py-2 text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">Home</Link>
           </div>
         </div>
       </div>

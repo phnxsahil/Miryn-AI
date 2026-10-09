@@ -88,7 +88,7 @@ export default function DocsPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--theme-muted)] hover:text-[color:var(--theme-text)] transition-colors"
+              className="inline-flex items-center gap-1.5 py-2 text-xs font-medium text-[color:var(--theme-muted)] transition-colors hover:text-[color:var(--theme-text)]"
             >
               <ArrowLeft size={13} />
               <span>Landing</span>
@@ -112,7 +112,7 @@ export default function DocsPage() {
       <div className="max-w-5xl mx-auto px-6 py-12 flex flex-col lg:flex-row gap-12">
         {/* Sidebar TOC */}
         <aside className="hidden lg:flex flex-col gap-1 w-52 shrink-0 sticky top-24 self-start">
-          <p className="text-[10px] font-mono uppercase tracking-widest text-[color:var(--theme-dim)] mb-3">Sections</p>
+          <p className="text-xs font-mono uppercase tracking-widest text-[color:var(--theme-dim)] mb-3">Sections</p>
           {FEATURES.map((f) => {
             const Icon = f.icon;
             return (
@@ -192,7 +192,7 @@ export default function DocsPage() {
                       <Icon size={18} />
                     </div>
                     <div>
-                      <span className="text-[10px] font-mono uppercase tracking-widest text-[color:var(--theme-dim)]">
+                      <span className="text-xs font-mono uppercase tracking-widest text-[color:var(--theme-dim)]">
                         0{index + 1} / 0{FEATURES.length}
                       </span>
                       <h2 className="text-lg font-normal text-[color:var(--theme-text)] mt-0.5">{feature.name}</h2>
@@ -207,7 +207,7 @@ export default function DocsPage() {
                     <ol className="space-y-2.5">
                       {feature.steps.map((step, i) => (
                         <li key={i} className="flex items-start gap-3">
-                          <span className="w-5 h-5 rounded-full bg-[color:var(--theme-accent)]/10 border border-[color:var(--theme-accent)]/20 text-[color:var(--theme-accent)] text-[10px] font-mono flex items-center justify-center shrink-0 mt-0.5">
+                          <span className="w-5 h-5 rounded-full bg-[color:var(--theme-accent)]/10 border border-[color:var(--theme-accent)]/20 text-[color:var(--theme-accent)] text-xs font-mono flex items-center justify-center shrink-0 mt-0.5">
                             {i + 1}
                           </span>
                           <p className="text-xs text-[color:var(--theme-muted)] leading-relaxed">{step}</p>

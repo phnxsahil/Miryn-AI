@@ -166,7 +166,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
                 : { id: conversation.id, top: rect.bottom + 4, right: Math.max(12, window.innerWidth - rect.right) }
             );
           }}
-          className="absolute end-1.5 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded text-[color:var(--theme-dim)] opacity-40 transition-all hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)] hover:opacity-100 group-hover:opacity-100 focus:opacity-100"
+          className="absolute end-0.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded text-[color:var(--theme-dim)] opacity-100 transition-all hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)] md:h-7 md:w-7 md:opacity-40 md:group-hover:opacity-100 md:focus:opacity-100"
         >
           <MoreVertical size={14} strokeWidth={2} aria-hidden="true" />
         </button>
@@ -218,7 +218,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
         <button
           type="button"
           onClick={() => setConfirmClearAll(true)}
-          className="text-[10px] uppercase tracking-wider text-[color:var(--theme-dim)] hover:text-red-400 transition-colors"
+          className="-my-2 min-h-9 px-2 py-2 text-[11px] uppercase tracking-wider text-[color:var(--theme-dim)] hover:text-red-400 transition-colors"
           title="Clear all past chats"
         >
           Clear all

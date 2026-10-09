@@ -147,7 +147,7 @@ export default function LoginPage() {
             <label className="text-[13px] text-[color:var(--miryn-parchment-muted)]" htmlFor="password">
               Password
             </label>
-            <Link href="/forgot-password" className="text-[12px] text-[color:var(--miryn-parchment-muted)] hover:text-[color:var(--miryn-parchment)] transition-colors">
+            <Link href="/forgot-password" className="inline-block py-2 text-[12px] text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">
               Forgot password?
             </Link>
           </div>
@@ -176,7 +176,7 @@ export default function LoginPage() {
 
       <p className="text-center md:text-left text-[13px] text-[color:var(--miryn-parchment-muted)] mt-8 pl-1">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="text-[color:var(--miryn-moss)] font-medium hover:underline">
+        <Link href="/signup" className="inline-block py-2 text-[color:var(--miryn-moss)] font-medium hover:underline">
           Sign up
         </Link>
       </p>

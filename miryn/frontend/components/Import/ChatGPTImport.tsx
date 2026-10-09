@@ -230,11 +230,11 @@ export default function ChatGPTImport({ onClose }: ChatGPTImportProps) {
                 <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-white/5 border border-white/5">
                   <div className="text-center">
                     <p className="text-xl text-white font-mono">{status?.conversations_processed || 0}</p>
-                    <p className="text-[10px] text-secondary uppercase tracking-tighter">Conversations</p>
+                    <p className="text-xs text-secondary uppercase tracking-tighter">Conversations</p>
                   </div>
                   <div className="text-center">
                     <p className="text-xl text-accent font-mono">{status?.memories_added || 0}</p>
-                    <p className="text-[10px] text-secondary uppercase tracking-tighter">Insights Extracted</p>
+                    <p className="text-xs text-secondary uppercase tracking-tighter">Insights Extracted</p>
                   </div>
                 </div>
 
