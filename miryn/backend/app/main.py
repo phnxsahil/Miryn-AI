@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from starlette.middleware.gzip import GZipMiddleware
 import logging
 import os
 from time import perf_counter
@@ -16,6 +15,7 @@ from app.core.encryption import encryption_available
 from app.api import auth, chat, identity, onboarding, llm, notifications, tools, memory, import_data
 from app.api.analytics import router as analytics_router
 from app.core.rate_limit import RateLimitMiddleware
+from app.core.gzip_sse import SSEAwareGZip
 
 logging.basicConfig(
     level=logging.INFO,
@@ -67,7 +67,7 @@ allow_origins.extend([
 allow_origins = list(dict.fromkeys(allow_origins))
 
 app.add_middleware(RateLimitMiddleware)
-app.add_middleware(GZipMiddleware, minimum_size=500)
+app.add_middleware(SSEAwareGZip, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
