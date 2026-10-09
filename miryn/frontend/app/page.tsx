@@ -182,11 +182,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="faq" className="mx-auto max-w-4xl px-5 py-20 sm:px-8 lg:py-28">
+      <section id="faq" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
         <p className="font-editorial text-sm uppercase tracking-[0.22em] text-[#A3A3A3]">FREQUENTLY ASKED QUESTIONS</p>
         <h2 className="mt-5 font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Everything You Need to Know About Miryn</h2>
-        <div className="mt-12 space-y-2">
-          {faqs.map(([question, answer]) => <details key={question} className="group rounded-2xl border border-white/10 bg-white/[0.03]"><summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-5 px-5 font-editorial text-lg text-[#FAFAFA] [&::-webkit-details-marker]:hidden"><span>{question}</span><span className="text-2xl font-ui font-light text-[#525252] transition-transform group-open:rotate-45">+</span></summary><p className="max-w-3xl px-5 pb-5 text-sm leading-7 text-[#A3A3A3]">{answer}</p></details>)}
+        <div className="faq-grid mt-12">
+          {[faqs.slice(0, 3), faqs.slice(3)].map((column, columnIndex) => <div className="faq-column" key={columnIndex}>
+            {column.map(([question, answer]) => <details key={question} className="faq-row group"><summary><span>{question}</span><span className="faq-plus" aria-hidden="true">+</span></summary><p>{answer}</p></details>)}
+          </div>)}
         </div>
       </section>
 

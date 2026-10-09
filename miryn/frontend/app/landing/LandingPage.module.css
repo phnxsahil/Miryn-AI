@@ -259,6 +259,16 @@
 .wave-chart__pill { opacity: .86; }
 @keyframes wave-draw { from { stroke-dashoffset: 480; } to { stroke-dashoffset: 0; } }
 
+.faq-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 10px; }
+.faq-column { display: grid; align-content: start; gap: 10px; }
+.faq-row { align-self: start; overflow: hidden; border: 1px solid rgba(255, 255, 255, .08); border-radius: 14px; background: linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .02)); transition: transform .2s ease, border-color .2s ease, opacity .2s ease; }
+.faq-row:hover, .faq-row:focus-within { border-color: rgba(255, 255, 255, .2); transform: translateY(-1px); }
+.faq-row summary { display: flex; min-height: 62px; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; cursor: pointer; list-style: none; font-family: var(--font-editorial); font-size: 18px; color: #fafafa; }
+.faq-row summary::-webkit-details-marker { display: none; }
+.faq-plus { display: grid; width: 28px; height: 28px; flex: none; place-items: center; color: rgba(255, 255, 255, .45); font-family: var(--font-ui); font-size: 23px; font-weight: 300; transition: transform .2s ease, opacity .2s ease; }
+.faq-row[open] .faq-plus { transform: rotate(45deg); color: rgba(255, 255, 255, .75); }
+.faq-row p { max-width: 60ch; padding: 0 18px 17px; color: rgba(255, 255, 255, .62); font-size: 14px; line-height: 1.75; }
+
 @keyframes hero-card-float {
   0%, 100% { transform: translateY(-6px); }
   50% { transform: translateY(6px); }
@@ -321,6 +331,11 @@
   .landing-nav-wrap { padding-right: 12px; padding-left: 12px; }
   .landing-nav { padding: 0 10px 0 14px; }
   .tool-icons { flex-wrap: wrap; gap: 12px; margin-top: 38px; }
+}
+
+@media (max-width: 899px) {
+  .faq-grid { grid-template-columns: 1fr; }
+  .faq-row summary { min-height: 52px; font-size: 16px; }
 }
 
 @media (min-width: 641px) and (max-width: 1099px) {
