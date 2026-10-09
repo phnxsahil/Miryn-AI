@@ -15,6 +15,8 @@ from app.core.encryption import decrypt_text
 from app.core.security import get_current_user_id, get_user_id_from_token
 from app.config import settings
 from app.schemas.chat import ChatRequest, ChatResponse, PinUpdate, TitleUpdate
+from app.services.importance import score_message_heuristic
+from app.services.fact_store import FactStore
 from app.services.orchestrator import ConversationOrchestrator
 from app.workers.reflection_worker import analyze_reflection
 
@@ -238,6 +240,8 @@ async def _background_stream_postprocess(
     response: str,
     conversation_id: str,
     idempotency_key: str | None = None,
+    user_msg_id: str | None = None,
+    importance: float | None = None,
 ) -> None:
     try:
         await orchestrator.memory.store_conversation(
@@ -245,7 +249,11 @@ async def _background_stream_postprocess(
             role="user",
             content=message,
             conversation_id=conversation_id,
-            metadata={"logged_at": datetime.now(timezone.utc).isoformat()},
+            message_id=user_msg_id,
+            metadata={
+                "logged_at": datetime.now(timezone.utc).isoformat(),
+                "importance": importance if importance is not None else 0.5,
+            },
             idempotency_key=idempotency_key,
         )
         await orchestrator.memory.store_conversation(
@@ -253,6 +261,7 @@ async def _background_stream_postprocess(
             role="assistant",
             content=response,
             conversation_id=conversation_id,
+            metadata={"importance": 0.2},
             idempotency_key=f"{idempotency_key}:assistant" if idempotency_key else None,
         )
     except Exception:
@@ -263,6 +272,8 @@ async def _background_stream_postprocess(
             analyze_reflection.delay,
             user_id,
             {"user": message, "assistant": response},
+            user_msg_id,
+            message,
         )
         await asyncio.to_thread(publish_event, user_id, {"type": "reflection.queued"})
     except Exception:
@@ -274,6 +285,12 @@ async def _background_stream_postprocess(
             await asyncio.to_thread(publish_event, user_id, {"type": "identity.conflict", "payload": conflicts})
     except Exception:
         logger.exception("Background conflict detection failed for user %s", user_id)
+
+
+async def _store_stream_facts(user_id: str, facts, source_message_id: str) -> None:
+    if not facts:
+        return
+    await asyncio.to_thread(FactStore().upsert_facts, user_id, facts, source_message_id)
 
 
 
@@ -357,11 +374,25 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
         identity, memories = await _prepare_stream_context(user_id, request.message, conversation_id)
         _touch_conversation_updated_at(conversation_id)
 
+    user_msg_id = str(uuid4())
+    heuristic_facts = []
+    try:
+        heuristic_facts = score_message_heuristic(request.message)
+    except Exception:
+        logger.exception("Importance scoring failed for user %s", user_id)
+    known_facts = []
+    try:
+        known_facts = [f["content"] for f in await asyncio.to_thread(FactStore().list_top, user_id, 8)]
+    except Exception:
+        logger.exception("Known-fact retrieval failed for user %s", user_id)
+    _fire_and_forget(_store_stream_facts(user_id, heuristic_facts, user_msg_id), "store_stream_facts", user_id)
+    importance = max((fact.importance for fact in heuristic_facts), default=0.1)
+
     async def event_generator():
         chunks: list[str] = []
         try:
             async for chunk in orchestrator.llm.stream_chat(
-                context={"identity": identity, "memories": memories, "patterns": {}},
+                context={"identity": identity, "memories": memories, "patterns": {}, "known_facts": known_facts},
                 user_message=request.message,
                 identity=identity,
             ):
@@ -382,6 +413,8 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
                 response=response_text,
                 conversation_id=conversation_id,
                 idempotency_key=request.idempotency_key,
+                user_msg_id=user_msg_id,
+                importance=importance,
             ),
             "background_stream_postprocess",
             user_id,
