@@ -101,7 +101,7 @@ type Section = {
 export default function PrivacyPolicy() {
   return (
     <div className="min-h-dvh bg-[color:var(--miryn-warm-black)] font-ui text-[color:var(--text-primary)] antialiased">
-      <nav className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[color:var(--miryn-card-border)] bg-[rgba(11,12,9,0.9)] px-6 backdrop-blur lg:px-12">
+      <nav className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[color:var(--miryn-card-border)] bg-[color:var(--nav-scrim)] px-6 backdrop-blur lg:px-12">
         <Link href="/" className="rounded-sm transition-opacity hover:opacity-80">
           <MirynLogo size={22} showText />
         </Link>

@@ -68,6 +68,12 @@
   --theme-dim-rgb: 183 179 169;
   --theme-accent: var(--accent);
   --theme-accent-rgb: 14 167 130;
+  --accent-wash: rgb(var(--theme-accent-rgb) / 0.08);
+  --accent-wash-strong: rgb(var(--theme-accent-rgb) / 0.12);
+  --accent-wash-max: rgb(var(--theme-accent-rgb) / 0.15);
+  --accent-edge: rgb(var(--theme-accent-rgb) / 0.30);
+  --accent-glow: rgb(var(--theme-accent-rgb) / 0.15);
+  --nav-scrim: rgb(var(--theme-bg-rgb) / 0.90);
   --theme-accent-strong: var(--accent);
   --theme-accent-strong-rgb: 14 167 130;
   --theme-accent-contrast: #17221c;
@@ -116,6 +122,12 @@
   --theme-dim-rgb: 101 95 83;
   --theme-accent: var(--accent);
   --theme-accent-rgb: 97 114 79;
+  --accent-wash: rgb(var(--theme-accent-rgb) / 0.08);
+  --accent-wash-strong: rgb(var(--theme-accent-rgb) / 0.12);
+  --accent-wash-max: rgb(var(--theme-accent-rgb) / 0.15);
+  --accent-edge: rgb(var(--theme-accent-rgb) / 0.30);
+  --accent-glow: rgb(var(--theme-accent-rgb) / 0.15);
+  --nav-scrim: rgb(var(--theme-bg-rgb) / 0.90);
   --theme-accent-strong: var(--accent);
   --theme-accent-strong-rgb: 97 114 79;
   --theme-accent-contrast: #f7f2e6;
@@ -146,7 +158,6 @@
   --card-border: var(--theme-border);
   --glass: var(--theme-surface);
   --accent-interactive: var(--theme-accent-strong);
-  --accent-glow: color-mix(in srgb, var(--theme-accent-strong) 12%, transparent);
   --text-muted: var(--theme-muted);
   --text-ghost: var(--text-dim);
   --error-bg: var(--theme-danger-bg);
@@ -210,8 +221,8 @@
 
   .error-surface {
     @apply p-4 text-xs flex items-center gap-3 rounded-xl font-medium;
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.25);
+    background: var(--theme-danger-bg);
+    border: 1px solid var(--theme-danger-border);
     color: #fca5a5;
   }
 
@@ -256,8 +267,8 @@
 
   .miryn-grid {
     background-image:
-      linear-gradient(to right, rgba(236, 228, 208, 0.035) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(236, 228, 208, 0.035) 1px, transparent 1px);
+      linear-gradient(to right, color-mix(in srgb, var(--theme-text) 3.5%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--theme-text) 3.5%, transparent) 1px, transparent 1px);
     background-size: 72px 72px;
     mask-image: linear-gradient(to bottom, transparent, black 18%, black 82%, transparent);
   }
@@ -387,8 +398,8 @@
 
   .miryn-error {
     @apply p-4 text-xs flex items-center gap-3 rounded-xl font-medium;
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.22);
+    background: var(--theme-danger-bg);
+    border: 1px solid var(--theme-danger-border);
     color: #fca5a5;
   }
 
@@ -475,9 +486,9 @@
    left to the composition (ThoughtWall), never baked in here. */
 .miryn-ink-grain {
   background:
-    radial-gradient(circle at 22% 18%, rgba(236, 228, 208, 0.05), transparent 26%),
-    repeating-linear-gradient(0deg, rgba(236, 228, 208, 0.022) 0 1px, transparent 1px 7px),
-    repeating-linear-gradient(90deg, rgba(236, 228, 208, 0.015) 0 1px, transparent 1px 9px);
+    radial-gradient(circle at 22% 18%, color-mix(in srgb, var(--theme-text) 5%, transparent), transparent 26%),
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--theme-text) 2.2%, transparent) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--theme-text) 1.5%, transparent) 0 1px, transparent 1px 9px);
 }
 
 .openai-halo::before {

@@ -118,7 +118,7 @@ export default function OnboardingFlow() {
       <div className="max-w-4xl mx-auto relative z-10 space-y-10">
         {/* Header */}
         <header className="space-y-4 pb-6 border-b border-[color:var(--miryn-card-border)]">
-          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[rgba(168,187,148,0.08)] border border-[rgba(168,187,148,0.25)] text-xs text-[color:var(--miryn-moss)] font-medium">
+          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[color:var(--accent-wash)] border border-[color:var(--accent-edge)] text-xs text-[color:var(--miryn-moss)] font-medium">
             <Sliders size={14} />
             <span>Companion Dynamic Tuning</span>
           </div>
@@ -139,7 +139,7 @@ export default function OnboardingFlow() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="p-4 rounded-2xl bg-[rgba(168,187,148,0.15)] border border-[color:var(--miryn-moss)]/40 text-xs text-[color:var(--miryn-parchment)] flex items-center justify-between"
+              className="p-4 rounded-2xl bg-[color:var(--accent-wash-max)] border border-[color:var(--miryn-moss)]/40 text-xs text-[color:var(--miryn-parchment)] flex items-center justify-between"
             >
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 size={16} className="text-[color:var(--miryn-moss)]" />
@@ -177,8 +177,8 @@ export default function OnboardingFlow() {
                 onClick={() => setSelectedPreset(preset.id)}
                 className={`p-6 rounded-3xl border text-left transition-all space-y-3 relative group ${
                   selectedPreset === preset.id
-                    ? "bg-[rgba(168,187,148,0.08)] border-[color:var(--miryn-moss)] shadow-[0_0_30px_rgba(168,187,148,0.12)]"
-                    : "bg-[color:var(--miryn-card)] border-[color:var(--miryn-card-border)] hover:border-[rgba(168,187,148,0.3)]"
+                    ? "bg-[color:var(--accent-wash)] border-[color:var(--miryn-moss)] shadow-[0_0_30px_var(--accent-glow)]"
+                    : "bg-[color:var(--miryn-card)] border-[color:var(--miryn-card-border)] hover:border-[color:var(--accent-edge)]"
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -219,8 +219,8 @@ export default function OnboardingFlow() {
                   onClick={() => toggleGoal(goal.label)}
                   className={`p-4 rounded-2xl border text-left transition-all flex items-center gap-3 ${
                     active
-                      ? "bg-[rgba(168,187,148,0.12)] border-[color:var(--miryn-moss)] text-[color:var(--miryn-parchment)]"
-                      : "bg-[color:var(--miryn-surface)] border-[color:var(--miryn-card-border)] text-[color:var(--miryn-parchment-muted)] hover:border-[rgba(168,187,148,0.3)]"
+                      ? "bg-[color:var(--accent-wash-strong)] border-[color:var(--miryn-moss)] text-[color:var(--miryn-parchment)]"
+                      : "bg-[color:var(--miryn-surface)] border-[color:var(--miryn-card-border)] text-[color:var(--miryn-parchment-muted)] hover:border-[color:var(--accent-edge)]"
                   }`}
                 >
                   <Icon size={16} className={active ? "text-[color:var(--miryn-moss)]" : "text-[color:var(--theme-dim)]"} />

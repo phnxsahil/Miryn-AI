@@ -151,7 +151,7 @@ export default function InputBox({
         }}
         className={`relative flex flex-col bg-[color:var(--theme-surface)] rounded-[26px] border transition-all duration-200 shadow-sm ${
           isDragging
-            ? "border-[color:var(--theme-accent)] bg-[color:var(--theme-card)] shadow-[0_0_25px_rgba(214,145,85,0.15)]"
+            ? "border-[color:var(--theme-accent)] bg-[color:var(--theme-card)] shadow-[0_0_25px_var(--accent-glow)]"
             : "border-[color:var(--theme-border)] focus-within:border-[color:var(--theme-border)]"
         }`}
       >
