@@ -1,14 +1,10 @@
 import base64
 import hashlib
-import logging
 from typing import Optional
 
 from cryptography.fernet import Fernet, InvalidToken
 
 from app.config import settings
-
-
-logger = logging.getLogger(__name__)
 
 
 def _normalize_key(raw_key: str) -> Optional[bytes]:
@@ -51,9 +47,12 @@ def _get_fernet() -> Optional[Fernet]:
         if not normalized:
             return None
         return Fernet(normalized)
-    except Exception as exc:
-        logger.warning("Invalid ENCRYPTION_KEY: %s", exc)
+    except Exception:
         return None
+
+
+def encryption_available() -> bool:
+    return _get_fernet() is not None
 
 
 def encrypt_text(plain: str) -> Optional[str]:

@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
+import os
 from time import perf_counter
 from uuid import uuid4
 import sentry_sdk
@@ -10,6 +11,7 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from app.config import settings
 from app.core.database import get_sql_session
 from app.core.cache import redis_client
+from app.core.encryption import encryption_available
 from app.api import auth, chat, identity, onboarding, llm, notifications, tools, memory, import_data
 from app.api.analytics import router as analytics_router
 from app.core.rate_limit import RateLimitMiddleware
@@ -34,6 +36,16 @@ app = FastAPI(
     description="Context-aware AI companion with persistent memory",
     version="0.1.0",
 )
+
+
+@app.on_event("startup")
+def check_encryption_key() -> None:
+    if encryption_available():
+        return
+    message = "ENCRYPTION_KEY is missing or invalid: memory facts cannot be saved or read. Set ENCRYPTION_KEY in backend/.env."
+    logger.error(message)
+    if os.getenv("APP_ENV", "").strip().lower() == "production" or settings.SENTRY_ENVIRONMENT.strip().lower() == "production":
+        raise RuntimeError(message)
 
 allow_origins = []
 if settings.FRONTEND_URL and settings.FRONTEND_URL.strip():
@@ -168,5 +180,6 @@ async def health_check():
     except Exception as e:
         logger.warning("Redis ping failed: %s", e)
         checks["redis"] = "skipped (local dev)"
+    checks["encryption"] = "ok" if encryption_available() else "missing"
     status = "healthy" if all(v in ["ok", "skipped (local dev)"] for v in checks.values()) else "degraded"
     return {"status": status, "checks": checks, "version": "0.1.0"}

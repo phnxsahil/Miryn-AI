@@ -35,11 +35,18 @@ class FactStore:
         ]
         if not candidates:
             return
+        encrypted = [(fact, encrypt_text(fact.text)) for fact in candidates]
+        saved = [(fact, cipher) for fact, cipher in encrypted if cipher]
+        skipped = len(encrypted) - len(saved)
+        if skipped:
+            logger.error("skipping %d facts: encryption unavailable", skipped)
+        if not saved:
+            return
         if not has_sql():
             self._unsupported()
             return
         with get_sql_session() as session:
-            for fact in candidates:
+            for fact, encrypted_fact in saved:
                 session.execute(
                     text(
                         """
@@ -66,7 +73,7 @@ class FactStore:
                     ),
                     {
                         "user_id": user_id,
-                        "fact": encrypt_text(fact.text),
+                        "fact": encrypted_fact,
                         "fact_key": fact_key(fact.text),
                         "category": fact.category,
                         "importance": fact.importance,
