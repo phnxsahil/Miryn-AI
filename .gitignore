@@ -32,10 +32,14 @@ docker-data/
 # Node / frontend
 node_modules/
 .next/
+tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # Python
 __pycache__/
+*.pyc
 *.py[cod]
+.pytest_cache/
 *$py.class
 *.so
 .Python
