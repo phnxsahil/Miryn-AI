@@ -2,10 +2,8 @@
 
 import { memo, useState } from "react";
 import type { Message } from "@/lib/types";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
 import { Check, Copy } from "lucide-react";
+import MarkdownBody from "./MarkdownBody";
 
 function MessageBubble({ message, isStreaming = false, saved = false, stopped = false, errorNotice = false, onRetry }: {
   message: Message;
@@ -37,7 +35,7 @@ function MessageBubble({ message, isStreaming = false, saved = false, stopped = 
         </span>
       ) : (
         <div className="prose max-w-none break-words text-[color:var(--theme-text)] prose-p:my-3 prose-p:leading-7 prose-pre:overflow-x-auto prose-pre:rounded-xl prose-pre:border prose-pre:border-[color:var(--theme-border)] prose-pre:bg-[color:var(--theme-sidebar)] prose-pre:p-4 prose-headings:text-[color:var(--theme-text)] prose-strong:text-[color:var(--theme-text)] prose-a:text-[color:var(--theme-accent)] prose-code:text-[color:var(--theme-accent)]">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>{message.content}</ReactMarkdown>
+          <MarkdownBody content={message.content} />
           {isStreaming && <span className="chat-stream-cursor" aria-hidden="true" />}
         </div>
       )}
