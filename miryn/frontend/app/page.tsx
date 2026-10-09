@@ -64,7 +64,7 @@ export default function LandingPage() {
       <LandingNav />
 
       <section id="hero" className="landing-hero relative isolate mx-auto max-w-7xl overflow-clip px-5 pb-24 pt-20 sm:px-8 sm:pt-28 lg:px-12 lg:pb-32 lg:pt-32">
-        <div className={`${styles.heroGrid} pointer-events-none absolute inset-x-0 top-0 -z-10 h-[680px]`} />
+        <div className={`${styles.heroGrid} pointer-events-none absolute inset-x-0 top-0 -z-10 h-[680px]`} aria-hidden="true" />
         <SpectrumOrb />
         <div className="hero-copy mx-auto max-w-6xl text-center">
           <div className={`${styles.reveal} mx-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-[#A3A3A3]`}>
@@ -185,7 +185,7 @@ export default function LandingPage() {
 
       <section id="insights" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
         <Reveal><p className="section-eyebrow section-eyebrow--insights"><i />INSIGHTS &amp; BLOG</p></Reveal>
-        <div className="mt-5 flex flex-col justify-between gap-6 sm:flex-row sm:items-end"><h2 className="max-w-3xl font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Exploring the Future of Personal AI &amp; Memory</h2><a href="/landing/blog/index.html" className="inline-flex min-h-11 shrink-0 items-center font-editorial text-sm text-[#A3A3A3] hover:text-[#FAFAFA]">Explore All Insights →</a></div>
+        <Reveal className="mt-5 flex flex-col justify-between gap-6 sm:flex-row sm:items-end"><h2 className="max-w-3xl font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Exploring the Future of Personal AI &amp; Memory</h2><a href="/landing/blog/index.html" className="inline-flex min-h-11 shrink-0 items-center font-editorial text-sm text-[#A3A3A3] hover:text-[#FAFAFA]">Explore All Insights →</a></Reveal>
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
           {posts.map(([category, date, title, excerpt, href, image], index) => <Reveal key={href} delay={index * 70}><a href={href} className="group block rounded-3xl border border-white/10 bg-white/[0.03] p-3 transition-colors hover:border-white/25"><div className="relative aspect-[1.55] overflow-hidden rounded-2xl">{index === 2 ? <div className="blog-art blog-art--hood" aria-hidden="true" /> : <Image src={image} alt="" fill sizes="(max-width: 1024px) 90vw, 380px" className="object-cover transition-transform duration-500 group-hover:scale-105" />}</div><div className="p-3"><p className="text-xs text-[#A3A3A3]">{category} <span className="px-1 text-[#525252]">·</span> {date}</p><h3 className="mt-4 font-editorial text-[22px] leading-tight text-[#FAFAFA]">{title}</h3><p className="mt-3 text-sm leading-6 text-[#A3A3A3]">{excerpt}</p><p className="mt-6 text-xs text-[#525252]">Miryn AI</p></div></a></Reveal>)}
         </div>
@@ -193,7 +193,7 @@ export default function LandingPage() {
 
       <section id="faq" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
         <Reveal><p className="section-eyebrow section-eyebrow--faq"><i />FREQUENTLY ASKED QUESTIONS</p></Reveal>
-        <h2 className="mt-5 font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Everything You Need to Know About Miryn</h2>
+        <Reveal><h2 className="mt-5 font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Everything You Need to Know About Miryn</h2></Reveal>
         <div className="faq-grid mt-12">
           {[faqs.slice(0, 3), faqs.slice(3)].map((column, columnIndex) => <div className="faq-column" key={columnIndex}>
             {column.map(([question, answer], index) => <Reveal key={question} delay={index * 70}><details className="faq-row group"><summary><span>{question}</span><span className="faq-plus" aria-hidden="true">+</span></summary><p>{answer}</p></details></Reveal>)}

@@ -314,24 +314,6 @@ html.js .landing-reveal[data-reveal].is-revealed { opacity: 1; transform: none; 
   mask-image: linear-gradient(to bottom, black, transparent 85%);
 }
 
-.orb {
-  background: radial-gradient(circle at 50% 42%, rgba(255,255,255,.88) 0 5%, rgba(121,240,196,.82) 13%, rgba(83,138,255,.52) 28%, rgba(173,61,255,.3) 45%, transparent 70%);
-  filter: blur(12px);
-  opacity: .85;
-}
-
-.orbCore {
-  background: radial-gradient(circle at 40% 35%, #fff 0 3%, #b8ffe7 12%, #64d6c4 25%, #5859bd 54%, #1a152e 75%, transparent 76%);
-  box-shadow: 0 0 90px rgba(90, 190, 226, .24), inset -20px -30px 50px rgba(11, 10, 24, .8);
-}
-
-.grain {
-  background-image: url('/bg-atmosphere.webp');
-  background-size: cover;
-  mix-blend-mode: screen;
-  opacity: .18;
-}
-
 .reveal {
   animation: reveal .8s ease both;
 }
