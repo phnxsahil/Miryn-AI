@@ -7,10 +7,11 @@ export type Mood = {
 };
 
 export const moodItems: Mood[] = [
-  { title: "Seeing red", copy: "You might be feeling a bit frustrated or tense.", color: "#e5484d" },
-  { title: "Feeling light", copy: "Seems like you have a good day!", color: "#f5d90a" },
-  { title: "Feeling blue", copy: "It looks like something’s weighing on your mind.", color: "#6fa8e8" },
-  { title: "Lost in thought", copy: "Feeling a little anxious? Take a deep breath.", color: "#ad82db" },
+  { title: "Seeing red", copy: "You might be feeling a bit frustrated or tense.", color: "#eb2c50" },
+  { title: "Feeling light", copy: "Seems like you have a good day!", color: "#fee435" },
+  { title: "Feeling blue", copy: "It looks like something’s weighing on your mind.", color: "#4788c8" },
+  // The requested violet uses the reference spectrum; its fourth mood card was orange.
+  { title: "Lost in thought", copy: "Feeling a little anxious? Take a deep breath.", color: "#5a54a4" },
 ];
 
 export default function MoodCard({ mood, compact = false }: { mood: Mood; compact?: boolean }) {

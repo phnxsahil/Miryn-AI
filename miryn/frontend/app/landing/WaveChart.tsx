@@ -35,9 +35,15 @@ export default function WaveChart({ title, label, ticks, accent, variant }: Wave
               <stop offset="0" stopColor={accent} stopOpacity=".2" />
               <stop offset="1" stopColor={accent} stopOpacity="0" />
             </linearGradient>
+            <linearGradient id={`wave-grey-${variant}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="white" stopOpacity=".1" />
+              <stop offset="1" stopColor="white" stopOpacity="0" />
+            </linearGradient>
+            <clipPath id={`wave-first-${variant}`}><rect width="92" height="148" /></clipPath>
           </defs>
           {[24, 88, 152, 216, 280, 344].map((x) => <line key={x} x1={x} y1="10" x2={x} y2="124" stroke="rgba(255,255,255,.075)" strokeWidth="1" />)}
-          <path d={chart.area} fill={`url(#wave-fill-${variant})`} />
+          <path d={chart.area} fill={`url(#wave-grey-${variant})`} />
+          <path d={chart.area} fill={`url(#wave-fill-${variant})`} clipPath={`url(#wave-first-${variant})`} />
           <path className="wave-chart__line" d={chart.line} fill="none" stroke="rgba(255,255,255,.26)" strokeWidth="2" strokeLinecap="round" />
           <path className="wave-chart__line" d={chart.first} fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" />
           <path className="wave-chart__line" d={chart.rest} fill="none" stroke="rgba(255,255,255,.26)" strokeWidth="2" strokeLinecap="round" />

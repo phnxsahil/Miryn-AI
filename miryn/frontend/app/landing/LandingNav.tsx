@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const links = [
   ["About", "#about"],
@@ -13,18 +13,19 @@ const links = [
 export default function LandingNav() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const sentinel = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    const onScroll = () => setScrolled((current) => {
-      const next = window.scrollY > 24;
-      return current === next ? current : next;
-    });
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    if (!sentinel.current || typeof IntersectionObserver === "undefined") return;
+    // ponytail: a 24px sentinel replaces scroll-time layout reads and state scheduling.
+    const observer = new IntersectionObserver(([entry]) => setScrolled(!entry.isIntersecting));
+    observer.observe(sentinel.current);
+    return () => observer.disconnect();
   }, []);
 
   return (
+    <>
+    <span ref={sentinel} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 h-6 w-px" />
     <header className="landing-nav-wrap">
       <nav className={`landing-nav${scrolled ? " landing-nav--scrolled" : ""}`}>
         <a href="/" className="landing-brand" onClick={() => setOpen(false)}>
@@ -32,13 +33,15 @@ export default function LandingNav() {
             <path d="M3 16.5C6.1 7.8 10.7 7.8 13.2 14.2C15.9 21.2 20.6 20.8 25 10.8" stroke="#F3C7A7" strokeWidth="1.7" strokeLinecap="round" />
             <path d="M3 13.2C6.4 5.1 10.2 5.7 13.4 12.2C16.5 18.7 20.9 17.3 25 7.2" stroke="#B9E7D5" strokeWidth="1.7" strokeLinecap="round" />
             <path d="M3 19.7C6.4 11.5 10.7 12.3 13.4 18.1C16.1 23.8 20.9 23.6 25 14.1" stroke="#A7BDF1" strokeWidth="1.7" strokeLinecap="round" />
+            <path d="M3 10C6.4 2 10.2 2.5 13.4 9C16.5 15.5 20.9 14 25 4" stroke="#FEE435" strokeWidth="1.2" strokeLinecap="round" />
+            <path d="M3 23C6.4 15 10.7 15.5 13.4 21C16.1 26.5 20.9 27 25 18" stroke="#5A54A4" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
           <span>Miryn AI</span>
         </a>
 
         <div className="hidden items-center gap-7 md:flex">
           {links.map(([label, href]) => (
-            <a key={href} href={href} className="flex min-h-11 items-center font-ui text-sm text-[#A3A3A3] transition-colors hover:text-[#FAFAFA]">
+            <a key={href} href={href} className="flex min-h-11 min-w-11 items-center justify-center px-1 font-ui text-sm text-[#A3A3A3] transition-colors hover:text-[#FAFAFA]">
               {label}
             </a>
           ))}
@@ -77,5 +80,6 @@ export default function LandingNav() {
         </div>
       )}
     </header>
+    </>
   );
 }

@@ -109,7 +109,7 @@ test.describe("auth screens", () => {
       const background = getComputedStyle(element).backgroundColor;
       return { background, formWidth: form?.width ?? 0 };
     });
-    expect(authLayout.background).toBe("rgb(10, 10, 10)");
+    expect(authLayout.background).toBe("rgb(35, 35, 33)");
     expect(authLayout.formWidth).toBeLessThanOrEqual(400);
     await page.getByLabel("Email", { exact: true }).fill("person@example.com");
     await page.getByLabel("Password", { exact: true }).fill("incorrect-password");
