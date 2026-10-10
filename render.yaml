@@ -2,29 +2,6 @@
 # Deploy: Connect your repo → Render will detect this file automatically
 
 services:
-  # ───────────────────────────────────────────────
-  # 1. Backend API (FastAPI)
-  # ───────────────────────────────────────────────
-  - type: web
-    name: miryn-api
-    runtime: docker
-    dockerfilePath: ./miryn/backend/Dockerfile
-    dockerContext: ./miryn/backend
-    region: oregon
-    plan: starter
-    healthCheckPath: /health
-    envVars:
-      # Database (Neon Postgres — set in Render dashboard)
-      - key: DATABASE_URL
-        sync: false
-      # Redis (Render managed)
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: miryn-redis
-          property: connectionString
-# No paid worker, Render Postgres, persistent disk, or separate frontend service.
-services:
   - type: web
     name: miryn-api
     runtime: docker
