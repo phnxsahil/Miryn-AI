@@ -71,7 +71,7 @@ export default function LandingPage() {
           <h1 className={`${styles.revealDelay} mt-7 font-editorial text-4xl leading-[1.08] tracking-[-0.04em] text-[#FAFAFA] sm:text-6xl lg:text-[clamp(3rem,3.15vw,4rem)] xl:whitespace-nowrap`}>
             An AI Companion That Remembers, Learns, and Evolves With You.
           </h1>
-          <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-[#A3A3A3] sm:text-lg">
+          <p className={`${styles.heroDescription} mx-auto mt-7 max-w-2xl text-base leading-7 sm:text-lg`}>
             Miryn goes beyond standard chatbots. Powered by persistent long-term memory and a dynamic identity engine, Miryn understands your values, tracks your goals, and grows alongside you across every conversation.
           </p>
           <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">

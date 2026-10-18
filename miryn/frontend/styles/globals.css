@@ -311,7 +311,7 @@
   }
 
   .landing-hero {
-    margin-bottom: 160px;
+    margin-bottom: 120px;
   }
 
   .auth-aside {
@@ -388,7 +388,7 @@
       margin-top: 80px;
     }
 
-    .landing-hero { margin-bottom: 80px; }
+    .landing-hero { margin-bottom: 60px; }
 
     .landing-section { scroll-margin-top: 76px; }
   }
