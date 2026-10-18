@@ -78,7 +78,7 @@ export default function SanctuaryPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[11px] font-mono uppercase tracking-wider text-[color:var(--theme-dim)] mb-0.5">Sanctuary</p>
-          <h1 className="text-xl font-semibold text-[color:var(--theme-text)]">Your space</h1>
+          <h1 className="text-xl font-ui font-semibold text-[color:var(--theme-text)]">Your space</h1>
           <p className="text-xs text-[color:var(--theme-dim)] mt-0.5">A quiet place to reflect, reset and see what&apos;s on your plate.</p>
         </div>
         <button onClick={() => { setRefreshing(true); void load(); }} disabled={refreshing} className="flex h-10 w-10 items-center justify-center rounded-xl p-2 text-[color:var(--theme-dim)] transition-all hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-muted)] disabled:opacity-50">

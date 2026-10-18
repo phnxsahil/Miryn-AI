@@ -182,8 +182,14 @@
     @apply min-h-screen font-ui antialiased;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1, h2 {
     font-family: var(--font-editorial);
+    @apply tracking-tight;
+  }
+
+  /* Small headings stay legible at real UI weights; Gambarino ships regular only. */
+  h3, h4, h5, h6 {
+    font-family: var(--font-ui);
     @apply tracking-tight;
   }
 }
