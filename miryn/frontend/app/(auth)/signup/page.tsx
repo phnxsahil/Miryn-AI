@@ -183,7 +183,7 @@ export default function SignupPage() {
             name="name"
             type="text"
             className="miryn-input text-base sm:text-[15px]"
-            placeholder="Aditya Verma"
+            placeholder="Your name"
             autoComplete="name"
             value={fullName}
             onChange={(e) => {

@@ -59,8 +59,8 @@ const fallbackPresets: PresetCard[] = [
 
 export default function OnboardingFlow() {
   const [name, setName] = useState("");
-  const [selectedPreset, setSelectedPreset] = useState("companion");
-  const [goals, setGoals] = useState<string[]>(["Process emotions & grounding", "Think through decisions"]);
+  const [selectedPreset, setSelectedPreset] = useState("");
+  const [goals, setGoals] = useState<string[]>([]);
   const [seedBelief, setSeedBelief] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,6 +83,10 @@ export default function OnboardingFlow() {
 
   const handleSavePersonalization = async () => {
     if (isSubmitting) return;
+    if (!selectedPreset || goals.length === 0) {
+      setStatus("Choose a conversational stance and at least one focus before saving.");
+      return;
+    }
     setIsSubmitting(true);
     setStatus(null);
 
