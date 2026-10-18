@@ -19,7 +19,7 @@ from app.schemas.chat import ChatRequest, ChatResponse, PinUpdate, TitleUpdate
 from app.services.importance import make_conversation_title, score_message_heuristic
 from app.services.fact_store import FactStore
 from app.services.memory_layer import chat_tier_for
-from app.services.llm_service import QuotaExhausted
+from app.services.llm_service import QuotaExhausted, _has_sentence_ending
 from app.services.orchestrator import ConversationOrchestrator
 from app.workers.reflection_worker import analyze_reflection
 
@@ -476,7 +476,24 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
 
         if not chunks:
             logger.warning("Stream produced no chunks for user %s", user_id)
-        response_text = "".join(chunks).strip() or "I'm taking a little longer than usual. Please try again in a moment."
+        response_text = "".join(chunks).strip()
+        if response_text and not _has_sentence_ending(response_text):
+            completion = await orchestrator.llm.complete_sentence(response_text, identity)
+            if completion:
+                separator = "" if response_text.endswith((" ", "\n")) or completion.startswith(tuple(".,!?;:…")) else " "
+                appended = f"{separator}{completion}"
+                chunks.append(appended)
+                yield f"data: {json.dumps({'chunk': appended})}\n\n"
+                response_text = "".join(chunks).strip()
+        if not response_text:
+            response_text = "I'm taking a little longer than usual. Please try again in a moment."
+        if not _has_sentence_ending(response_text):
+            # ponytail: punctuation is the last-resort guard when continuation is unavailable.
+            # ceiling: it cannot repair missing prose; upgrade: retry the provider continuation.
+            logger.warning("Reply still lacked sentence punctuation for user %s", user_id)
+            chunks.append(".")
+            yield f"data: {json.dumps({'chunk': '.'})}\n\n"
+            response_text = f"{response_text}."
         _fire_and_forget(
             _background_stream_postprocess(
                 user_id=user_id,

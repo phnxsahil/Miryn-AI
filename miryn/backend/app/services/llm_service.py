@@ -19,6 +19,19 @@ class QuotaExhausted(RuntimeError):
 _quota_lock = threading.Lock()
 _quota_dead_until = 0.0
 _model_quota_dead_until: dict[str, float] = {}
+CHAT_MAX_OUTPUT_TOKENS = 2048
+CHAT_CONTINUATION_MAX_TOKENS = 256
+_SENTENCE_END_RE = re.compile(r"[.!?…][\"'’»)\]}]*\s*$")
+
+
+def _finish_reason_name(finish_reason: Any) -> str:
+    if finish_reason is None:
+        return "UNKNOWN"
+    return str(getattr(finish_reason, "name", finish_reason)).rsplit(".", 1)[-1].upper()
+
+
+def _has_sentence_ending(text: str) -> bool:
+    return bool(_SENTENCE_END_RE.search(text.rstrip()))
 
 
 def _gemini_quota_error(exc: Exception) -> bool:
@@ -139,6 +152,29 @@ class LLMService:
     def _raise_if_quota_dead(self) -> None:
         if self.provider == "gemini" and self.quota_dead():
             raise QuotaExhausted("Gemini quota cooldown active")
+
+    async def complete_sentence(self, partial_response: str, identity: dict) -> str:
+        partial = partial_response.strip()
+        if not partial or _has_sentence_ending(partial):
+            return ""
+        prompt = f"""
+The assistant reply below was cut off before it finished. Continue exactly where it stopped.
+Return only the missing text, not the original reply. Finish the current sentence, end with
+sentence-ending punctuation, and stop there. Keep the reply within the existing 1–3 sentence
+style. The continuation may begin mid-word, so do not add a leading space unless it is needed.
+
+Partial reply:
+{partial}
+""".strip()
+        try:
+            return (await self.generate(
+                prompt,
+                system_prompt=self._build_system_prompt(identity),
+                max_tokens=CHAT_CONTINUATION_MAX_TOKENS,
+            )).strip()
+        except Exception:
+            self.logger.exception("Sentence completion failed for partial reply")
+            return ""
 
     def _gemini_models_available(self) -> list[str]:
         return [
@@ -333,7 +369,7 @@ class LLMService:
         return await self.generate(
             full_prompt,
             system_prompt=system_prompt,
-            max_tokens=500,
+            max_tokens=CHAT_MAX_OUTPUT_TOKENS,
         )
 
     async def stream_chat(self, context: dict, user_message: str, identity: dict):
@@ -349,7 +385,7 @@ class LLMService:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": full_prompt},
                 ],
-                max_tokens=500,
+                max_tokens=CHAT_MAX_OUTPUT_TOKENS,
                 stream=True,
             )
             async for chunk in stream:
@@ -362,7 +398,7 @@ class LLMService:
                 model=self.model,
                 system=system_prompt,
                 messages=[{"role": "user", "content": full_prompt}],
-                max_tokens=500,
+                max_tokens=CHAT_MAX_OUTPUT_TOKENS,
             ) as stream:
                 async for text in stream.text_stream:
                     yield text
@@ -387,7 +423,10 @@ class LLMService:
                     stream_response = self.client.aio.models.generate_content_stream(
                         model=candidate_model,
                         contents=contents,
-                        config=genai_types.GenerateContentConfig(max_output_tokens=500, temperature=0.7),
+                        config=genai_types.GenerateContentConfig(
+                            max_output_tokens=CHAT_MAX_OUTPUT_TOKENS,
+                            temperature=0.7,
+                        ),
                     )
                     if asyncio.iscoroutine(stream_response):
                         stream_response = await stream_response
@@ -408,7 +447,22 @@ class LLMService:
                                 finish_reason = getattr(candidates[0], "finish_reason", None)
                         except Exception:
                             finish_reason = None
+                    reason_name = _finish_reason_name(finish_reason)
+                    if reason_name == "MAX_TOKENS":
+                        self.logger.warning(
+                            "Gemini chat stream hit MAX_TOKENS for model %s after %s characters; "
+                            "sentence completion will be attempted.",
+                            candidate_model,
+                            text_chars,
+                        )
                     if text_chars:
+                        if reason_name != "MAX_TOKENS":
+                            self.logger.info(
+                                "Gemini chat stream finished for model %s (finish_reason=%s, output_chars=%s)",
+                                candidate_model,
+                                reason_name,
+                                text_chars,
+                            )
                         self._clear_quota_breaker()
                         return
                     self.logger.warning(
@@ -433,7 +487,11 @@ class LLMService:
             if self._all_gemini_models_quota_exhausted(candidate_models, quota_failures):
                 raise QuotaExhausted("Gemini quota exhausted across all configured models") from quota_failures[-1]
             try:
-                fallback = await self.generate(full_prompt, system_prompt=system_prompt, max_tokens=500)
+                fallback = await self.generate(
+                    full_prompt,
+                    system_prompt=system_prompt,
+                    max_tokens=CHAT_MAX_OUTPUT_TOKENS,
+                )
             except Exception:
                 self.logger.exception("Gemini streaming fallback generation failed")
                 raise
@@ -454,7 +512,7 @@ class LLMService:
             full = await self.generate(
                 full_prompt,
                 system_prompt=system_prompt,
-                max_tokens=500,
+                max_tokens=CHAT_MAX_OUTPUT_TOKENS,
             )
             if full:
                 yield full
@@ -607,7 +665,8 @@ Speak naturally, like a thoughtful, sharp friend who truly knows them. Avoid sou
         parts.append(f"Current message: {user_message}")
         parts.append("""
 Formatting requirements:
-- Keep your response extremely concise and direct. No long paragraphs.
+- Keep your response to 1–3 complete sentences. Short is good, but never stop mid-sentence.
+- Always finish the sentence you are writing and end with sentence-ending punctuation.
 - Answer directly with a conversational, insightful tone.
 - Use markdown only when strictly necessary for clarity.
 - Ask ONE relevant follow-up question per response.
