@@ -119,6 +119,26 @@ test.describe("auth screens", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
   });
 
+  test("demo account opens from an empty login form", async ({ page }) => {
+    let demoLoginRequestSeen = false;
+    await page.route("**/auth/refresh", (route) => route.fulfill({ status: 401, body: "{}" }));
+    await page.route("**/auth/config", (route) => route.fulfill({ status: 200, json: { providers: { google: false } } }));
+    await page.route("**/auth/login", (route) => {
+      const body = route.request().postDataJSON();
+      if (body?.email === "persona.alpha@miryn.demo" && body?.password === "MirynDemo!2026") {
+        demoLoginRequestSeen = true;
+        return route.fulfill({ status: 200, json: { access_token: "demo-access", refresh_token: "demo-refresh" } });
+      }
+      return route.fulfill({ status: 401, json: { detail: "Invalid credentials" } });
+    });
+    await page.goto(`${BASE}/login`);
+    await page.getByText("Explore a demo account", { exact: true }).click();
+    await page.getByRole("button", { name: /Aditya \(Demo\)/ }).click();
+    await expect.poll(() => demoLoginRequestSeen).toBe(true);
+    await expect(page).toHaveURL(/\/chat/);
+    await expect.poll(() => page.evaluate(() => localStorage.getItem("miryn_token"))).toBe("demo-access");
+  });
+
   test("signup password reveal is keyboard-operable and meets mobile sizing", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 740 });
     await page.route("**/auth/refresh", (route) => route.fulfill({ status: 401, body: "{}" }));
