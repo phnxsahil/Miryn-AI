@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { useChatStore } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
 import LoadingState from "@/components/ui/LoadingState";
+import MirynLogo from "@/components/MirynLogo";
 
 export default function AppLayout({
   children,
@@ -105,7 +106,10 @@ export default function AppLayout({
         >
           {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
-        <div className="text-base font-semibold tracking-tight text-[color:var(--theme-text)]">Miryn</div>
+        <div className="inline-flex items-center gap-2 text-base font-semibold tracking-tight text-[color:var(--theme-text)]">
+          <MirynLogo showText={false} />
+          <span>Miryn</span>
+        </div>
         <button
           onClick={createConversation}
           disabled={chatLoading}
@@ -137,7 +141,11 @@ export default function AppLayout({
         `}
       >
         {/* Top Actions Area */}
-        <div className="p-3 flex items-center justify-between">
+        <div className="flex items-center gap-2 px-3 pt-5 pb-3 text-base font-semibold tracking-tight text-[color:var(--theme-text)]">
+          <MirynLogo showText={false} />
+          <span>Miryn</span>
+        </div>
+        <div className="px-3 pb-3 flex items-center justify-between">
            <button
             onClick={toggleDesktopSidebar}
             className="hidden md:flex p-2 text-dim hover:text-primary transition-colors hover:bg-[color:var(--theme-overlay)] rounded-md"

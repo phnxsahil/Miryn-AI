@@ -45,11 +45,56 @@
   -webkit-mask-image: linear-gradient(to bottom, black, transparent 85%);
   mask-image: linear-gradient(to bottom, black, transparent 85%);
 }
+
+.heroDescription {
+  color: #d5d5d5;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .58);
+}
 .reveal { animation: reveal .8s ease both; }
 .revealDelay { animation: reveal .8s .12s ease both; }
 @keyframes reveal {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.sectionGlow {
+  position: absolute;
+  z-index: -1;
+  width: min(76vw, 760px);
+  height: 62%;
+  border-radius: 50%;
+  filter: blur(76px);
+  opacity: .2;
+  pointer-events: none;
+}
+
+.sectionGlowAbout {
+  top: 8%;
+  left: -18%;
+  background: radial-gradient(circle at 40% 45%, rgba(71, 136, 200, .48), transparent 44%), radial-gradient(circle at 72% 30%, rgba(187, 112, 226, .38), transparent 48%), radial-gradient(circle at 56% 74%, rgba(101, 191, 114, .26), transparent 52%);
+}
+
+.sectionGlowHero {
+  top: 10%;
+  left: 14%;
+  opacity: .14;
+  background: radial-gradient(circle at 44% 42%, rgba(235, 44, 80, .3), transparent 44%), radial-gradient(circle at 62% 36%, rgba(254, 228, 53, .28), transparent 46%), radial-gradient(circle at 52% 70%, rgba(71, 136, 200, .28), transparent 52%);
+}
+
+.sectionGlowFeatures {
+  top: 4%;
+  right: -20%;
+  background: radial-gradient(circle at 36% 36%, rgba(254, 228, 53, .34), transparent 46%), radial-gradient(circle at 66% 58%, rgba(235, 44, 80, .3), transparent 50%), radial-gradient(circle at 40% 78%, rgba(71, 136, 200, .24), transparent 54%);
+}
+
+.sectionGlowContact {
+  right: -16%;
+  bottom: -18%;
+  background: radial-gradient(circle at 35% 35%, rgba(101, 191, 114, .32), transparent 45%), radial-gradient(circle at 66% 48%, rgba(242, 146, 32, .3), transparent 48%), radial-gradient(circle at 48% 76%, rgba(187, 112, 226, .26), transparent 54%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sectionGlow { opacity: .16; }
 }
 @media (prefers-reduced-motion: reduce) {
   .reveal, .revealDelay { animation: none; }

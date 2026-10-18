@@ -11,13 +11,13 @@ interface MirynLogoProps {
 }
 
 export default function MirynLogo({
-  size = 32,
+  size = 28,
   showText = true,
   className = "",
   glow = false,
 }: MirynLogoProps) {
   return (
-    <div className={`inline-flex items-center gap-3 select-none ${className}`}>
+    <div className={`inline-flex items-center gap-2 select-none ${className}`}>
       <div
         className="relative flex items-center justify-center flex-shrink-0"
         style={{ width: size, height: size }}
@@ -36,7 +36,7 @@ export default function MirynLogo({
           width={size}
           height={size}
           priority
-          className="rounded-full object-cover transition-transform duration-300 hover:scale-105"
+          className="object-contain"
         />
       </div>
 

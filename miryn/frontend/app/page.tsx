@@ -1,7 +1,9 @@
 import Image from "next/image";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import HeroCards from "./landing/HeroCards";
+import AboutReveal from "./landing/AboutReveal";
+import CountUp from "./landing/CountUp";
 import LandingNav from "./landing/LandingNav";
 import MoodCarousel from "./landing/MoodCarousel";
 import Reveal from "./landing/Reveal";
@@ -59,6 +61,7 @@ export default function LandingPage() {
       <LandingNav />
 
       <Reveal ambient as="section" id="hero" className="landing-hero relative isolate mx-auto max-w-7xl overflow-clip px-5 pb-24 pt-20 sm:px-8 sm:pt-28 lg:px-12 lg:pb-32 lg:pt-32">
+        <div className={`${styles.sectionGlow} ${styles.sectionGlowHero}`} aria-hidden="true" />
         <div className={`${styles.heroGrid} pointer-events-none absolute inset-x-0 top-0 -z-10 h-[680px]`} aria-hidden="true" />
         <SpectrumOrb />
         <div className="hero-copy mx-auto max-w-6xl text-center">
@@ -68,7 +71,7 @@ export default function LandingPage() {
           <h1 className={`${styles.revealDelay} mt-7 font-editorial text-4xl leading-[1.08] tracking-[-0.04em] text-[#FAFAFA] sm:text-6xl lg:text-[clamp(3rem,3.15vw,4rem)] xl:whitespace-nowrap`}>
             An AI Companion That Remembers, Learns, and Evolves With You.
           </h1>
-          <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-[#A3A3A3] sm:text-lg">
+          <p className={`${styles.heroDescription} mx-auto mt-7 max-w-2xl text-base leading-7 sm:text-lg`}>
             Miryn goes beyond standard chatbots. Powered by persistent long-term memory and a dynamic identity engine, Miryn understands your values, tracks your goals, and grows alongside you across every conversation.
           </p>
           <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
@@ -81,14 +84,10 @@ export default function LandingPage() {
         <ToolIcons />
       </Reveal>
 
-      <section id="about" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
+      <section id="about" className="relative isolate overflow-clip mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
+        <div className={`${styles.sectionGlow} ${styles.sectionGlowAbout}`} aria-hidden="true" />
         <div className="about-intro">
-          <Reveal className="section-heading section-heading--center">
-            <p className="section-eyebrow section-eyebrow--about"><i />ABOUT MIRYN</p>
-          </Reveal>
-          <Reveal as="p" replay className="about-reveal mt-8 font-editorial text-3xl leading-[1.25] tracking-[-0.03em] text-[#FAFAFA] sm:text-4xl">
-            {"Traditional AI tools reset every time you close the tab. Miryn is different. We built Miryn around an evolving identity engine that learns who you are over time—tracking your core beliefs, behavior patterns, emotions, and unresolved goals so every interaction feels deeply personal and continuous.".split(" ").map((word, index) => <span className="about-word" style={{ "--word-index": index } as CSSProperties} key={`${word}-${index}`}>{word} </span>)}
-          </Reveal>
+          <AboutReveal />
         </div>
         <div className="about-second-row mt-14 grid gap-8 lg:grid-cols-[.85fr_1.15fr] lg:items-center lg:gap-20">
           <Reveal>
@@ -104,7 +103,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="features" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
+      <section id="features" className="relative isolate overflow-clip mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
+        <div className={`${styles.sectionGlow} ${styles.sectionGlowFeatures}`} aria-hidden="true" />
         <Reveal className="max-w-3xl">
           <p className="section-eyebrow section-eyebrow--highlights"><i />CORE HIGHLIGHTS</p>
           <h2 className="mt-5 font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Core systems for continuous understanding</h2>
@@ -112,9 +112,9 @@ export default function LandingPage() {
 
         <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map(([title, value, description], index) => (
-            <Reveal as="article" key={title} delay={index * 70} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+            <Reveal as="article" key={title} delay={index * 70} className="feature-card rounded-2xl border border-white/10 bg-white/[0.035] p-5">
               <h3 className="min-h-10 font-editorial text-[13.5px] leading-5 text-[#A3A3A3]">{title}</h3>
-              <p className="mt-5 font-editorial text-5xl tracking-[-0.04em] text-[#FAFAFA]">{value}</p>
+              <p className="mt-5 font-editorial text-5xl tracking-[-0.04em] text-[#FAFAFA]"><CountUp value={value} /></p>
               <p className="mt-3 text-[13px] leading-5 text-[#A3A3A3]/75">{description}</p>
             </Reveal>
           ))}
@@ -188,7 +188,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="contact" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
+      <section id="contact" className="relative isolate overflow-clip mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
+        <div className={`${styles.sectionGlow} ${styles.sectionGlowContact}`} aria-hidden="true" />
         <Reveal className="contact-card rounded-[2rem] border border-white/10 bg-[#151515] px-6 py-16 text-center sm:px-12 lg:py-24"><div className="contact-aurora" aria-hidden="true" /><h2 className="relative font-editorial text-4xl tracking-[-0.04em] sm:text-6xl">We’d Love to Hear From You</h2><p className="relative mx-auto mt-5 max-w-xl text-base leading-7 text-[#A3A3A3] sm:text-lg">Have questions, suggestions, or feedback about Miryn? Our team is here to assist you.</p><a href="mailto:hello@miryn.ai" className="relative mt-8 inline-flex min-h-12 items-center justify-center rounded-full bg-[#FAFAFA] px-7 font-editorial text-base text-[#0A0A0A]">Send Message</a></Reveal>
       </section>
 

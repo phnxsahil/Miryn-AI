@@ -3,6 +3,7 @@
 import { memo, useState } from "react";
 import type { Message } from "@/lib/types";
 import { Check, Copy } from "lucide-react";
+import { MirynMark } from "@/components/visuals";
 import MarkdownBody from "./MarkdownBody";
 
 function MessageBubble({ message, isStreaming = false, saved = false, stopped = false, errorNotice = false, onRetry }: {
@@ -29,6 +30,10 @@ function MessageBubble({ message, isStreaming = false, saved = false, stopped = 
   );
   return (
     <div className={`group min-w-0 text-[15px] leading-7 text-[color:var(--theme-text)] md:text-base ${errorNotice ? "rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-4 py-3" : ""}`} role={errorNotice ? "alert" : undefined}>
+      <div className="mb-2 flex items-center gap-2">
+        <MirynMark state={isStreaming && !message.content ? "thinking" : "avatar"} />
+        <span className="text-sm font-medium">Miryn</span>
+      </div>
       {isStreaming && !message.content ? (
         <span role="status" aria-label="Miryn is thinking" className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--accent-edge)] bg-[color:var(--accent-wash)] px-3.5 py-2.5 text-[color:var(--theme-accent)] shadow-sm">
           <span className="chat-thinking-dot" /><span className="chat-thinking-dot" /><span className="chat-thinking-dot" />
