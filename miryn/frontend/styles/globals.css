@@ -699,4 +699,3 @@ html.js .landing-ambient:not(.is-near) .mood-orb { animation-play-state: paused;
   .spectrum-orb, .contact-aurora, .feature-card { animation: none; transition: none; }
   .feature-card:hover, .feature-card:focus-within { transform: none; }
 }
-
