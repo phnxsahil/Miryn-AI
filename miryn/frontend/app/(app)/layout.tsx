@@ -141,11 +141,11 @@ export default function AppLayout({
         `}
       >
         {/* Top Actions Area */}
-        <div className="flex items-center gap-2 px-5 pt-4 text-base font-semibold tracking-tight text-[color:var(--theme-text)]">
+        <div className="flex items-center gap-2 px-3 pt-5 pb-3 text-base font-semibold tracking-tight text-[color:var(--theme-text)]">
           <MirynLogo showText={false} />
           <span>Miryn</span>
         </div>
-        <div className="p-3 flex items-center justify-between">
+        <div className="px-3 pb-3 flex items-center justify-between">
            <button
             onClick={toggleDesktopSidebar}
             className="hidden md:flex p-2 text-dim hover:text-primary transition-colors hover:bg-[color:var(--theme-overlay)] rounded-md"

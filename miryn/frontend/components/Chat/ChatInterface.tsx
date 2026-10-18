@@ -335,7 +335,6 @@ export default function ChatInterface() {
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-[color:var(--theme-bg)] text-[color:var(--theme-text)] font-ui">
       <header className={`${insights || conflicts.length > 0 ? "flex" : "hidden md:flex"} h-11 shrink-0 items-center justify-between border-b border-[color:var(--theme-border)] px-5 md:h-14 md:px-8`}>
-        <span className="hidden font-editorial text-lg tracking-[-0.02em] md:inline">Miryn</span>
         {(insights || conflicts.length > 0) && (
           <button type="button" onClick={() => setInsightsOpen((open) => !open)} aria-expanded={insightsOpen} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-[color:var(--theme-muted)] hover:bg-[color:var(--theme-overlay)] hover:text-[color:var(--theme-text)]">
             <Lightbulb size={16} /> Insights
