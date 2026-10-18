@@ -221,7 +221,7 @@ export default function OnboardingFlow() {
                   key={goal.id}
                   type="button"
                   onClick={() => toggleGoal(goal.label)}
-                  className={`p-4 rounded-2xl border text-left transition-all flex items-center gap-3 ${
+                  className={`flex min-h-16 h-full items-center gap-3 rounded-2xl border p-4 text-left leading-5 transition-all ${
                     active
                       ? "bg-[color:var(--accent-wash-strong)] border-[color:var(--miryn-moss)] text-[color:var(--miryn-parchment)]"
                       : "bg-[color:var(--miryn-surface)] border-[color:var(--miryn-card-border)] text-[color:var(--miryn-parchment-muted)] hover:border-[color:var(--accent-edge)]"
@@ -236,7 +236,7 @@ export default function OnboardingFlow() {
         </section>
 
         {/* 3. Philosophical Anchor / Seed Belief */}
-        <section className="miryn-wall-card p-7 rounded-3xl space-y-4">
+        <section className="space-y-4 rounded-3xl border border-[color:var(--miryn-card-border)] bg-[color:var(--miryn-card)] p-7">
           <div className="space-y-1">
             <h3 className="text-base font-semibold text-[color:var(--miryn-parchment)]">3. Core Philosophical Anchor (Seed Belief)</h3>
             <p className="text-xs text-[color:var(--miryn-parchment-muted)]">

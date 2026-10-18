@@ -18,16 +18,10 @@ const stats = [
 ] as const;
 
 const moods = [
-  ["Seeing red", "You might be feeling a bit frustrated or tense.", "#e9806e"],
-  ["Feeling light", "Seems like you have a good day!", "#d2edb4"],
-  ["Feeling blue", "It looks like something’s weighing on your mind.", "#8bb8ef"],
-  ["Lost in thought", "Feeling a little anxious? Take a deep breath.", "#c5a4dd"],
-] as const;
-
-const posts = [
-  ["Mental Health", "Sep 24, 2026", "The Quiet Mind: How Continuous Context Reduces Daily Anxiety & Cognitive Overload", "Discover why repeatedly re-explaining yourself causes decision fatigue, and how an AI companion that remembers your emotional rhythms fosters grounding.", "/landing/blog/persistent-memory-human-ai-collaboration/index.html", "/assets/A4rnasqJDMazGtLN9cqF0u3G37Y.webp"],
-  ["Personal Growth", "Sep 18, 2026", "Tracking the Arc: How Versioned Identity Models Illuminate Personal Evolution", "Explore how tracking versioned beliefs, recurring behavioral patterns, and open loops over weeks reveals genuine personal growth and mental clarity.", "/landing/blog/open-loops-accountability/index.html", "/assets/owwQD0I3Dmy0SkNNeVvRmInAiPg.webp"],
-  ["Technical Architecture", "Sep 10, 2026", "Under the Hood: 384-Dim pgvector, Zero-Knowledge Fernet & Sub-1.5s Recall", "A technical breakdown of our hybrid memory layer: combining Redis transient caches, 384-dim pgvector embeddings, and zero-knowledge Fernet encryption.", "/landing/blog/zero-knowledge-memory-architecture/index.html", ""],
+  ["Seeing red", "You might be feeling a bit frustrated or tense.", "color-mix(in srgb, var(--theme-accent) 92%, var(--theme-text))"],
+  ["Feeling light", "Seems like you have a good day!", "color-mix(in srgb, var(--theme-accent) 72%, var(--theme-text))"],
+  ["Feeling blue", "It looks like something’s weighing on your mind.", "color-mix(in srgb, var(--theme-accent) 84%, var(--theme-bg))"],
+  ["Lost in thought", "Feeling a little anxious? Take a deep breath.", "color-mix(in srgb, var(--theme-accent) 64%, var(--theme-text))"],
 ] as const;
 
 const faqs = [
@@ -127,8 +121,8 @@ export default function LandingPage() {
         </div>
 
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
-          <Reveal><WaveChart title="Memory layer performance" label="Memory Retrieval" ticks={["16.0", "14.0", "12.0"]} accent="#a78bfa" variant="memory" /></Reveal>
-          <Reveal><WaveChart title="Identity evolution over time" label="Identity Evolution" ticks={["100%", "80%", "60%"]} accent="#e7c86e" variant="identity" /></Reveal>
+          <Reveal><WaveChart title="Memory layer performance" label="Memory Retrieval" ticks={["16.0", "14.0", "12.0"]} accent="var(--theme-accent)" variant="memory" /></Reveal>
+          <Reveal><WaveChart title="Identity evolution over time" label="Identity Evolution" ticks={["100%", "80%", "60%"]} accent="var(--theme-accent)" variant="identity" /></Reveal>
         </div>
       </section>
 
@@ -142,7 +136,7 @@ export default function LandingPage() {
           <CapabilityRow title="Personality That Adapts to You" copy="Miryn logs versioned traits, values, core beliefs, and emotional nuances. Over time, Miryn tailors its communication style to match your preferences and emotional state.">
             <div className="rounded-3xl border border-white/10 bg-[#151515] p-5 shadow-2xl shadow-black/20 sm:p-7">
               <div className="flex items-center gap-3 border-b border-white/10 pb-5">
-                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#d4ffe9] to-[#6a7aff]" />
+                <div className="h-9 w-9 rounded-full bg-[color:var(--theme-accent)]/30" />
                 <div><p className="text-sm text-[#FAFAFA]">Miryn</p><p className="text-xs text-[#525252]">Your reflective companion</p></div>
               </div>
               <p className="mt-7 font-editorial text-2xl leading-tight text-[#FAFAFA]">What are we working on today? 👋</p>
@@ -154,9 +148,9 @@ export default function LandingPage() {
 
           <CapabilityRow title="Context That Never Fades" copy="Combines fast Redis transient memory, 7-day vector search episodic memory, and long-term core memory to bring up relevant details in less than 1.5 seconds." reverse>
             <div className="relative min-h-[300px] overflow-hidden rounded-3xl border border-white/10 bg-[#111] p-6">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_40%,rgba(107,229,190,.16),transparent_48%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_40%,rgb(var(--theme-accent-rgb)/.16),transparent_48%)]" />
               <div className="relative space-y-3 pt-5">
-                {[['Transient memory', '2 hours', 'bg-[#9be7bd]'], ['Episodic memory', '7 days', 'bg-[#88baf4]'], ['Core memory', 'Always', 'bg-[#c9a4e8']].map(([name, duration, color]) => <div key={name} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-5 py-4"><span className="flex items-center gap-3 text-sm text-[#FAFAFA]"><span className={`h-2 w-2 rounded-full ${color}`} />{name}</span><span className="text-xs text-[#A3A3A3]">{duration}</span></div>)}
+                {[['Transient memory', '2 hours', 'bg-[color:var(--theme-accent)]'], ['Episodic memory', '7 days', 'bg-[color:var(--theme-accent)]/75'], ['Core memory', 'Always', 'bg-[color:var(--theme-accent)]/50']].map(([name, duration, color]) => <div key={name} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-5 py-4"><span className="flex items-center gap-3 text-sm text-[#FAFAFA]"><span className={`h-2 w-2 rounded-full ${color}`} />{name}</span><span className="text-xs text-[#A3A3A3]">{duration}</span></div>)}
               </div>
               <div className="relative mt-8 flex flex-wrap gap-2"><span className="rounded-full bg-white/[0.07] px-3 py-1.5 text-xs text-[#A3A3A3]">🧠 Open Loops</span><span className="rounded-full bg-white/[0.07] px-3 py-1.5 text-xs text-[#A3A3A3]">🌙 Memory Recall</span><span className="rounded-full bg-white/[0.07] px-3 py-1.5 text-xs text-[#A3A3A3]">💖 Reflection</span><span className="rounded-full bg-white/[0.07] px-3 py-1.5 text-xs text-[#A3A3A3]">🧘 Daily Context</span></div>
             </div>
@@ -171,8 +165,8 @@ export default function LandingPage() {
           <CapabilityRow title="Track Goals & Unresolved Ideas" copy="Never lose track of a project, thought, or goal. Miryn recognizes open loops in your life and reminds you when it’s time to check in." reverse>
             <div className="space-y-5">
             <div className="rounded-3xl border border-white/10 bg-[#151515] p-6">
-              <div className="flex items-center justify-between border-b border-white/10 pb-5"><span className="font-editorial text-xl">Open loops</span><span className="rounded-full bg-[#d5f4dc] px-2.5 py-1 text-xs text-[#1c3b28]">3 active</span></div>
-              <div className="mt-6 space-y-4">{['Prepare visa interview', 'Finish the personal essay', 'Return to morning walks'].map((item, index) => <div key={item} className="flex items-center gap-3 text-sm text-[#A3A3A3]"><span className={`h-3 w-3 rounded-full border ${index === 0 ? 'border-[#d5f4dc] bg-[#d5f4dc]' : 'border-[#525252]'}`} />{item}<span className="ml-auto text-xs text-[#525252]">{index === 0 ? 'today' : 'soon'}</span></div>)}</div>
+              <div className="flex items-center justify-between border-b border-white/10 pb-5"><span className="font-editorial text-xl">Open loops</span><span className="rounded-full bg-[color:var(--theme-accent)]/20 px-2.5 py-1 text-xs text-[color:var(--theme-accent)]">3 active</span></div>
+              <div className="mt-6 space-y-4">{['Prepare visa interview', 'Finish the personal essay', 'Return to morning walks'].map((item, index) => <div key={item} className="flex items-center gap-3 text-sm text-[#A3A3A3]"><span className={`h-3 w-3 rounded-full border ${index === 0 ? 'border-[color:var(--theme-accent)] bg-[color:var(--theme-accent)]' : 'border-[#525252]'}`} />{item}<span className="ml-auto text-xs text-[#525252]">{index === 0 ? 'today' : 'soon'}</span></div>)}</div>
             </div>
             <MoodCarousel />
             </div>
@@ -181,14 +175,6 @@ export default function LandingPage() {
           <CapabilityRow title="Understand Your Personal Growth" copy="Receive periodic reflection summaries highlighting mood patterns, stress triggers, and recurring thought loops across your daily logs.">
             <div className="rounded-3xl border border-white/10 bg-[#151515] p-6 sm:p-8"><p className="text-xs uppercase tracking-[0.2em] text-[#525252]">Reflection loop</p><div className="mt-8 grid gap-3 sm:grid-cols-3">{['Spot the Pattern', 'Find the Loop', 'Choose the Next Step'].map((step, index) => <div key={step} className="relative rounded-2xl border border-white/10 p-4"><span className="font-editorial text-2xl text-[#FAFAFA]">0{index + 1}</span><p className="mt-6 text-sm text-[#A3A3A3]">{step}</p>{index < 2 && <span className="absolute -right-3 top-1/2 hidden text-[#525252] sm:block">→</span>}</div>)}</div></div>
           </CapabilityRow>
-        </div>
-      </section>
-
-      <section id="insights" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
-        <Reveal><p className="section-eyebrow section-eyebrow--insights"><i />INSIGHTS &amp; BLOG</p></Reveal>
-        <Reveal className="mt-5 flex flex-col justify-between gap-6 sm:flex-row sm:items-end"><h2 className="max-w-3xl font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Exploring the Future of Personal AI &amp; Memory</h2><a href="/landing/blog/index.html" className="inline-flex min-h-11 shrink-0 items-center font-editorial text-sm text-[#A3A3A3] hover:text-[#FAFAFA]">Explore All Insights →</a></Reveal>
-        <div className="mt-12 grid gap-5 lg:grid-cols-3">
-          {posts.map(([category, date, title, excerpt, href, image], index) => <Reveal key={href} delay={index * 70}><a href={href} className="group block rounded-3xl border border-white/10 bg-white/[0.03] p-3 transition-colors hover:border-white/25"><div className="relative aspect-[1.55] overflow-hidden rounded-2xl">{index === 2 ? <div className="blog-art blog-art--hood" aria-hidden="true" /> : <Image src={image} alt="" fill sizes="(max-width: 1024px) 90vw, 380px" className="object-cover transition-transform duration-500 group-hover:scale-105" />}</div><div className="p-3"><p className="text-xs text-[#A3A3A3]">{category} <span className="px-1 text-[#525252]">·</span> {date}</p><h3 className="mt-4 font-editorial text-[22px] leading-tight text-[#FAFAFA]">{title}</h3><p className="mt-3 text-sm leading-6 text-[#A3A3A3]">{excerpt}</p><p className="mt-6 text-xs text-[#525252]">Miryn AI</p></div></a></Reveal>)}
         </div>
       </section>
 
@@ -209,8 +195,8 @@ export default function LandingPage() {
       <footer className="border-t border-white/10">
         <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[1.5fr_1fr_1fr]">
           <Reveal><div><a href="/" className="inline-flex min-h-11 items-center font-editorial text-2xl text-[#FAFAFA]">Miryn AI</a><p className="mt-4 max-w-xs text-sm leading-6 text-[#A3A3A3]">Empowering Personal Growth Through Persistent Intelligence.</p></div></Reveal>
-          <Reveal><FooterColumn title="Sections" links={[["About", "#about"], ["Features", "#features"], ["Insights", "#insights"], ["FAQ's", "#faq"], ["Contact", "#contact"]]} /></Reveal>
-          <Reveal><FooterColumn title="Pages" links={[["Insights", "/landing/blog/index.html"], ["Privacy Policy", "/privacy"], ["Terms of Service", "/terms"], ["Security Overview", "/privacy"], ["Contact", "#contact"]]} /></Reveal>
+          <Reveal><FooterColumn title="Sections" links={[["About", "#about"], ["Features", "#features"], ["FAQ's", "#faq"], ["Contact", "#contact"]]} /></Reveal>
+          <Reveal><FooterColumn title="Pages" links={[["Privacy & Security", "/privacy"], ["Terms of Service", "/terms"], ["Contact", "#contact"]]} /></Reveal>
         </div>
         <div className="mx-auto flex max-w-6xl flex-col gap-3 border-t border-white/10 px-5 py-6 text-xs text-[#8F8F8F] sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>Miryn AI</span><span>© 2026 Miryn AI Inc. All rights reserved. · Designed &amp; Built by <a href="https://sharmasahil.me" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-[#A3A3A3] underline underline-offset-4">Sahil Sharma</a></span></div>
       </footer>

@@ -30,7 +30,7 @@ function MessageBubble({ message, isStreaming = false, saved = false, stopped = 
   return (
     <div className={`group min-w-0 text-[15px] leading-7 text-[color:var(--theme-text)] md:text-base ${errorNotice ? "rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-4 py-3" : ""}`} role={errorNotice ? "alert" : undefined}>
       {isStreaming && !message.content ? (
-        <span role="status" aria-label="Miryn is thinking" className="inline-flex items-center gap-1.5 py-2 text-[color:var(--theme-muted)]">
+        <span role="status" aria-label="Miryn is thinking" className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--accent-edge)] bg-[color:var(--accent-wash)] px-3.5 py-2.5 text-[color:var(--theme-accent)] shadow-sm">
           <span className="chat-thinking-dot" /><span className="chat-thinking-dot" /><span className="chat-thinking-dot" />
         </span>
       ) : (

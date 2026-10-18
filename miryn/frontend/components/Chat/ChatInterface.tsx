@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowDown, Lightbulb, Loader2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useChatStore } from "@/lib/store";
-import type { Notification, ToolRun } from "@/lib/types";
+import type { ConversationInsights, Notification, ToolRun } from "@/lib/types";
 import { getErrorMessage } from "@/lib/utils";
 import MessageBubble from "./MessageBubble";
 import InputBox from "./InputBox";
@@ -17,6 +17,29 @@ const suggestions = [
   { title: "Reflect on my week", prompt: "Help me reflect on this week's decisions, wins, and challenges." },
   { title: "Think through a decision", prompt: "Help me weigh the tradeoffs of a decision without overcomplicating it." },
 ];
+
+type ThreadConflict = { statement: string; conflict_with: string; severity?: number };
+type StoredThreadInsights = { insights: ConversationInsights | null; conflicts: ThreadConflict[] };
+
+// ponytail: keep the last reflection client-side until the history API exposes durable thread insights.
+function readThreadInsights(conversationId: string): StoredThreadInsights | null {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(`miryn-insights:${conversationId}`) || "null") as Partial<StoredThreadInsights> | null;
+    if (!stored) return null;
+    return { insights: stored.insights || null, conflicts: Array.isArray(stored.conflicts) ? stored.conflicts : [] };
+  } catch {
+    return null;
+  }
+}
+
+function storeThreadInsights(conversationId: string | null, insights: ConversationInsights | null, conflicts: ThreadConflict[]) {
+  if (!conversationId) return;
+  try {
+    window.localStorage.setItem(`miryn-insights:${conversationId}`, JSON.stringify({ insights, conflicts }));
+  } catch {
+    // Local storage is an enhancement; the live panel still works when it is unavailable.
+  }
+}
 
 export default function ChatInterface() {
   const { messages, loading, streaming, conversationId, status, secondaryPanelsReady, streamingIndex,
@@ -60,8 +83,9 @@ export default function ChatInterface() {
     setStoppedIndex(null);
     setAssistantErrorIndex(null);
     setStatus(null);
-    setInsights(null);
-    setConflicts([]);
+    const storedInsights = idFromUrl ? readThreadInsights(idFromUrl) : null;
+    setInsights(storedInsights?.insights || null);
+    setConflicts(storedInsights?.conflicts || []);
     setConversationId(idFromUrl);
     setMessages([]);
     setHasEarlierMessages(false);
@@ -142,12 +166,17 @@ export default function ChatInterface() {
               lastEventIdRef.current = eventId;
             }
             retryDelay = 1000;
-            if (payload.type === "reflection.ready") setInsights(payload.payload || null);
+            if (payload.type === "reflection.ready") {
+              const nextInsights = (payload.payload || null) as ConversationInsights | null;
+              setInsights(nextInsights);
+              storeThreadInsights(useChatStore.getState().conversationId, nextInsights, useChatStore.getState().conflicts);
+            }
             if (payload.type === "identity.conflict") {
               const conflictPayload = Array.isArray(payload.payload)
                 ? payload.payload as Array<{ statement: string; conflict_with: string; severity?: number }>
                 : [];
               setConflicts(conflictPayload);
+              storeThreadInsights(useChatStore.getState().conversationId, useChatStore.getState().insights, conflictPayload);
             }
             if (payload.type === "notification.new") setNotifications((prev) => [payload.payload as Notification, ...prev]);
           }
