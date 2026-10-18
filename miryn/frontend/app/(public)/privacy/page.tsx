@@ -149,7 +149,7 @@ export default function PrivacyPolicy() {
             <section key={s.id} className="border-t border-[color:var(--miryn-card-border)] pt-7">
               <div className="mb-4 flex items-baseline gap-4">
                 <span className="font-mono text-[11px] font-semibold text-[color:var(--miryn-moss)]">{s.id}</span>
-                <h2 className="text-[1.15rem] font-medium tracking-tight text-[color:var(--text-primary)]">{s.title}</h2>
+                <h2 className="text-[1.15rem] font-ui font-medium tracking-tight text-[color:var(--text-primary)]">{s.title}</h2>
               </div>
               {s.content && (
                 <div className="space-y-4">

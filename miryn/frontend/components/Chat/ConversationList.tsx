@@ -289,7 +289,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
           aria-labelledby="delete-conversation-title"
         >
           <div className="w-full max-w-sm rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] p-5 shadow-2xl">
-            <h2 id="delete-conversation-title" className="text-sm font-semibold text-[color:var(--theme-text)]">
+            <h2 id="delete-conversation-title" className="text-sm font-ui font-semibold text-[color:var(--theme-text)]">
               Delete conversation?
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-[color:var(--theme-muted)]">
@@ -327,7 +327,7 @@ export default function ConversationList({ onItemClick }: { onItemClick?: () => 
           aria-labelledby="clear-all-title"
         >
           <div className="w-full max-w-sm rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] p-5 shadow-2xl">
-            <h2 id="clear-all-title" className="text-sm font-semibold text-[color:var(--theme-text)]">
+            <h2 id="clear-all-title" className="text-sm font-ui font-semibold text-[color:var(--theme-text)]">
               Clear all chat history?
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-[color:var(--theme-muted)]">
