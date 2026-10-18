@@ -1,8 +1,12 @@
+import asyncio
+
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock, patch
 from app.main import app
+from app.api import chat
 from app.api.chat import get_current_user_id
+from app.schemas.chat import ChatRequest
 
 client = TestClient(app)
 
@@ -106,3 +110,40 @@ def test_chat_stream_falls_back_when_sql_session_unavailable(
     assert response.status_code == 200
     assert '"chunk": "hello"' in response.text
     assert '"conversation_id": "conv-stream"' in response.text
+
+
+def test_chat_stream_saves_sentence_complete_reply():
+    incomplete = "Instead of bringing relief"
+    scheduled = []
+
+    async def fake_stream_chat(*args, **kwargs):
+        yield incomplete
+
+    async def drain():
+        await asyncio.gather(*(coro for coro, _, _ in scheduled))
+
+    async def exercise():
+        response = await chat.stream_message(ChatRequest(message="How am I really doing?"), MOCK_USER_ID)
+        events = [event async for event in response.body_iterator]
+        await drain()
+        return events
+
+    with patch("app.api.chat._enforce_message_rate_limit", new=AsyncMock()), \
+         patch("app.api.chat.has_sql", return_value=False), \
+         patch("app.api.chat._create_conversation_with_fallback", return_value="conv-complete"), \
+         patch("app.api.chat._touch_conversation_updated_at"), \
+         patch("app.api.chat._prepare_stream_context", new=AsyncMock(return_value=({}, []))), \
+         patch("app.api.chat.score_message_heuristic", return_value=[]), \
+         patch("app.api.chat.FactStore") as fact_store, \
+         patch("app.api.chat._store_stream_facts", new=AsyncMock()), \
+         patch("app.api.chat.orchestrator.llm.stream_chat", fake_stream_chat), \
+         patch("app.api.chat.orchestrator.llm.complete_sentence", new=AsyncMock(return_value=", it left you looking for something steadier.")), \
+         patch("app.api.chat.analyze_reflection.delay", return_value=None), \
+         patch("app.api.chat._fire_and_forget", side_effect=lambda coro, label, user_id: scheduled.append((coro, label, user_id))), \
+         patch("app.api.chat._background_stream_postprocess", new=AsyncMock()) as postprocess:
+        fact_store.return_value.list_top.return_value = []
+        events = asyncio.run(exercise())
+
+    assert any("steadier." in event for event in events)
+    saved_reply = postprocess.call_args.kwargs["response"]
+    assert saved_reply.endswith((".", "!", "?"))
