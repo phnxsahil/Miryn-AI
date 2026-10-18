@@ -11,6 +11,7 @@
  *  - small viewBoxes, CSS-scaled, `pointer-events-none` and `aria-hidden`
  */
 
+import MirynLogo from "@/components/MirynLogo";
 import { cn } from "@/lib/utils";
 import { INK, type VisualTone } from "./tokens";
 
@@ -284,11 +285,7 @@ export function InkGrain({ className }: { className?: string }) {
   return <div aria-hidden="true" className={cn("pointer-events-none absolute inset-0 miryn-ink-grain", className)} />;
 }
 
-/* ── The mark ────────────────────────────────────────────────────────────────
-   Miryn's sigil. `idle` holds its shape, `thinking` loosens into a spiral, and
-   `avatar` is the same form at conversation scale.
-   ─────────────────────────────────────────────────────────────────────────── */
-
+/* The shared wave mark at conversation scale; thinking only changes opacity. */
 export type MarkState = "idle" | "thinking" | "avatar";
 
 export function MirynMark({
@@ -299,20 +296,5 @@ export function MirynMark({
   tone?: VisualTone;
   className?: string;
 }) {
-  return (
-    <div
-      className={cn(
-        "relative flex items-center justify-center rounded-full overflow-hidden shrink-0",
-        state === "avatar" ? "h-8 w-8" : "h-full w-full",
-        className,
-      )}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/miryn-logo.png"
-        alt="Miryn Logo"
-        className={`w-full h-full object-cover rounded-full ${state === "thinking" ? "animate-pulse" : ""}`}
-      />
-    </div>
-  );
+  return <MirynLogo size={32} showText={false} className={cn(state === "thinking" && "motion-safe:animate-pulse", className)} />;
 }

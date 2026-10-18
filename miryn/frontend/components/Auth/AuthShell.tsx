@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import type { ReactNode } from "react";
 import MirynLogo from "@/components/MirynLogo";
 
@@ -47,7 +46,7 @@ function StaticChat() {
     <div className="flex flex-col gap-3.5 rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] p-5">
       <div className="flex items-start gap-3">
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] shadow-md">
-          <Image src="/miryn-logo.png" alt="Miryn" width={32} height={32} className="object-cover" />
+          <MirynLogo size={32} showText={false} />
         </div>
         <div className="max-w-[85%] rounded-2xl rounded-tl-sm border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-4 py-3 shadow-lg">
           <p className="mb-2 font-mono text-xs uppercase tracking-wider text-[color:var(--accent)]">Memory recall · 7d vector</p>
@@ -61,7 +60,7 @@ function StaticChat() {
       </div>
       <div className="flex items-start gap-3">
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] shadow-md">
-          <Image src="/miryn-logo.png" alt="Miryn" width={32} height={32} className="object-cover" />
+          <MirynLogo size={32} showText={false} />
         </div>
         <div className="max-w-[85%] rounded-2xl rounded-tl-sm border border-[color:var(--theme-border)] bg-[color:var(--theme-surface)] px-4 py-3 shadow-lg">
           <p className="font-sans text-[13px] leading-relaxed text-[color:var(--theme-text)]">We can make a plan from where you are. Want to block the first 90 minutes today?</p>
@@ -89,7 +88,7 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
 
         <header className="p-8 lg:p-10 relative z-10">
           <Link href="/" className="inline-flex min-h-11 items-center rounded-sm transition-opacity hover:opacity-80">
-            <MirynLogo size={28} showText glow />
+            <MirynLogo showText />
           </Link>
         </header>
 
@@ -124,7 +123,7 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
       <section className="flex min-h-dvh flex-col justify-start bg-[color:var(--theme-bg)] px-5 py-6 sm:px-8 md:px-10 lg:px-16">
         <header className="flex justify-center py-4 md:hidden">
           <Link href="/" className="inline-flex min-h-11 items-center rounded-sm transition-opacity hover:opacity-80">
-            <MirynLogo size={26} showText glow />
+            <MirynLogo showText />
           </Link>
         </header>
 

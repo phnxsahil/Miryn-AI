@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import MirynLogo from "@/components/MirynLogo";
 
 const links = [
   ["About", "#about"],
@@ -28,13 +29,7 @@ export default function LandingNav() {
     <header className="landing-nav-wrap">
       <nav className={`landing-nav${scrolled ? " landing-nav--scrolled" : ""}`}>
         <a href="/" className="landing-brand" onClick={() => setOpen(false)}>
-          <svg className="landing-brand__mark" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-            <path d="M3 16.5C6.1 7.8 10.7 7.8 13.2 14.2C15.9 21.2 20.6 20.8 25 10.8" stroke="#F3C7A7" strokeWidth="1.7" strokeLinecap="round" />
-            <path d="M3 13.2C6.4 5.1 10.2 5.7 13.4 12.2C16.5 18.7 20.9 17.3 25 7.2" stroke="#B9E7D5" strokeWidth="1.7" strokeLinecap="round" />
-            <path d="M3 19.7C6.4 11.5 10.7 12.3 13.4 18.1C16.1 23.8 20.9 23.6 25 14.1" stroke="#A7BDF1" strokeWidth="1.7" strokeLinecap="round" />
-            <path d="M3 10C6.4 2 10.2 2.5 13.4 9C16.5 15.5 20.9 14 25 4" stroke="#FEE435" strokeWidth="1.2" strokeLinecap="round" />
-            <path d="M3 23C6.4 15 10.7 15.5 13.4 21C16.1 26.5 20.9 27 25 18" stroke="#5A54A4" strokeWidth="1.2" strokeLinecap="round" />
-          </svg>
+          <MirynLogo showText={false} />
           <span>Miryn AI</span>
         </a>
 
