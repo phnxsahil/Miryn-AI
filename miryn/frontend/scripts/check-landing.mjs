@@ -61,7 +61,7 @@ try {
       await page.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
       await page.waitForTimeout(150);
       await page.screenshot({ path: new URL(`12c-after-${width}.png`, out).pathname.replace(/^\/(\w:)/, "$1"), fullPage: true });
-      for (const [name, selector] of Object.entries({ mood: ".mood-carousel", charts: "#features", faq: "#faq", contact: "#contact", blog: "#insights" })) {
+      for (const [name, selector] of Object.entries({ mood: ".mood-carousel", charts: "#features", faq: "#faq", contact: "#contact" })) {
         const target = page.locator(selector).first();
         await target.scrollIntoViewIfNeeded();
         if (name === "faq") await target.locator("summary").first().click();

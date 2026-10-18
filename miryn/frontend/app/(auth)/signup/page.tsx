@@ -338,13 +338,13 @@ export default function SignupPage() {
               disabled={loading}
               required
             />
-            <label htmlFor="accept-terms" className="flex min-h-10 items-start text-[13px] leading-relaxed text-[color:var(--miryn-parchment-muted)]">
+            <label htmlFor="accept-terms" className="flex min-h-10 items-center gap-1 whitespace-nowrap text-[12px] leading-5 text-[color:var(--miryn-parchment-muted)] sm:text-[13px]">
               I agree to the{" "}
-              <Link href="/terms" className="inline-flex min-h-11 items-center px-1 text-[13px] text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
+              <Link href="/terms" className="text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
                 Terms
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="inline-flex min-h-11 items-center px-1 text-[13px] text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
+              <Link href="/privacy" className="text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
                 Privacy Policy
               </Link>
               .

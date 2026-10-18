@@ -201,7 +201,7 @@ export default function SettingsPage() {
               <Row label="Theme" hint="Dark or light interface">
                 <div className="flex gap-2">
                   {(["dark","light"] as const).map(t => (
-                    <button key={t} onClick={() => setTheme(t)} className={`flex min-h-10 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-all ${theme === t ? "bg-[color:var(--theme-accent)]/10 border-[color:var(--theme-accent)]/25 text-[color:var(--theme-accent)]" : "border-[color:var(--theme-border)] text-[color:var(--theme-dim)] hover:text-[color:var(--theme-muted)]"}`}>
+                    <button type="button" key={t} onClick={() => setTheme(t)} aria-pressed={theme === t} className={`flex min-h-10 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-all ${theme === t ? "border-[color:var(--theme-accent)] bg-[color:var(--accent-wash-strong)] text-[color:var(--theme-accent)] shadow-[inset_0_0_0_1px_var(--accent-edge)]" : "border-[color:var(--theme-border)] text-[color:var(--theme-dim)] hover:border-[color:var(--accent-edge)] hover:text-[color:var(--theme-muted)]"}`}>
                       {t === "dark" ? <Moon size={12} /> : <Sun size={12} />}
                       {t.charAt(0).toUpperCase() + t.slice(1)}
                     </button>
