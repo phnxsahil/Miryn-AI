@@ -18,10 +18,10 @@ const stats = [
 ] as const;
 
 const moods = [
-  ["Seeing red", "You might be feeling a bit frustrated or tense.", "color-mix(in srgb, var(--theme-accent) 92%, var(--theme-text))"],
-  ["Feeling light", "Seems like you have a good day!", "color-mix(in srgb, var(--theme-accent) 72%, var(--theme-text))"],
-  ["Feeling blue", "It looks like something’s weighing on your mind.", "color-mix(in srgb, var(--theme-accent) 84%, var(--theme-bg))"],
-  ["Lost in thought", "Feeling a little anxious? Take a deep breath.", "color-mix(in srgb, var(--theme-accent) 64%, var(--theme-text))"],
+  ["Seeing red", "You might be feeling a bit frustrated or tense.", "#eb2c50"],
+  ["Feeling light", "Seems like you have a good day!", "#fee435"],
+  ["Feeling blue", "It looks like something’s weighing on your mind.", "#4788c8"],
+  ["Lost in thought", "Feeling a little anxious? Take a deep breath.", "#5a54a4"],
 ] as const;
 
 const faqs = [
@@ -86,7 +86,7 @@ export default function LandingPage() {
           <Reveal className="section-heading section-heading--center">
             <p className="section-eyebrow section-eyebrow--about"><i />ABOUT MIRYN</p>
           </Reveal>
-          <Reveal as="p" className="about-reveal mt-8 font-editorial text-3xl leading-[1.25] tracking-[-0.03em] text-[#FAFAFA] sm:text-4xl">
+          <Reveal as="p" replay className="about-reveal mt-8 font-editorial text-3xl leading-[1.25] tracking-[-0.03em] text-[#FAFAFA] sm:text-4xl">
             {"Traditional AI tools reset every time you close the tab. Miryn is different. We built Miryn around an evolving identity engine that learns who you are over time—tracking your core beliefs, behavior patterns, emotions, and unresolved goals so every interaction feels deeply personal and continuous.".split(" ").map((word, index) => <span className="about-word" style={{ "--word-index": index } as CSSProperties} key={`${word}-${index}`}>{word} </span>)}
           </Reveal>
         </div>
@@ -113,7 +113,7 @@ export default function LandingPage() {
         <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map(([title, value, description], index) => (
             <Reveal as="article" key={title} delay={index * 70} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
-              <h3 className="min-h-10 text-[13.5px] leading-5 text-[#A3A3A3]">{title}</h3>
+              <h3 className="min-h-10 font-editorial text-[13.5px] leading-5 text-[#A3A3A3]">{title}</h3>
               <p className="mt-5 font-editorial text-5xl tracking-[-0.04em] text-[#FAFAFA]">{value}</p>
               <p className="mt-3 text-[13px] leading-5 text-[#A3A3A3]/75">{description}</p>
             </Reveal>
@@ -121,8 +121,8 @@ export default function LandingPage() {
         </div>
 
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
-          <Reveal><WaveChart title="Memory layer performance" label="Memory Retrieval" ticks={["16.0", "14.0", "12.0"]} accent="var(--theme-accent)" variant="memory" /></Reveal>
-          <Reveal><WaveChart title="Identity evolution over time" label="Identity Evolution" ticks={["100%", "80%", "60%"]} accent="var(--theme-accent)" variant="identity" /></Reveal>
+          <Reveal><WaveChart title="Memory layer performance" label="Memory Retrieval" ticks={["16.0", "14.0", "12.0"]} accent="#a78bfa" variant="memory" /></Reveal>
+          <Reveal><WaveChart title="Identity evolution over time" label="Identity Evolution" ticks={["100%", "80%", "60%"]} accent="#e7c86e" variant="identity" /></Reveal>
         </div>
       </section>
 
@@ -136,7 +136,7 @@ export default function LandingPage() {
           <CapabilityRow title="Personality That Adapts to You" copy="Miryn logs versioned traits, values, core beliefs, and emotional nuances. Over time, Miryn tailors its communication style to match your preferences and emotional state.">
             <div className="rounded-3xl border border-white/10 bg-[#151515] p-5 shadow-2xl shadow-black/20 sm:p-7">
               <div className="flex items-center gap-3 border-b border-white/10 pb-5">
-                <div className="h-9 w-9 rounded-full bg-[color:var(--theme-accent)]/30" />
+                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#d4ffe9] to-[#6a7aff]" />
                 <div><p className="text-sm text-[#FAFAFA]">Miryn</p><p className="text-xs text-[#525252]">Your reflective companion</p></div>
               </div>
               <p className="mt-7 font-editorial text-2xl leading-tight text-[#FAFAFA]">What are we working on today? 👋</p>
@@ -150,7 +150,7 @@ export default function LandingPage() {
             <div className="relative min-h-[300px] overflow-hidden rounded-3xl border border-white/10 bg-[#111] p-6">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_40%,rgb(var(--theme-accent-rgb)/.16),transparent_48%)]" />
               <div className="relative space-y-3 pt-5">
-                {[['Transient memory', '2 hours', 'bg-[color:var(--theme-accent)]'], ['Episodic memory', '7 days', 'bg-[color:var(--theme-accent)]/75'], ['Core memory', 'Always', 'bg-[color:var(--theme-accent)]/50']].map(([name, duration, color]) => <div key={name} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-5 py-4"><span className="flex items-center gap-3 text-sm text-[#FAFAFA]"><span className={`h-2 w-2 rounded-full ${color}`} />{name}</span><span className="text-xs text-[#A3A3A3]">{duration}</span></div>)}
+                {[['Transient memory', '2 hours', 'bg-[#9be7bd]'], ['Episodic memory', '7 days', 'bg-[#88baf4]'], ['Core memory', 'Always', 'bg-[#c9a4e8]']].map(([name, duration, color]) => <div key={name} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-5 py-4"><span className="flex items-center gap-3 text-sm text-[#FAFAFA]"><span className={`h-2 w-2 rounded-full ${color}`} />{name}</span><span className="text-xs text-[#A3A3A3]">{duration}</span></div>)}
               </div>
               <div className="relative mt-8 flex flex-wrap gap-2"><span className="rounded-full bg-white/[0.07] px-3 py-1.5 text-xs text-[#A3A3A3]">🧠 Open Loops</span><span className="rounded-full bg-white/[0.07] px-3 py-1.5 text-xs text-[#A3A3A3]">🌙 Memory Recall</span><span className="rounded-full bg-white/[0.07] px-3 py-1.5 text-xs text-[#A3A3A3]">💖 Reflection</span><span className="rounded-full bg-white/[0.07] px-3 py-1.5 text-xs text-[#A3A3A3]">🧘 Daily Context</span></div>
             </div>
@@ -165,8 +165,8 @@ export default function LandingPage() {
           <CapabilityRow title="Track Goals & Unresolved Ideas" copy="Never lose track of a project, thought, or goal. Miryn recognizes open loops in your life and reminds you when it’s time to check in." reverse>
             <div className="space-y-5">
             <div className="rounded-3xl border border-white/10 bg-[#151515] p-6">
-              <div className="flex items-center justify-between border-b border-white/10 pb-5"><span className="font-editorial text-xl">Open loops</span><span className="rounded-full bg-[color:var(--theme-accent)]/20 px-2.5 py-1 text-xs text-[color:var(--theme-accent)]">3 active</span></div>
-              <div className="mt-6 space-y-4">{['Prepare visa interview', 'Finish the personal essay', 'Return to morning walks'].map((item, index) => <div key={item} className="flex items-center gap-3 text-sm text-[#A3A3A3]"><span className={`h-3 w-3 rounded-full border ${index === 0 ? 'border-[color:var(--theme-accent)] bg-[color:var(--theme-accent)]' : 'border-[#525252]'}`} />{item}<span className="ml-auto text-xs text-[#525252]">{index === 0 ? 'today' : 'soon'}</span></div>)}</div>
+              <div className="flex items-center justify-between border-b border-white/10 pb-5"><span className="font-editorial text-xl">Open loops</span><span className="rounded-full bg-[#d5f4dc] px-2.5 py-1 text-xs text-[#1c3b28]">3 active</span></div>
+              <div className="mt-6 space-y-4">{['Prepare visa interview', 'Finish the personal essay', 'Return to morning walks'].map((item, index) => <div key={item} className="flex items-center gap-3 text-sm text-[#A3A3A3]"><span className={`h-3 w-3 rounded-full border ${index === 0 ? 'border-[#d5f4dc] bg-[#d5f4dc]' : 'border-[#525252]'}`} />{item}<span className="ml-auto text-xs text-[#525252]">{index === 0 ? 'today' : 'soon'}</span></div>)}</div>
             </div>
             <MoodCarousel />
             </div>
