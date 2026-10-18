@@ -7,10 +7,10 @@ export type Mood = {
 };
 
 export const moodItems: Mood[] = [
-  { title: "Seeing red", copy: "You might be feeling a bit frustrated or tense.", color: "color-mix(in srgb, var(--theme-accent) 92%, var(--theme-text))" },
-  { title: "Feeling light", copy: "Seems like you have a good day!", color: "color-mix(in srgb, var(--theme-accent) 72%, var(--theme-text))" },
-  { title: "Feeling blue", copy: "It looks like something’s weighing on your mind.", color: "color-mix(in srgb, var(--theme-accent) 84%, var(--theme-bg))" },
-  { title: "Lost in thought", copy: "Feeling a little anxious? Take a deep breath.", color: "color-mix(in srgb, var(--theme-accent) 64%, var(--theme-text))" },
+  { title: "Seeing red", copy: "You might be feeling a bit frustrated or tense.", color: "#eb2c50" },
+  { title: "Feeling light", copy: "Seems like you have a good day!", color: "#fee435" },
+  { title: "Feeling blue", copy: "It looks like something’s weighing on your mind.", color: "#4788c8" },
+  { title: "Lost in thought", copy: "Feeling a little anxious? Take a deep breath.", color: "#5a54a4" },
 ];
 
 export default function MoodCard({ mood, compact = false }: { mood: Mood; compact?: boolean }) {

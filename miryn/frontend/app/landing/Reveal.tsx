@@ -12,9 +12,12 @@ function getObserver() {
         entry.target.classList.toggle("is-near", entry.isIntersecting);
         return;
       }
-      if (!entry.isIntersecting) return;
+      if (!entry.isIntersecting) {
+        if (entry.target.hasAttribute("data-replay")) entry.target.classList.remove("is-revealed");
+        return;
+      }
       entry.target.classList.add("is-revealed");
-      sharedObserver?.unobserve(entry.target);
+      if (!entry.target.hasAttribute("data-replay")) sharedObserver?.unobserve(entry.target);
     });
   }, { threshold: .15, rootMargin: "200px 0px" });
   return sharedObserver;
@@ -26,9 +29,10 @@ type RevealProps = {
   className?: string;
   delay?: number;
   ambient?: boolean;
+  replay?: boolean;
 } & HTMLAttributes<HTMLElement>;
 
-export default function Reveal({ children, as = "div", className = "", delay = 0, ambient = false, style, ...props }: RevealProps) {
+export default function Reveal({ children, as = "div", className = "", delay = 0, ambient = false, replay = false, style, ...props }: RevealProps) {
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -42,8 +46,8 @@ export default function Reveal({ children, as = "div", className = "", delay = 0
     }
     observer.observe(element);
     return () => observer.unobserve(element);
-  }, [ambient]);
+  }, [ambient, replay]);
 
   const revealStyle = { ...style, "--reveal-delay": `${delay}ms` } as CSSProperties;
-  return createElement(as, { ...props, ref, className: `${ambient ? "landing-ambient" : "landing-reveal"} ${className}`, "data-reveal": ambient ? undefined : "true", "data-ambient": ambient ? "true" : undefined, style: revealStyle }, children);
+  return createElement(as, { ...props, ref, className: `${ambient ? "landing-ambient" : "landing-reveal"} ${className}`, "data-reveal": ambient ? undefined : "true", "data-ambient": ambient ? "true" : undefined, "data-replay": replay ? "true" : undefined, style: revealStyle }, children);
 }

@@ -9,6 +9,36 @@
   min-height: 100vh;
   overflow-x: clip;
 }
+
+/* Landing intentionally owns this expressive spectrum; authenticated surfaces keep the shared teal. */
+.landing :global(.spectrum-orb__bands) {
+  background: repeating-linear-gradient(90deg, rgba(235, 44, 80, .72) 0 11%, rgba(242, 146, 32, .7) 11% 23%, rgba(254, 228, 53, .65) 23% 35%, rgba(101, 191, 114, .64) 35% 48%, rgba(71, 136, 200, .64) 48% 61%, rgba(71, 136, 200, .68) 61% 76%, rgba(90, 84, 164, .7) 76% 100%);
+}
+
+.landing :global(.spectrum-orb__core) {
+  background: radial-gradient(circle at 50% 48%, rgba(255, 255, 255, .75) 0 4%, rgba(170, 240, 216, .48) 15%, transparent 48%), conic-gradient(from 45deg, rgba(244, 102, 113, .55), rgba(252, 201, 92, .55), rgba(116, 220, 173, .5), rgba(102, 178, 234, .58), rgba(187, 112, 226, .58), rgba(244, 102, 113, .55));
+}
+
+.landing :global(.landing-nav__cta)::after {
+  background: linear-gradient(90deg, rgba(116, 220, 173, .18), rgba(153, 119, 235, .28), rgba(244, 171, 111, .16));
+}
+
+.landing :global(.section-eyebrow) i { background: #9bbdff; color: #9bbdff; }
+.landing :global(.section-eyebrow--highlights) i { background: #a7e5bd; color: #a7e5bd; }
+.landing :global(.section-eyebrow--capabilities) i { background: #ed9bd4; color: #ed9bd4; }
+.landing :global(.section-eyebrow--faq) i { background: #b7a0ee; color: #b7a0ee; }
+
+.landing :global(.hero-avatar) {
+  background: linear-gradient(135deg, #e9f9de, #98a8e8);
+}
+
+.landing :global(.contact-aurora) {
+  background: conic-gradient(from 220deg at 100% 0%, rgba(112, 225, 169, .66), rgba(246, 218, 84, .54), rgba(244, 154, 92, .48), rgba(234, 118, 196, .42), transparent 72%);
+}
+
+.landing :global(.mood-card__heading h3) {
+  font-family: var(--font-editorial);
+}
 .heroGrid {
   background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
   background-size: 56px 56px;
