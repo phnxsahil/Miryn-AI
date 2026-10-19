@@ -200,8 +200,14 @@ export default function ChatInterface() {
     };
   }, [secondaryPanelsReady, setConflicts, setInsights, setNotifications]);
 
+  const scrollToBottom = useCallback(() => {
+    // bottomRef sits above 112px of pb-28 padding, so scrollIntoView({block:"end"})
+    // always stops short; scroll the container to its true bottom instead.
+    const area = scrollRef.current;
+    if (area) area.scrollTop = area.scrollHeight;
+  }, []);
   const jumpToLatest = useCallback(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
+    scrollToBottom();
     pinnedRef.current = true;
     userScrolledUpRef.current = false;
     if (scrollRef.current) previousScrollTopRef.current = scrollRef.current.scrollTop;
@@ -209,7 +215,7 @@ export default function ChatInterface() {
   }, []);
   useLayoutEffect(() => {
     if (!pinnedRef.current) return;
-    bottomRef.current?.scrollIntoView({ block: "end" });
+    scrollToBottom();
   }, [messages, streaming]);
   useLayoutEffect(() => {
     if (!previousStreamingRef.current || streaming || userScrolledUpRef.current) {
@@ -218,7 +224,7 @@ export default function ChatInterface() {
     }
     previousStreamingRef.current = false;
     const frame = window.requestAnimationFrame(() => {
-      if (!userScrolledUpRef.current) bottomRef.current?.scrollIntoView({ block: "end" });
+      if (!userScrolledUpRef.current) scrollToBottom();
     });
     return () => window.cancelAnimationFrame(frame);
   }, [streaming]);
@@ -226,7 +232,7 @@ export default function ChatInterface() {
     const content = contentRef.current;
     if (!content || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
-      if (pinnedRef.current) bottomRef.current?.scrollIntoView({ block: "end" });
+      if (pinnedRef.current) scrollToBottom();
     });
     observer.observe(content);
     return () => observer.disconnect();
@@ -360,7 +366,7 @@ export default function ChatInterface() {
             userScrolledUpRef.current = true;
             pinnedRef.current = false;
             setPinned(false);
-          } else if (gap < 24) {
+          } else if (gap < 48) {
             userScrolledUpRef.current = false;
             pinnedRef.current = true;
             setPinned(true);
