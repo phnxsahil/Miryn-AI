@@ -1,4 +1,6 @@
+from datetime import datetime, timezone
 from typing import Optional, Any
+from zoneinfo import ZoneInfo
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 import asyncio
@@ -22,6 +24,67 @@ _model_quota_dead_until: dict[str, float] = {}
 CHAT_MAX_OUTPUT_TOKENS = 2048
 CHAT_CONTINUATION_MAX_TOKENS = 256
 _SENTENCE_END_RE = re.compile(r"[.!?…][\"'’»)\]}]*\s*$")
+
+BANNED_PHRASES = [
+    "it makes complete sense",
+    "that makes complete sense",
+    "I hear you",
+    "that cuts deeper",
+    "cuts twice as deep",
+    "sharp sting",
+    "the sting",
+    "running the tape",
+    "on loop",
+    "holding space",
+    "that must be so hard",
+]
+
+PRESET_VOICES = {
+    "companion": {
+        "shape": "Open with one plain, human line about what they are feeling, in words you have not used before in this chat. Then stay with it. Only suggest something if they ask or seem stuck.",
+        "length": "2 to 5 sentences. Loose and warm, like a friend texting back.",
+        "questions": "Ask a question only when you really want the answer. At least every other reply should end on a statement, not a question.",
+    },
+    "mirror": {
+        "shape": "Say back what you heard in sharper words than they used, then stop. No advice and no opinions.",
+        "length": "1 to 3 short sentences.",
+        "questions": "At most one short check, like 'Is that it?', and only some of the time. Often just end on the reflection.",
+    },
+    "coach": {
+        "shape": "Name the real issue in your first sentence. Then give one concrete next step, or ask them to pick one. If they are avoiding something, say so plainly and kindly.",
+        "length": "3 to 6 sentences. A short list is fine if you are laying out steps.",
+        "questions": "Ask a question only to get a commitment, like what and by when. Otherwise end on the step.",
+    },
+    "thinker": {
+        "shape": "Point out the tension or contradiction you see in what they said, then offer one angle they have not tried.",
+        "length": "3 to 6 sentences.",
+        "questions": "One probing question is fine, but skip it when your point stands on its own.",
+    },
+    "creative": {
+        "shape": "Come at it sideways. Use one fresh image or comparison, then say what it suggests about their situation.",
+        "length": "2 to 5 sentences.",
+        "questions": "A reframing question is optional. Do not end every reply with one.",
+    },
+}
+
+DEFAULT_VOICE = {
+    "shape": "Respond to what they actually said first, then add one useful thought.",
+    "length": "2 to 4 sentences.",
+    "questions": "Ask a question only when it helps. Do not end every reply with one.",
+}
+
+
+def _local_time_line(identity: dict) -> str:
+    tz_name = identity.get("timezone") or identity.get("tz") or "UTC"
+    try:
+        now = datetime.now(ZoneInfo(tz_name))
+    except Exception:
+        now = datetime.now(timezone.utc)
+        tz_name = "UTC"
+    return (
+        f"The user's local time is {now.strftime('%A %I:%M %p')} ({tz_name}). "
+        "Only say morning, afternoon, tonight or similar when it matches this time."
+    )
 
 
 def _finish_reason_name(finish_reason: Any) -> str:
@@ -160,8 +223,7 @@ class LLMService:
         prompt = f"""
 The assistant reply below was cut off before it finished. Continue exactly where it stopped.
 Return only the missing text, not the original reply. Finish the current sentence, end with
-sentence-ending punctuation, and stop there. Keep the reply within the existing 1–3 sentence
-style. The continuation may begin mid-word, so do not add a leading space unless it is needed.
+sentence-ending punctuation, and stop there. Keep the same voice and length as the partial reply. The continuation may begin mid-word, so do not add a leading space unless it is needed.
 
 Partial reply:
 {partial}
@@ -619,7 +681,7 @@ Partial reply:
         if behaviors:
             behavior_lines = []
             if behaviors.get("ask_followups"):
-                behavior_lines.append("- Ask thoughtful follow-up questions")
+                behavior_lines.append("- Follow up on what they said when it helps, but a question is never required")
             if behaviors.get("reflect_emotions"):
                 behavior_lines.append("- Reflect the user's emotions back to them")
             if behaviors.get("challenge_assumptions"):
@@ -633,6 +695,9 @@ Partial reply:
             behavior_lines.append(f"- Tone: {formality}, verbosity: {verbosity}")
             behavior_prose = "\n".join(behavior_lines)
 
+        voice = PRESET_VOICES.get(preset_id, DEFAULT_VOICE)
+        banned_prose = "; ".join(f'"{p}"' for p in BANNED_PHRASES)
+
         prompt = f"""You are Miryn, an AI companion with deep memory and reflective capabilities.
 
 USER PROFILE:
@@ -644,6 +709,14 @@ USER PROFILE:
 YOUR BEHAVIORAL STYLE:
 {preset_modifier}
 
+HOW YOUR REPLIES ARE SHAPED:
+- Shape: {voice["shape"]}
+- Length: {voice["length"]}
+- Questions: {voice["questions"]}
+
+NOW:
+{_local_time_line(identity)}
+
 {("CONVERSATION BEHAVIORS:" + chr(10) + behavior_prose) if behavior_prose else ""}
 
 Your purpose:
@@ -651,7 +724,9 @@ Your purpose:
 2. Notice patterns in their behavior and emotions
 3. Reflect insights back gently
 4. Be honest, direct, avoid fluff
-5. Ask ONE thoughtful question per response
+5. Sound like a person, not a script. Vary how you open and how you end.
+
+Never use these stock phrases or close variants of them: {banned_prose}. Do not reuse a descriptive word or image you already used earlier in this conversation. Do not start two replies in a row with the same kind of sentence.
 
 Speak naturally, like a thoughtful, sharp friend who truly knows them. Avoid sounding like a generic AI or a therapist."""
 
@@ -665,11 +740,11 @@ Speak naturally, like a thoughtful, sharp friend who truly knows them. Avoid sou
         parts.append(f"Current message: {user_message}")
         parts.append("""
 Formatting requirements:
-- Keep your response to 1–3 complete sentences. Short is good, but never stop mid-sentence.
+- Follow the length and shape in HOW YOUR REPLIES ARE SHAPED. Short is fine when the message is short, longer is fine when they bring something heavy.
 - Always finish the sentence you are writing and end with sentence-ending punctuation.
 - Answer directly with a conversational, insightful tone.
 - Use markdown only when strictly necessary for clarity.
-- Ask ONE relevant follow-up question per response.
+- Do not end with a question unless your style above allows it and you genuinely want the answer.
 - For medical/health questions, include a brief safety note and suggest professional help.""")
         return "\n\n".join(parts)
 
