@@ -1,117 +1,146 @@
 # Miryn
 
-**An AI companion that actually remembers you, and builds a versioned model of who you are over time.**
+Miryn is an AI companion that remembers the conversations that matter and builds a versioned model of the person it is talking with.
 
-Most chatbots forget everything when the tab closes. Miryn keeps a tiered long-term memory of your conversations, retrieves what's relevant on every message, and maintains an identity profile (traits, beliefs, open loops, emotional patterns) that updates as you talk.
+Instead of treating every chat as a blank slate, Miryn combines persistent memory, retrieval, reflection, and an evolving identity profile. The result is a prototype for conversations that can carry context forward without flattening a person into a single static persona.
 
-[Join the waitlist (live)](https://miryn-ai.vercel.app)
+**Product site:** [miryn-ai.vercel.app](https://miryn-ai.vercel.app)
 
-> **Screenshot:** _add chat + identity dashboard screenshots here_
-> **Architecture diagram:** _optional, add one image of the flow below_
+## What the experience includes
 
-## What it does
+- **Streaming conversations.** Responses arrive token by token through the FastAPI SSE endpoint.
+- **Recalled context.** Relevant memories are retrieved from previous conversations before each reply.
+- **An evolving identity.** Traits, values, beliefs, emotions, patterns, conflicts, and open loops are versioned per user.
+- **Memory controls.** Users can inspect, export, and delete stored memories.
+- **Background reflection.** Celery workers analyse conversations for emotional signals, recurring patterns, and unfinished threads.
 
-- **Remembers across sessions.** Messages are embedded and stored as vectors in Postgres (pgvector), then recalled by meaning, not keywords.
-- **Retrieves with a hybrid score.** Semantic similarity, recency and importance are combined, not just nearest-neighbour.
-- **Reflects in the background.** Celery workers analyse conversations for emotions, topic patterns and open loops, and write them back to your identity.
-- **Keeps an identity that evolves.** Traits, values, beliefs, open loops and conflicts are stored per user, and every change is logged so you can see how the profile moved.
+## How it works
 
-## The memory / RAG pipeline
-
-```
-user message
-   |
-   +--> embed (Gemini embeddings, deterministic hash fallback) --> store
-   |        tier chosen per message: transient | episodic | core
-   |
-   +--> retrieve_context(query)
-          |-- semantic : pgvector cosine search (messages.embedding, 384-dim)
-          |-- temporal : last 7 days
-          |-- important: importance >= 0.7
-          |-- transient: short-lived items from Redis (2h TTL)
-          v
-   hybrid score = 0.5 * semantic + 0.3 * recency + 0.2 * importance
-          v
-   top-k memories (cached in Redis for 1h) --> LLM prompt --> reply
+```mermaid
+flowchart LR
+    U[User message] --> O[Conversation orchestrator]
+    O --> R[Hybrid memory retrieval]
+    R --> L[LLM provider]
+    L --> S[Streaming response]
+    O --> M[Store conversation]
+    M --> C[Celery reflection task]
+    C --> I[Versioned identity]
+    I --> R
 ```
 
-- **Three tiers.** `transient` (short or ephemeral, kept in Redis), `episodic` (default), `core` (importance >= 0.8). Tier can also be set explicitly.
-- **Provider-agnostic LLM layer.** Switch with `LLM_PROVIDER`: `openai`, `anthropic`, `gemini` or `vertex`.
-- **Optional learned re-ranker.** `memory_ranker.py` can re-rank memories with an XGBoost model over recency, emotional intensity, entity overlap and identity alignment, and falls back to importance score when the model is unavailable.
-- **Privacy basics.** Message content is encrypted at rest (`ENCRYPTION_KEY`), with rate limiting and audit logging on the API.
+The memory layer combines semantic similarity, recency, and importance. Memories are grouped into three tiers: short-lived `transient` context in Redis, default `episodic` memories, and higher-importance `core` memories. The retrieval path uses Postgres with pgvector and caches context in Redis.
 
-## Identity engine
+After a conversation is stored, reflection can update identity evidence asynchronously. Identity changes go through the identity engine, which creates a new version and records the change in the evolution log.
 
-Per-user identity stored in Postgres: traits and values, `identity_beliefs`, `identity_open_loops`, `identity_patterns`, `identity_emotions` and `identity_conflicts`, plus an evolution log for each change. The reflection worker (`app/workers/reflection_worker.py`) feeds it after conversations.
+The LLM service is provider-agnostic. Configure `LLM_PROVIDER` as `gemini`, `openai`, `anthropic`, or `vertex`; embedding and chat configuration remain in the backend environment.
 
-## Tech stack
+## Technical shape
 
-| Layer | Tools |
-|---|---|
-| Frontend | Next.js 14, React, TypeScript, Tailwind, NextAuth, Sentry |
-| Backend | FastAPI, SQLAlchemy, Pydantic |
-| Data | PostgreSQL + pgvector, Redis |
-| Background jobs | Celery (worker + beat) |
-| ML | sentence-transformers, XGBoost, scikit-learn |
-| LLMs | OpenAI, Anthropic, Gemini, Vertex AI (switchable) |
-| Infra | Docker Compose, GitHub Actions |
+| Area | Implementation |
+| --- | --- |
+| Frontend | Next.js 14 App Router, React, TypeScript, Tailwind, Zustand |
+| API | FastAPI, Pydantic, SQLAlchemy |
+| Storage | PostgreSQL + pgvector, with a Supabase client path where configured |
+| Cache and jobs | Redis, Celery worker, Celery beat |
+| AI | Gemini, OpenAI, Anthropic, or Vertex through one service layer |
+| Deployment | Docker Compose locally; Render blueprint for the API and Redis |
 
-## Repo layout
+## Repository map
 
-```
+```text
 miryn/
-  backend/     FastAPI app: app/api, app/services, app/core, app/workers, migrations/
-  frontend/    Next.js app
-  shared/      shared types (Python + TypeScript)
-  docker-compose.yml
+├── backend/
+│   ├── app/api/       HTTP routers
+│   ├── app/services/  memory, identity, reflection, and LLM logic
+│   ├── app/workers/   Celery tasks
+│   └── migrations/    PostgreSQL schema and pgvector setup
+├── frontend/          Next.js application
+└── docker-compose.yml Local backend, frontend, Redis, Postgres, and workers
 ```
 
-## Quickstart (Docker)
+## Run locally with Docker
 
-You need Docker and at least one LLM key.
+Prerequisites: Docker Desktop and an API key for at least one supported LLM provider.
+
+From the repository root:
 
 ```bash
-git clone https://github.com/phnxsahil/Miryn-AI.git
-cd Miryn-AI/miryn
-
+cd miryn
 cp .env.example .env
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-# fill in: an LLM key + LLM_PROVIDER, SECRET_KEY, ENCRYPTION_KEY,
-# and DATABASE_URL pointing at the compose Postgres (user/password/db default to postgres/postgres/miryn)
+```
 
+Edit `miryn/.env` and set at least:
+
+```dotenv
+DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/miryn
+REDIS_URL=redis://redis:6379/0
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your-key
+SECRET_KEY=generate-a-long-random-secret
+ENCRYPTION_KEY=generate-a-fernet-key-or-use-a-long-random-value
+```
+
+For another provider, set its API key and change `LLM_PROVIDER`. Generate an application secret with:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Start the stack from `miryn/`:
+
+```bash
 docker compose up -d --build
 ```
 
+The services are then available at:
+
 - Frontend: http://localhost:3000
-- Backend: http://localhost:8000 (FastAPI docs at `/docs`)
+- API: http://localhost:8000
+- API documentation: http://localhost:8000/docs
+- Postgres: `localhost:5432`
+- Redis: `localhost:6379`
 
-The compose file starts the backend, frontend, Celery worker and beat, Redis and Postgres with pgvector. SQL files in `backend/migrations/` are loaded on first database start.
+Postgres loads the SQL files in `backend/migrations/` only when the `postgres_data` volume is created for the first time. If you add migrations to an existing volume, apply them manually in order.
 
-## Local development
+## Run without Docker
+
+The backend expects Python 3.11 and a reachable PostgreSQL or Supabase database plus Redis.
 
 ```bash
 # backend
 cd miryn/backend
-python -m venv .venv && source .venv/bin/activate   # Windows: .\.venv\Scripts\Activate.ps1
+python -m venv .venv
+# macOS/Linux
+source .venv/bin/activate
+# Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 
-# frontend
+# frontend, in another terminal
 cd miryn/frontend
 npm install
 npm run dev
 ```
 
-Backend tests: `cd miryn/backend && SECRET_KEY=test pytest -q`
+For a non-Docker frontend, set `NEXT_PUBLIC_API_URL` in `miryn/frontend/.env` to the backend URL. Backend variables are documented in `miryn/backend/.env.example`.
 
-## API overview
+## Checks
 
-`/auth` (signup, login), `/chat`, `/identity`, `/onboarding`, `/memory`, `/notifications`, `/import`, `/llm`, `/tools`, plus analytics endpoints. Full interactive docs at `/docs` when the backend is running.
+```bash
+# backend tests (SQLite-compatible test configuration)
+cd miryn/backend
+SECRET_KEY=test pytest -q
 
-## Status
+# frontend lint and encoding checks
+cd ../frontend
+npm run verify
+```
 
-Alpha. The product is collecting waitlist signups at [miryn-ai.vercel.app](https://miryn-ai.vercel.app). The frontend still needs polish and I'm iterating on it.
+## Deployment note
+
+`render.yaml` describes the current Render deployment shape: a Docker web service for the API and a managed Redis instance. The local Compose file also defines Postgres, the frontend, Celery worker, and Celery beat. Run the worker processes wherever background reflection is required; they are not separate services in the current Render blueprint.
+
+Miryn is an alpha/demo project. The core memory, identity, streaming, reflection, and account flows are implemented, but the system is still being iterated and should be evaluated as a prototype rather than a production-ready service.
 
 ## Author
 
