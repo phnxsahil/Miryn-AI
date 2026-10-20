@@ -1,4 +1,6 @@
+import json
 import unittest
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 import importlib
 import pytest
@@ -78,6 +80,36 @@ class TestIdentityEvolutionLog(unittest.TestCase):
 
         # Should not call session.execute
         self.assertEqual(self.session.execute.call_count, 0)
+
+    def test_update_identity_serializes_datetime_open_loop(self):
+        created_at = datetime.now()
+        self.engine.get_identity = MagicMock(return_value={
+            "state": "onboarding",
+            "traits": {},
+            "values": {},
+            "beliefs": [],
+            "open_loops": [],
+            "patterns": [],
+            "emotions": [],
+            "conflicts": [],
+            "memory_weights": {},
+        })
+
+        self.engine.update_identity(
+            self.user_id,
+            {"open_loops": [{"topic": "test", "last_mentioned": created_at}]},
+            sql_session=self.session,
+        )
+
+        insert_params = next(
+            args[1]
+            for args, _ in self.session.execute.call_args_list
+            if isinstance(args[1], dict) and "open_loops" in args[1]
+        )
+        self.assertEqual(
+            json.loads(insert_params["open_loops"])[0]["last_mentioned"],
+            created_at.isoformat(),
+        )
 
 if __name__ == "__main__":
     unittest.main()

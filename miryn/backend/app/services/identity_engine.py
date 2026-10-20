@@ -1,5 +1,5 @@
 from typing import Dict, List, Any, Optional
-from datetime import datetime
+from datetime import date, datetime
 import json
 from uuid import uuid4
 from contextlib import contextmanager
@@ -13,6 +13,12 @@ from app.services.identity import (
     EmotionStore,
     ConflictStore,
 )
+
+
+def _json_default(value: Any) -> str:
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    return str(value)
 
 
 class IdentityEngine:
@@ -85,12 +91,12 @@ class IdentityEngine:
                         "user_id": user_id,
                         "version": 1,
                         "state": "onboarding",
-                        "traits": json.dumps(identity["traits"]),
-                        "values": json.dumps(identity["values"]),
-                        "beliefs": json.dumps(identity["beliefs"]),
-                        "open_loops": json.dumps(identity["open_loops"]),
+                        "traits": json.dumps(identity["traits"], default=_json_default),
+                        "values": json.dumps(identity["values"], default=_json_default),
+                        "beliefs": json.dumps(identity["beliefs"], default=_json_default),
+                        "open_loops": json.dumps(identity["open_loops"], default=_json_default),
                         "preset": identity["preset"],
-                        "memory_weights": json.dumps(identity["memory_weights"]),
+                        "memory_weights": json.dumps(identity["memory_weights"], default=_json_default),
                     },
                 )
                 result = session.execute(
@@ -120,12 +126,12 @@ class IdentityEngine:
             "id": new_id,
             "user_id": user_id,
             "state": merged["state"],
-            "traits": json.dumps(merged["traits"]),
-            "values": json.dumps(merged["values"]),
-            "beliefs": json.dumps(merged["beliefs"]),
-            "open_loops": json.dumps(merged["open_loops"]),
+            "traits": json.dumps(merged["traits"], default=_json_default),
+            "values": json.dumps(merged["values"], default=_json_default),
+            "beliefs": json.dumps(merged["beliefs"], default=_json_default),
+            "open_loops": json.dumps(merged["open_loops"], default=_json_default),
             "preset": merged.get("preset"),
-            "memory_weights": json.dumps(merged.get("memory_weights", {})),
+            "memory_weights": json.dumps(merged.get("memory_weights", {}), default=_json_default),
         }
 
         stmt = text(
@@ -201,8 +207,8 @@ class IdentityEngine:
                 "uid": user_id,
                 "iid": identity_id,
                 "f": field,
-                "o": json.dumps(old_val, default=str),
-                "n": json.dumps(new_val, default=str),
+                "o": json.dumps(old_val, default=_json_default),
+                "n": json.dumps(new_val, default=_json_default),
                 "t": trigger_type
             })
 
@@ -285,7 +291,9 @@ class IdentityEngine:
             "traits": {**self._ensure_dict(current.get("traits")), **self._ensure_dict(updates.get("traits"))},
             "values": {**self._ensure_dict(current.get("values")), **self._ensure_dict(updates.get("values"))},
             "beliefs": list(self._ensure_list(updates.get("beliefs", current.get("beliefs", [])))),
-            "open_loops": list(self._ensure_list(updates.get("open_loops", current.get("open_loops", [])))),
+            "open_loops": self._normalize_open_loops(
+                self._ensure_list(updates.get("open_loops", current.get("open_loops", [])))
+            ),
             "patterns": list(self._ensure_list(updates.get("patterns", current.get("patterns", [])))),
             "emotions": list(self._ensure_list(updates.get("emotions", current.get("emotions", [])))),
             "conflicts": list(self._ensure_list(updates.get("conflicts", current.get("conflicts", [])))),
@@ -293,6 +301,19 @@ class IdentityEngine:
             "memory_weights": self._ensure_dict(updates.get("memory_weights", current.get("memory_weights", {}))),
             "base_version": current.get("version", 0),
         }
+
+    def _normalize_open_loops(self, loops: List[Dict]) -> List[Dict]:
+        normalized = []
+        for loop in loops:
+            if not isinstance(loop, dict):
+                normalized.append(loop)
+                continue
+            loop = dict(loop)
+            last_mentioned = loop.get("last_mentioned")
+            if isinstance(last_mentioned, (datetime, date)):
+                loop["last_mentioned"] = last_mentioned.isoformat()
+            normalized.append(loop)
+        return normalized
 
     def _log_identity_evolution_supabase(
         self,
@@ -320,8 +341,8 @@ class IdentityEngine:
                 "user_id": user_id,
                 "identity_id": identity_id,
                 "field_changed": field,
-                "old_value": json.dumps(old_value, default=str),
-                "new_value": json.dumps(new_value, default=str),
+                "old_value": json.dumps(old_value, default=_json_default),
+                "new_value": json.dumps(new_value, default=_json_default),
                 "trigger_type": trigger_type,
             })
 
