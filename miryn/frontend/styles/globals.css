@@ -574,8 +574,8 @@
   opacity: .9;
   will-change: transform, opacity;
   animation: spectrum-breathe 9s ease-in-out infinite;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 25%, rgb(0 0 0 / .42) 34%, rgb(0 0 0 / .12) 48%, rgb(0 0 0 / .42) 62%, #000 72%, #000 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, #000 25%, rgb(0 0 0 / .42) 34%, rgb(0 0 0 / .12) 48%, rgb(0 0 0 / .42) 62%, #000 72%, #000 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 10%, rgb(0 0 0 / .42) 16%, rgb(0 0 0 / .12) 25%, rgb(0 0 0 / .42) 34%, #000 42%, #000 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 10%, rgb(0 0 0 / .42) 16%, rgb(0 0 0 / .12) 25%, rgb(0 0 0 / .42) 34%, #000 42%, #000 100%);
 }
 .spectrum-orb__bands, .spectrum-orb__core { position: absolute; inset: 0; border-radius: 50%; filter: blur(48px); }
 .spectrum-orb__bands {
