@@ -38,6 +38,10 @@ case cap is not a dollar cap. Responses and rubrics need human review. Do not
 mistake substring matching, a self-reported boundary, or successful requests for
 safety certification. Test cases are isolated in-memory, not a simulated user.
 
+The live runner uses the same composed persona and safety system prompt through
+`LLMService`, not a bare vendor prompt. It bypasses account/orchestrator memory
+retrieval on purpose.
+
 The offline suite checks that SAFETY, prohibited-content, blocklist, SPII and
 recitation stops are terminal, including after partial chunks. Blocked fragments
 must never be exposed or sent to another model. Successful Gemini replies are
@@ -52,8 +56,10 @@ intentionally trades token-by-token immediacy for a safe finish-status check.
 - The shared policy applies to every persona, but model compliance still needs
   behavioral review. Additional adjustable Gemini filters are not configured in
   this change; built-in model safety remains distinct from app policy.
-- These checks do not exercise HTTP authentication, SSE transport, persistence,
-  cross-chat retrieval, consent UI, deployment wiring or browser rendering. Keep
+- The mocked HTTP/SSE regression verifies endpoint framing and error/control
+  flow, not real authentication, persistence or deployment wiring. Separate
+  Playwright tests mock the API to verify paced display, Stop, navigation, errors
+  and reduced motion. None certify live model behavior or cross-chat memory. Keep
   a small test-account API/UI smoke check after deploying an approved PR.
 - This PR does not change personas, personalization storage, billing, provider
   keys, deployment configuration or the user's data. No preview backend needed.
@@ -61,3 +67,21 @@ intentionally trades token-by-token immediacy for a safe finish-status check.
 Reference contracts: [Gemini safety feedback and defaults](https://ai.google.dev/gemini-api/docs/safety-settings)
 and [NIMH crisis support steps](https://www.nimh.nih.gov/health/publications/5-action-steps-for-helping-someone-in-emotional-pain).
 These inform the implementation, not an endorsement or clinical validation.
+
+## Paced frontend reveal
+
+The browser waits for a completed SSE response, then reveals words at about
+28 ms per step (long replies batch words into at most 150 steps). Reduced motion
+shows the complete response immediately. Stop cancels display, not an already
+saved server reply. This is display animation, not real-time model streaming or
+an additional semantic content filter. Gemini finish-status buffering remains.
+
+From `miryn/frontend`, install dependencies and Playwright Chromium, start
+`npm run dev`, then run:
+
+```sh
+npx playwright test tests/reveal-response.spec.ts tests/paced-chat.spec.ts
+```
+
+These tests make no provider calls. Actual API deployment, account persistence,
+and a real-model behavioral rubric review remain separate checks after approval.
