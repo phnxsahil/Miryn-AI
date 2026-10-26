@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowDown, Lightbulb, Loader2, X } from "lucide-react";
 import { api } from "@/lib/api";
+import { consumeReply } from "@/lib/reveal-response";
 import { useChatStore } from "@/lib/store";
 import type { ConversationInsights, Notification, ToolRun } from "@/lib/types";
 import { getErrorMessage } from "@/lib/utils";
@@ -77,6 +78,8 @@ export default function ChatInterface() {
       return;
     }
     requestRef.current?.abort();
+    requestRef.current = null;
+    setStreaming(false);
     const currentRequest = ++historyRequestRef.current;
     let active = true;
     setSavedIndex(null);
@@ -102,7 +105,7 @@ export default function ChatInterface() {
       if (active && historyRequestRef.current === currentRequest) setLoading(false);
     });
     return () => { active = false; };
-  }, [historyRetry, idFromUrl, setConflicts, setConversationId, setInsights, setLoading, setMessages, setStatus]);
+  }, [historyRetry, idFromUrl, setConflicts, setConversationId, setInsights, setLoading, setMessages, setStatus, setStreaming]);
 
   const loadEarlierMessages = async () => {
     const firstMessage = messages[0];
@@ -237,7 +240,7 @@ export default function ChatInterface() {
     observer.observe(content);
     return () => observer.disconnect();
   }, []);
-  useEffect(() => () => requestRef.current?.abort(), []);
+  useEffect(() => () => { requestRef.current?.abort(); requestRef.current = null; }, []);
 
   const confirmSaved = async (id: string, assistantContent: string, assistantIndex: number) => {
     // ponytail: bounded polling confirms a durable memory tier; the backend has no memory-saved event.
@@ -274,37 +277,27 @@ export default function ChatInterface() {
     jumpToLatest();
     const controller = new AbortController();
     requestRef.current = controller;
-    let completed = false;
-    let assistantError = false;
+    const requestHistoryVersion = historyRequestRef.current;
     let newId: string | undefined;
     try {
-      for await (const event of api.streamMessage(content, conversationId || undefined, controller.signal)) {
-        if (event.error) {
-          setMessages((current) => current.map((message, index) => index === assistantIndex ? { ...message, content: event.error || "Miryn could not finish the reply." } : message));
-          setAssistantErrorIndex(assistantIndex);
-          assistantError = true;
-          completed = true;
-          break;
-        }
-        if (event.chunk) updateStreamingMessage(event.chunk);
-        if (event.done) {
-          newId = event.conversation_id;
-          if (!useChatStore.getState().messages[assistantIndex]?.content.trim()) {
-            throw new Error("Miryn returned an empty reply. Please retry.");
-          }
-          completed = true;
-          break;
-        }
-      }
-      if (!completed) throw new Error("The connection ended before Miryn finished. Please retry.");
+      newId = await consumeReply(api.streamMessage(content, conversationId || undefined, controller.signal), {
+        signal: controller.signal,
+        ready: (id) => { newId = id; },
+        reducedMotion: () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+        append: (text) => {
+          if (requestRef.current === controller) updateStreamingMessage(text);
+        },
+      });
       if (newId && !conversationId) {
         ownRouteRef.current = newId;
         setConversationId(newId);
         router.replace("/chat?id=" + newId);
       }
       const assistantContent = useChatStore.getState().messages[assistantIndex]?.content || "";
-      if (assistantContent && !assistantError && (newId || conversationId)) void confirmSaved((newId || conversationId)!, assistantContent, assistantIndex);
+      if (assistantContent && (newId || conversationId)) void confirmSaved((newId || conversationId)!, assistantContent, assistantIndex);
     } catch (error) {
+      // A route change/unmount must not append status or messages to a new chat.
+      if (requestRef.current !== controller || historyRequestRef.current !== requestHistoryVersion) return;
       if (newId && !conversationId) {
         ownRouteRef.current = newId;
         setConversationId(newId);
@@ -312,7 +305,7 @@ export default function ChatInterface() {
       }
       if (controller.signal.aborted) {
         setStoppedIndex(assistantIndex);
-        setStatus("Reply stopped. This message may not have been saved.");
+        setStatus("Reply stopped. The full reply may already be saved; reopen this chat to see it.");
       } else {
         setStatus(getErrorMessage(error, "Miryn could not finish the reply."));
         if (!useChatStore.getState().messages[assistantIndex]?.content) {
@@ -320,10 +313,12 @@ export default function ChatInterface() {
         }
       }
     } finally {
-      if (requestRef.current === controller) requestRef.current = null;
-      setLoading(false);
-      setStreaming(false);
-      setStreamingIndex(null);
+      if (requestRef.current === controller) {
+        requestRef.current = null;
+        setLoading(false);
+        setStreaming(false);
+        setStreamingIndex(null);
+      }
     }
   };
 
