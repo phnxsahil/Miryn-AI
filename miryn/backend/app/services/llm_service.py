@@ -12,6 +12,7 @@ import threading
 import time
 from pathlib import Path
 from app.config import settings
+from app.services.safety import SAFETY_POLICY, BLOCKED_REPLY, immediate_safety_reply, provider_blocked
 
 
 class QuotaExhausted(RuntimeError):
@@ -361,8 +362,6 @@ Partial reply:
                 from google.genai import types as genai_types
 
                 contents = prompt
-                if system_prompt:
-                    contents = f"{system_prompt}\n\n{prompt}"
                 last_exc: Exception | None = None
                 quota_failures: list[Exception] = []
                 candidate_models = self._gemini_models_available()
@@ -377,10 +376,13 @@ Partial reply:
                             config=genai_types.GenerateContentConfig(
                                 max_output_tokens=max_tokens,
                                 temperature=0.7,
+                                system_instruction=system_prompt or None,
                             ),
                         )
                         self.model = candidate_model
                         self._clear_quota_breaker()
+                        if provider_blocked(response):
+                            return BLOCKED_REPLY
                         try:
                             return response.text or ""
                         except Exception as exc:
@@ -424,6 +426,9 @@ Partial reply:
             raise TimeoutError(f"LLM request timed out after {settings.LLM_TIMEOUT_SECONDS}s") from exc
 
     async def chat(self, context: dict, user_message: str, identity: dict) -> str:
+        urgent = immediate_safety_reply(user_message)
+        if urgent:
+            return urgent
         system_prompt = self._build_system_prompt(identity)
         context_text = self._format_context(context)
         full_prompt = self._build_user_prompt(context_text, user_message)
@@ -435,6 +440,10 @@ Partial reply:
         )
 
     async def stream_chat(self, context: dict, user_message: str, identity: dict):
+        urgent = immediate_safety_reply(user_message)
+        if urgent:
+            yield urgent
+            return
         self._raise_if_quota_dead()
         system_prompt = self._build_system_prompt(identity)
         context_text = self._format_context(context)
@@ -470,8 +479,6 @@ Partial reply:
             from google.genai import types as genai_types
 
             contents = full_prompt
-            if system_prompt:
-                contents = f"{system_prompt}\n\n{full_prompt}"
             
             quota_failures: list[Exception] = []
             candidate_models = self._gemini_models_available()
@@ -480,6 +487,7 @@ Partial reply:
                 raise QuotaExhausted("Gemini quota cooldown active")
             for candidate_model in candidate_models:
                 text_chars = 0
+                buffered_chunks: list[str] = []
                 finish_reason = None
                 try:
                     stream_response = self.client.aio.models.generate_content_stream(
@@ -488,11 +496,17 @@ Partial reply:
                         config=genai_types.GenerateContentConfig(
                             max_output_tokens=CHAT_MAX_OUTPUT_TOKENS,
                             temperature=0.7,
+                            system_instruction=system_prompt,
                         ),
                     )
                     if asyncio.iscoroutine(stream_response):
                         stream_response = await stream_response
                     async for chunk in stream_response:
+                        if provider_blocked(chunk):
+                            # A safety decision is terminal, never a reason to try
+                            # another model or complete a blocked partial sentence.
+                            yield BLOCKED_REPLY
+                            return
                         text = None
                         try:
                             text = chunk.text
@@ -502,7 +516,7 @@ Partial reply:
                         if text:
                             text_chars += len(text)
                             self.model = candidate_model
-                            yield text
+                            buffered_chunks.append(text)
                         try:
                             candidates = getattr(chunk, "candidates", None) or []
                             if candidates:
@@ -526,6 +540,8 @@ Partial reply:
                                 text_chars,
                             )
                         self._clear_quota_breaker()
+                        for safe_chunk in buffered_chunks:
+                            yield safe_chunk
                         return
                     self.logger.warning(
                         "Gemini stream returned no text for %s (finish_reason=%s)",
@@ -536,8 +552,9 @@ Partial reply:
                     if text_chars:
                         if _gemini_quota_error(exc):
                             _mark_model_quota_dead(candidate_model, _retry_delay_seconds(exc))
-                        self.logger.exception("Gemini streaming failed after output for model %s", candidate_model)
-                        return
+                        self.logger.exception("Gemini stream interrupted before safety status for model %s", candidate_model)
+                        # Nothing buffered is exposed if the stream did not finish.
+                        raise
                     if _gemini_retryable(exc):
                         if _gemini_quota_error(exc):
                             _mark_model_quota_dead(candidate_model, _retry_delay_seconds(exc))
@@ -699,6 +716,8 @@ Partial reply:
         banned_prose = "; ".join(f'"{p}"' for p in BANNED_PHRASES)
 
         prompt = f"""You are Miryn, an AI companion with deep memory and reflective capabilities.
+
+{SAFETY_POLICY}
 
 USER PROFILE:
 - Personality traits: {traits_prose}
