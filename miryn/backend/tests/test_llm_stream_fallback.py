@@ -117,5 +117,6 @@ def test_mid_stream_failure_does_not_switch_models():
     )
     service = _service(models, ["primary", "secondary"])
 
-    assert asyncio.run(_collect(service)) == ["first "]
+    with pytest.raises(RuntimeError, match="connection closed"):
+        asyncio.run(_collect(service))
     assert models.calls == ["primary"]
