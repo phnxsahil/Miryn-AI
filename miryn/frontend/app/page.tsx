@@ -84,7 +84,7 @@ export default function LandingPage() {
         <ToolIcons />
       </Reveal>
 
-      <section id="about" className="relative isolate overflow-clip mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
+      <section id="about" className="relative isolate mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
         <div className={`${styles.sectionGlow} ${styles.sectionGlowAbout}`} aria-hidden="true" />
         <div className="about-intro">
           <AboutReveal />
