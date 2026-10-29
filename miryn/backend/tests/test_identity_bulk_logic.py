@@ -12,9 +12,10 @@ sys.path.append(os.path.join(os.getcwd(), 'miryn/backend'))
 
 @pytest.fixture(scope="module", autouse=True)
 def mocked_identity_engine_import():
+    import sqlalchemy.exc as real_sqlalchemy_exc
     sqlalchemy_mock = MagicMock()
-    sqlalchemy_exc_mock = MagicMock()
-    sqlalchemy_mock.exc = sqlalchemy_exc_mock
+    sqlalchemy_mock.exc = real_sqlalchemy_exc
+    sqlalchemy_exc_mock = real_sqlalchemy_exc
     mocked_modules = {
         "app.core.database": MagicMock(),
         "app.services.identity": MagicMock(),
@@ -94,6 +95,21 @@ class TestIdentityEvolutionLog(unittest.TestCase):
             "conflicts": [],
             "memory_weights": {},
         })
+        self.session.execute.return_value.mappings.return_value.first.return_value = {
+            "id": "row-1",
+            "user_id": self.user_id,
+            "version": 1,
+            "state": "onboarding",
+            "traits": "{}",
+            "values": "{}",
+            "beliefs": "[]",
+            "open_loops": "[]",
+            "patterns": "[]",
+            "emotions": "[]",
+            "conflicts": "[]",
+            "preset": None,
+            "memory_weights": "{}",
+        }
 
         self.engine.update_identity(
             self.user_id,
