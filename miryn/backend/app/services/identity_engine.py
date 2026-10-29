@@ -21,6 +21,10 @@ def _json_default(value: Any) -> str:
     return str(value)
 
 
+class _RetryWrite(Exception):
+    """Internal: the guarded insert lost a concurrency race; retry fresh."""
+
+
 class IdentityEngine:
     def __init__(self, reflection=None):
         self.supabase = get_db() if not has_sql() else None
@@ -112,28 +116,22 @@ class IdentityEngine:
         return self._hydrate_identity(response.data[0])
 
     def update_identity(self, user_id: str, updates: Dict, sql_session: Optional[Any] = None) -> Dict:
+        if has_sql():
+            # Ensure an initial row exists, then merge against the latest row
+            # inside the insert retry loop so a version collision re-merges
+            # against fresh state instead of writing a stale snapshot.
+            self.get_identity(user_id, sql_session=sql_session)
+            return self._insert_identity_sql(user_id, updates, sql_session=sql_session)
+
         current = self.get_identity(user_id, sql_session=sql_session)
         merged = self._merge_identity(current, updates)
-
-        if has_sql():
-            return self._insert_identity_sql(user_id, merged, sql_session=sql_session)
-
         return self._insert_identity_supabase(user_id, merged, updates)
 
-    def _insert_identity_sql(self, user_id: str, merged: Dict, sql_session: Optional[Any] = None) -> Dict:
-        new_id = str(uuid4())
-        payload = {
-            "id": new_id,
-            "user_id": user_id,
-            "state": merged["state"],
-            "traits": json.dumps(merged["traits"], default=_json_default),
-            "values": json.dumps(merged["values"], default=_json_default),
-            "beliefs": json.dumps(merged["beliefs"], default=_json_default),
-            "open_loops": json.dumps(merged["open_loops"], default=_json_default),
-            "preset": merged.get("preset"),
-            "memory_weights": json.dumps(merged.get("memory_weights", {}), default=_json_default),
-        }
-
+    def _insert_identity_sql(self, user_id: str, updates: Dict, sql_session: Optional[Any] = None) -> Dict:
+        # Optimistic concurrency: the insert only lands when the latest
+        # version is still the one we just merged against. If another writer
+        # commits in between, zero rows are inserted and the loop retries with
+        # a fresh read and a fresh merge instead of writing a stale snapshot.
         stmt = text(
             """
             INSERT INTO identities (id, user_id, version, state, traits, "values", beliefs, open_loops, preset, memory_weights)
@@ -148,51 +146,82 @@ class IdentityEngine:
                 :open_loops,
                 :preset,
                 :memory_weights
+            WHERE COALESCE((SELECT MAX(version) FROM identities WHERE user_id = :user_id), 0) = :expected_version
             """
         )
 
         attempts = 0
         while attempts < 3:
             attempts += 1
+            result_row = None
             try:
-                result_row = None
                 with self._session_scope(sql_session) as session:
-                    previous = session.execute(
-                        text("SELECT * FROM identities WHERE user_id = :user_id ORDER BY version DESC LIMIT 1"),
-                        {"user_id": user_id},
-                    ).mappings().first()
-                    previous_identity = self._deserialize_identity(dict(previous)) if previous else {}
+                    # One transaction per attempt: read, merge, guarded insert,
+                    # child-store copies and the evolution log commit together,
+                    # so a concurrent reader can never hydrate a committed
+                    # identity row before its child stores exist. The savepoint
+                    # keeps a unique-violation retry usable on a borrowed
+                    # session instead of poisoning the caller's transaction.
+                    with session.begin_nested():
+                        previous = session.execute(
+                            text("SELECT * FROM identities WHERE user_id = :user_id ORDER BY version DESC LIMIT 1"),
+                            {"user_id": user_id},
+                        ).mappings().first()
+                        previous_identity = (
+                            self._hydrate_identity(self._deserialize_identity(dict(previous)), sql_session=session)
+                            if previous else {}
+                        )
+                        merged = self._merge_identity(previous_identity, updates)
+                        new_id = str(uuid4())
+                        payload = {
+                            "id": new_id,
+                            "user_id": user_id,
+                            "state": merged["state"],
+                            "traits": json.dumps(merged["traits"], default=_json_default),
+                            "values": json.dumps(merged["values"], default=_json_default),
+                            "beliefs": json.dumps(merged["beliefs"], default=_json_default),
+                            "open_loops": json.dumps(merged["open_loops"], default=_json_default),
+                            "preset": merged.get("preset"),
+                            "memory_weights": json.dumps(merged.get("memory_weights", {}), default=_json_default),
+                            "expected_version": previous_identity.get("version", 0),
+                        }
 
-                    session.execute(stmt, payload)
-                    result_row = session.execute(
-                        text("SELECT * FROM identities WHERE id = :id"),
-                        {"id": new_id},
-                    ).mappings().first()
+                        insert_result = session.execute(stmt, payload)
+                        if insert_result.rowcount == 0:
+                            # Another writer committed between our read and
+                            # insert. Roll back to the savepoint and retry
+                            # against the fresh latest row.
+                            raise _RetryWrite()
 
-                    if result_row:
+                        result_row = dict(session.execute(
+                            text("SELECT * FROM identities WHERE id = :id"),
+                            {"id": new_id},
+                        ).mappings().first())
+
+                        identity_id = str(result_row["id"])
+                        self.beliefs.replace(user_id, identity_id, merged.get("beliefs", []), sql_session=session)
+                        self.open_loops.replace(user_id, identity_id, merged.get("open_loops", []), sql_session=session)
+                        self.patterns.replace(user_id, identity_id, merged.get("patterns", []), sql_session=session)
+                        self.emotions.replace(user_id, identity_id, merged.get("emotions", []), sql_session=session)
+                        self.conflicts.replace(user_id, identity_id, merged.get("conflicts", []), sql_session=session)
                         self._log_identity_evolution_sql(
                             session,
                             user_id=user_id,
-                            identity_id=str(result_row["id"]),
+                            identity_id=identity_id,
                             previous=previous_identity,
                             current=merged,
                             trigger_type="update_identity",
                         )
 
-                if result_row:
-                    identity = dict(result_row)
-                    identity_id = identity.get("id")
-                    if identity_id:
-                        self.beliefs.replace(user_id, identity_id, merged.get("beliefs", []), sql_session=sql_session)
-                        self.open_loops.replace(user_id, identity_id, merged.get("open_loops", []), sql_session=sql_session)
-                        self.patterns.replace(user_id, identity_id, merged.get("patterns", []), sql_session=sql_session)
-                        self.emotions.replace(user_id, identity_id, merged.get("emotions", []), sql_session=sql_session)
-                        self.conflicts.replace(user_id, identity_id, merged.get("conflicts", []), sql_session=sql_session)
-                    return self._hydrate_identity(identity, sql_session=sql_session)
-            except IntegrityError:
+            except (_RetryWrite, IntegrityError):
+                # Savepoint rollback already discarded the failed attempt.
                 if attempts >= 3:
                     raise
                 continue
+            if result_row:
+                # Hydrate only after the transaction commits, so a fresh
+                # session sees the committed child-store copies.
+                return self._hydrate_identity(result_row, sql_session=sql_session)
         raise RuntimeError("Failed to write identity")
 
     def _log_identity_evolution_sql(self, session: Any, user_id: str, identity_id: str, previous: Dict, current: Dict, trigger_type: str) -> None:
@@ -256,17 +285,12 @@ class IdentityEngine:
             with get_sql_session() as new_session: yield new_session
 
     def record_belief(self, user_id: str, topic: str, belief: str, confidence: float):
-        current = self.get_identity(user_id)
-        beliefs = current.get("beliefs", [])
-        existing = next((b for b in beliefs if b.get("topic") == topic), None)
+        # Topic upsert applied against the fresh row inside the guarded
+        # insert loop, so concurrent belief writes never wipe each other.
         now = datetime.utcnow().isoformat()
-        if existing:
-            existing["belief"] = belief
-            existing["confidence"] = confidence
-            existing["updated_at"] = now
-        else:
-            beliefs.append({"topic": topic, "belief": belief, "confidence": confidence, "created_at": now, "updated_at": now})
-        return self.update_identity(user_id, {"beliefs": beliefs})
+        return self.update_identity(user_id, {"_upsert_beliefs": [
+            {"topic": topic, "belief": belief, "confidence": confidence, "created_at": now, "updated_at": now}
+        ]})
 
     def track_open_loop(self, user_id: str, topic: str, importance: int):
         current = self.get_identity(user_id)
@@ -286,11 +310,20 @@ class IdentityEngine:
         return await self.reflection.detect_contradictions(identity.get("beliefs", []), new_statement)
 
     def _merge_identity(self, current: Dict, updates: Dict) -> Dict:
+        replace = set(updates.get("_replace", ()))
         return {
             "state": updates.get("state", current.get("state")),
-            "traits": {**self._ensure_dict(current.get("traits")), **self._ensure_dict(updates.get("traits"))},
-            "values": {**self._ensure_dict(current.get("values")), **self._ensure_dict(updates.get("values"))},
-            "beliefs": list(self._ensure_list(updates.get("beliefs", current.get("beliefs", [])))),
+            "traits": (
+                self._ensure_dict(updates.get("traits"))
+                if "traits" in replace
+                else {**self._ensure_dict(current.get("traits")), **self._ensure_dict(updates.get("traits"))}
+            ),
+            "values": (
+                self._ensure_dict(updates.get("values"))
+                if "values" in replace
+                else {**self._ensure_dict(current.get("values")), **self._ensure_dict(updates.get("values"))}
+            ),
+            "beliefs": self._merge_beliefs(current.get("beliefs", []), updates),
             "open_loops": self._normalize_open_loops(
                 self._ensure_list(updates.get("open_loops", current.get("open_loops", [])))
             ),
@@ -298,9 +331,39 @@ class IdentityEngine:
             "emotions": list(self._ensure_list(updates.get("emotions", current.get("emotions", [])))),
             "conflicts": list(self._ensure_list(updates.get("conflicts", current.get("conflicts", [])))),
             "preset": updates.get("preset", current.get("preset")),
-            "memory_weights": self._ensure_dict(updates.get("memory_weights", current.get("memory_weights", {}))),
+            "memory_weights": (
+                self._ensure_dict(updates.get("memory_weights"))
+                if "memory_weights" in replace
+                else self._ensure_dict(updates.get("memory_weights", current.get("memory_weights", {})))
+            ),
             "base_version": current.get("version", 0),
         }
+
+    def _merge_beliefs(self, current_beliefs: Any, updates: Dict) -> List[Dict]:
+        # An explicit "beliefs" list replaces wholesale. Otherwise apply
+        # "_upsert_beliefs" by topic against the current list, so a belief
+        # write never wipes beliefs another writer added concurrently. The
+        # upsert runs inside the guarded insert loop, so each retry re-applies
+        # it against the freshly read row.
+        if "beliefs" in updates:
+            return list(self._ensure_list(updates.get("beliefs")))
+        beliefs = [dict(b) for b in self._ensure_list(current_beliefs) if isinstance(b, dict)]
+        for upsert in self._ensure_list(updates.get("_upsert_beliefs", [])):
+            if not isinstance(upsert, dict):
+                continue
+            now = upsert.get("updated_at") or datetime.utcnow().isoformat()
+            existing = next((b for b in beliefs if b.get("topic") == upsert.get("topic")), None)
+            if existing:
+                for key, value in upsert.items():
+                    if key not in ("topic", "created_at"):
+                        existing[key] = value
+                existing["updated_at"] = now
+            else:
+                merged_belief = dict(upsert)
+                merged_belief.setdefault("created_at", now)
+                merged_belief["updated_at"] = now
+                beliefs.append(merged_belief)
+        return beliefs
 
     def _normalize_open_loops(self, loops: List[Dict]) -> List[Dict]:
         normalized = []
