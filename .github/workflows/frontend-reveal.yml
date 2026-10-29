@@ -1,0 +1,33 @@
+name: Frontend reveal regressions
+on:
+  pull_request:
+    paths: ['miryn/frontend/**', '.github/workflows/frontend-reveal.yml']
+permissions:
+  contents: read
+jobs:
+  mocked-chat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: miryn/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: miryn/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run verify && npx tsc --noEmit
+      - run: npx playwright install --with-deps chromium
+      - name: Mocked UI and reveal tests (no backend or model)
+        run: |
+          npm run dev > /tmp/miryn-ui.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for i in $(seq 1 60); do
+            if curl --fail --silent http://localhost:3000/chat > /dev/null; then break; fi
+            sleep 1
+          done
+          npx playwright test tests/reveal-response.spec.ts tests/paced-chat.spec.ts
