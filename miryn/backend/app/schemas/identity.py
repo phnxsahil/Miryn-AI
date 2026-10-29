@@ -52,6 +52,7 @@ class IdentityOut(BaseModel):
     emotions: List[IdentityEmotion] = Field(default_factory=list)
     conflicts: List[IdentityConflict] = Field(default_factory=list)
     memory_weights: Dict[str, float] = Field(default_factory=dict)
+    preset: Optional[str] = None
 
 
 class IdentityUpdate(BaseModel):

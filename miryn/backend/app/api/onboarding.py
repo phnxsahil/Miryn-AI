@@ -47,24 +47,29 @@ def complete_onboarding(
     presets = _load_presets()
     preset = _select_preset(presets, payload.preset)
 
-    initial_beliefs = []
+    updates = {
+        "state": "active",
+        # Preset-owned baselines replace previous preset values wholesale, so
+        # switching presets never leaves stale trait/value/weight keys behind.
+        "traits": preset.get("initial_traits", {}),
+        "values": preset.get("initial_values", {}),
+        "memory_weights": preset.get("memory_weights", {}),
+        "preset": preset.get("id") or payload.preset or "companion",
+        "_replace": ["traits", "values", "memory_weights"],
+    }
+
     if payload.seed_belief:
-        initial_beliefs.append({
+        # Upsert the seed belief by topic inside the guarded insert loop,
+        # applied against the freshly read row on each retry, so a belief the
+        # companion learned concurrently is never wiped by a stale snapshot.
+        now = datetime.utcnow().isoformat()
+        updates["_upsert_beliefs"] = [{
             "topic": "core_belief",
             "belief": payload.seed_belief,
             "confidence": 0.8,
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat(),
-        })
-
-    updates = {
-        "state": "active",
-        "traits": preset.get("initial_traits", {}),
-        "values": preset.get("initial_values", {}),
-        "beliefs": initial_beliefs,
-        "memory_weights": preset.get("memory_weights", {}),
-        "preset": payload.preset or "companion",
-    }
+            "created_at": now,
+            "updated_at": now,
+        }]
 
     if has_sql():
         with get_sql_session() as session:

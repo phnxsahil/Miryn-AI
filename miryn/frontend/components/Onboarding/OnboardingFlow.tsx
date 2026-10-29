@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
@@ -36,24 +36,38 @@ const goalOptions = [
   { id: "talk", label: "Quiet companion to reflect with", icon: MessageCircle },
 ];
 
+// Mirrors backend presets.json copy; used only when the presets endpoint
+// is unreachable so the cards never contradict the saved voice.
 const fallbackPresets: PresetCard[] = [
+  {
+    id: "thinker",
+    display_name: "The Thinker",
+    tagline: "Analytical, philosophical -- questions everything, concludes nothing easily.",
+    example_response: "That's interesting -- but I want to push on one thing. You said you value freedom, yet you keep choosing security. Which one is actually driving you right now?",
+  },
   {
     id: "companion",
     display_name: "Warm Companion",
-    tagline: "Warm, grounded emotional support for everyday thoughts and decisions.",
-    example_response: "Let’s slow it down, breathe, and find the next useful step.",
-  },
-  {
-    id: "mirror",
-    display_name: "Thoughtful Mirror",
-    tagline: "Direct reflection that helps you notice recurring patterns without judgment.",
-    example_response: "You’ve described this tension before. What feels different now?",
+    tagline: "Warm, mature company that notices the small things and stays steady.",
+    example_response: "That sounds draining. You handled the hard part already, you know.",
   },
   {
     id: "coach",
-    display_name: "Strategic Coach",
-    tagline: "Clear, practical momentum when you want to unblock creative progress.",
-    example_response: "What would make the next 20 minutes count the most?",
+    display_name: "The Coach",
+    tagline: "Goal-oriented -- tracks what you commit to, notices follow-through, celebrates wins.",
+    example_response: "Last week you said you'd have the draft done by Thursday. Did that happen? No judgment -- I want to understand what actually got in the way.",
+  },
+  {
+    id: "mirror",
+    display_name: "The Mirror",
+    tagline: "Plain, direct reflection that takes a position and gives you a next move.",
+    example_response: "You already know what the next step is. You are just negotiating with yourself about doing it.",
+  },
+  {
+    id: "creative",
+    display_name: "The Creative",
+    tagline: "Associative, lateral-thinking -- finds unexpected connections and asks the question you didn't think to ask.",
+    example_response: "What if the reason you're stuck isn't the project -- but that you're solving the wrong problem entirely? Tell me what you'd do if your biggest constraint simply didn't exist.",
   },
 ];
 
@@ -62,6 +76,9 @@ export default function OnboardingFlow() {
   const [selectedPreset, setSelectedPreset] = useState("");
   const [goals, setGoals] = useState<string[]>([]);
   const [seedBelief, setSeedBelief] = useState("");
+  const [presets, setPresets] = useState<PresetCard[]>(fallbackPresets);
+  const presetTouched = useRef(false);
+  const seedTouched = useRef(false);
   const [status, setStatus] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -73,6 +90,22 @@ export default function OnboardingFlow() {
         if (me?.full_name) setName(me.full_name);
       })
       .catch(() => null);
+    api.listPresets()
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) setPresets(data as PresetCard[]);
+      })
+      .catch(() => null);
+    // Pre-fill from the saved identity only until the user edits the field,
+    // so a late response never overwrites a clicked preset or typed belief.
+    api.getIdentity()
+      .then((identity) => {
+        const current = (identity as { preset?: string } | null)?.preset;
+        if (current) setSelectedPreset((prev) => (presetTouched.current ? prev : current));
+        const seed = (identity?.beliefs || []).find((b) => b.topic === "core_belief");
+        if (seed?.belief) setSeedBelief((prev) => (seedTouched.current ? prev : seed.belief));
+      })
+      .catch(() => null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleGoal = (goalLabel: string) => {
@@ -174,11 +207,11 @@ export default function OnboardingFlow() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {fallbackPresets.map((preset) => (
+            {presets.map((preset) => (
               <button
                 key={preset.id}
                 type="button"
-                onClick={() => setSelectedPreset(preset.id)}
+                onClick={() => { setSelectedPreset(preset.id); presetTouched.current = true; }}
                 className={`p-6 rounded-3xl border text-left transition-all space-y-3 relative group ${
                   selectedPreset === preset.id
                     ? "bg-[color:var(--accent-wash)] border-[color:var(--miryn-moss)] shadow-[0_0_30px_var(--accent-glow)]"
@@ -246,7 +279,7 @@ export default function OnboardingFlow() {
 
           <textarea
             value={seedBelief}
-            onChange={(e) => setSeedBelief(e.target.value)}
+            onChange={(e) => { setSeedBelief(e.target.value); seedTouched.current = true; }}
             placeholder="e.g. Authenticity and sustainable pace matter more to me than artificial urgency. I want to build deep, meaningful work."
             rows={3}
             className="w-full rounded-2xl bg-[color:var(--miryn-surface)] border border-[color:var(--miryn-card-border)] p-4 text-xs text-[color:var(--miryn-parchment)] placeholder:text-[color:var(--theme-dim)] focus:outline-none focus:border-[color:var(--miryn-moss)] transition-colors resize-none"
