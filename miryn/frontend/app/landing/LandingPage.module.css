@@ -54,13 +54,13 @@
 .meadowHero a:focus-visible, .gardenFooter a:focus-visible { outline: 3px solid #a96b2d; outline-offset: 5px; }
 
 @media (max-width: 640px) {
-  .meadowHero { min-height: 780px; padding: 38px 22px 320px; }
+  .meadowHero { min-height: 0; padding: 38px 22px calc(27.9vw + 72px); }
   .meadowDescription { font-size: 15px; }
-  .heroLandscape .landscapeImage { object-position: 35% bottom; }
+  .heroLandscape { height: auto; aspect-ratio: 2400 / 669; }
   .meadowActions { gap: 4px; flex-direction: column; margin-top: 24px; }
   .heroNote { margin-top: 10px; }
-  .footerInvitation { min-height: 650px; padding-top: 54px; padding-bottom: 300px; }
-  .footerLandscape .landscapeImage { object-position: 62% bottom; }
+  .footerInvitation { min-height: 0; padding: 54px 24px calc(26vw + 64px); }
+  .footerLandscape { height: auto; aspect-ratio: 2387 / 620; }
 }
 
 /* Landing intentionally owns this expressive spectrum; authenticated surfaces keep the shared teal. */
@@ -214,7 +214,7 @@
 :global([data-theme="light"]) .landing .moodSketch svg { width: 44px; height: 44px; stroke-width: 1.25; }
 :global([data-theme="light"]) .landing a:focus-visible, :global([data-theme="light"]) .landing button:focus-visible, :global([data-theme="light"]) .landing summary:focus-visible { outline: 3px solid #a96b2d; outline-offset: 4px; }
 
-.landing :global(.landing-brand) { font-family: var(--font-ui); font-size: 20px; font-weight: 600; letter-spacing: -.035em; }
+.landing :global(.landing-brand) { font-family: var(--font-ui); font-size: 20px; font-weight: 400; letter-spacing: -.035em; }
 .architectureStrip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 1280px; margin: 0 auto; padding: 28px 24px; border-block: 1px solid var(--landing-border); gap: 24px; }
 .architectureStrip > div + div { border-left: 1px dashed var(--landing-border); padding-left: 24px; }
 .architectureStrip dt { font-size: 10px; font-family: var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--landing-muted); }
