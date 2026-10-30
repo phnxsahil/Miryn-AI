@@ -51,7 +51,7 @@ const SECTIONS = [
     id: "05",
     title: "AI processing & third-party providers",
     content: [
-      "Miryn sends your conversation content to Google's Gemini API to generate replies. Miryn currently runs on Google's unpaid (free) API tier. Under Google's terms for unpaid services, Google may use submitted content and generated responses to provide, improve and develop its products and machine-learning technologies, and human reviewers at Google may read and annotate that content (Google states it disconnects this data from the Google account, API key and Cloud project before review). You can read Google's Gemini API terms at ai.google.dev/gemini-api/terms. Please keep this in mind when deciding what to share; we are evaluating a paid tier under which Google does not use content for product improvement.",
+      "Miryn sends your conversation content to Google's Gemini API to generate replies. As of October 2026, Miryn's configuration uses Google's unpaid (free) API tier. Under Google's terms for unpaid services, Google may use submitted content and generated responses to provide, improve and develop its products and machine-learning technologies, and human reviewers at Google may read and annotate that content (Google states it disconnects this data from the Google account, API key and Cloud project before review). Google's terms also ask that sensitive, confidential or personal information not be submitted to the unpaid services - and Miryn is a personal reflection app, so this tension is real: anything you share in chat is sent to Google under those terms. You can read Google's Gemini API terms at ai.google.dev/gemini-api/terms. Please keep this in mind when deciding what to share; we are evaluating a paid tier under which Google does not use content for product improvement.",
       "We run on these providers, each processing data only as needed to deliver the service:",
     ],
     providers: [
@@ -84,7 +84,7 @@ const SECTIONS = [
     title: "Retention & deletion",
     content: [
       "We keep your data while your account is active. Some memory entries expire automatically as part of the memory system.",
-      "You can delete individual memories at any time from the Memory page. When you delete your account from Settings, it is deactivated immediately and the email tied to it is anonymised - but account deletion does not by itself erase stored conversation and memory records. If you want those erased, email us at worksahilsharma@gmail.com and we will delete them.",
+      "You can delete individual memories at any time from the Memory page. When you delete your account from Settings, it is deactivated immediately and the email tied to it is anonymised - but account deletion does not by itself erase stored conversation and memory records. If you want those erased, email us at worksahilsharma@gmail.com and we will erase those records for you.",
       "Residual copies in provider backups and logs are removed on those providers' routine deletion cycles.",
     ],
   },
@@ -100,7 +100,7 @@ const SECTIONS = [
     id: "10",
     title: "Grievance Officer (India)",
     content: [
-      "As required by the Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011, our Grievance Officer is:",
+      "In line with the Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011, we have designated a Grievance Officer:",
       "Sahil Sharma - worksahilsharma@gmail.com",
       "If you have a grievance about how your personal data is handled, write to us. We will acknowledge and redress it as soon as possible, and in any case within one month of receiving it.",
     ],
@@ -257,4 +257,4 @@ export default function PrivacyPolicy() {
       </div>
     </div>
   );
-}
+      }
