@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import PostHogProvider from "@/components/PostHogProvider";
+import TrafficAnalytics from "@/components/TrafficAnalytics";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import "../styles/globals.css";
 
@@ -29,7 +29,8 @@ export default function RootLayout({
       </head>
       <body className="font-ui antialiased selection:bg-[color:var(--theme-accent)] selection:text-[color:var(--theme-accent-contrast)]">
         <ThemeProvider>
-          <PostHogProvider>{children}</PostHogProvider>
+          {children}
+          <TrafficAnalytics />
         </ThemeProvider>
       </body>
     </html>
