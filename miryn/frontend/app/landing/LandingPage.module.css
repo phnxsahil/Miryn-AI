@@ -1,13 +1,66 @@
-/* Landing intentionally stays dark-only; the authenticated product surfaces own the light theme. */
+/* Landing palettes follow the shared, persisted app theme. */
 .landing {
   --landing-bg: #0a0a0a;
   --landing-text: #fafafa;
   --landing-muted: #a3a3a3;
   --landing-dim: #525252;
+  --landing-border: rgba(255,255,255,.1);
   background: var(--landing-bg);
   color: var(--landing-text);
   min-height: 100vh;
   overflow-x: clip;
+}
+
+:global([data-theme="light"]) .landing :global(.landing-nav-wrap) { background: #faf7ed; padding-bottom: 16px; }
+:global([data-theme="light"]) .landing :global(.landing-nav) { background: #faf7ed; border-color: #dcded0; box-shadow: none; }
+:global([data-theme="light"]) .landing :global(.landing-nav) a,
+:global([data-theme="light"]) .landing :global(.landing-nav) button { color: #294b3c; border-color: #c6cebc; }
+:global([data-theme="light"]) .landing :global(.landing-nav__cta)::after { display: none; }
+
+.meadowHero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 820px;
+  background: #faf7ed;
+  color: #294b3c;
+  padding: 52px 24px 350px;
+}
+.heroLandscape { position: absolute; inset: auto 0 0; height: clamp(260px, 28vw, 440px); z-index: -1; }
+.landscapeImage { object-fit: cover; object-position: center bottom; }
+.meadowCopy { position: relative; max-width: 780px; margin: 0 auto; text-align: center; }
+.heroEyebrow { display: flex; align-items: center; justify-content: center; gap: 9px; color: #526449; font-size: 12px; letter-spacing: .13em; text-transform: uppercase; }
+.heroEyebrow span { font-size: 22px; color: #698543; }
+.meadowCopy h1 { margin-top: 22px; font-size: clamp(42px, 5.4vw, 76px); line-height: 1.06; letter-spacing: -.055em; text-wrap: balance; }
+.meadowCopy h1 em { color: #637b43; font-weight: inherit; }
+.meadowDescription { max-width: 510px; margin: 24px auto 0; font-size: 17px; line-height: 1.7; color: #526052; text-wrap: pretty; }
+.meadowActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px 24px; margin-top: 28px; }
+.gardenButton { display: inline-flex; min-height: 50px; align-items: center; justify-content: center; gap: 24px; border-radius: 99px; padding: 13px 25px; background: #294b3c; color: #faf7ed; font-size: 15px; transition: background .2s; }
+.gardenButton:hover { background: #3e614a; }
+.gardenLink { display: inline-flex; min-height: 48px; align-items: center; gap: 12px; color: #294b3c; font-size: 14px; }
+.gardenLink:hover { text-decoration: underline; text-underline-offset: 5px; }
+.heroNote { margin-top: 20px; color: #5e6956; font-size: 12px; }
+.meadowCaption { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100% - 32px); padding: 10px 18px; border-radius: 99px; background: #faf7edee; color: #294b3c; font-size: 12px; }
+.gardenFooter { background: var(--landing-bg); color: var(--landing-text); }
+.gardenFooter p, .gardenFooter a, .gardenFooter span { color: inherit; }
+.gardenFooter p { color: var(--landing-muted); }
+.gardenFooter > div { border-color: var(--landing-border); color: var(--landing-muted); }
+.footerInvitation { position: relative; isolation: isolate; overflow: hidden; min-height: 680px; padding: 70px 24px 320px; text-align: center; }
+.footerLandscape { position: absolute; inset: auto 0 0; height: clamp(260px, 26vw, 400px); z-index: -1; }
+.footerInvitationCopy { max-width: 720px; margin: auto; }
+.footerInvitation h2 { margin-top: 18px; font-size: clamp(36px, 4.5vw, 60px); line-height: 1.12; letter-spacing: -.045em; }
+.footerInvitationCopy > p:not(:first-child) { margin-top: 20px; font-size: 16px; line-height: 1.65; }
+.gardenFooter .gardenButton { margin-top: 26px; color: #faf7ed; }
+.meadowHero a:focus-visible, .gardenFooter a:focus-visible { outline: 3px solid #a96b2d; outline-offset: 5px; }
+
+@media (max-width: 640px) {
+  .meadowHero { min-height: 780px; padding: 38px 22px 320px; }
+  .meadowDescription { font-size: 15px; }
+  .heroLandscape .landscapeImage { object-position: 35% bottom; }
+  .meadowActions { gap: 4px; flex-direction: column; margin-top: 24px; }
+  .heroNote { margin-top: 10px; }
+  .footerInvitation { min-height: 650px; padding-top: 54px; padding-bottom: 300px; }
+  .footerLandscape .landscapeImage { object-position: 62% bottom; }
 }
 
 /* Landing intentionally owns this expressive spectrum; authenticated surfaces keep the shared teal. */
@@ -99,3 +152,78 @@
 @media (prefers-reduced-motion: reduce) {
   .reveal, .revealDelay { animation: none; }
 }
+
+/* ponytail: CSS swaps the two existing hero compositions; no duplicate theme state. */
+.meadowHero, .footerInvitation, .lightArtwork, .faqFlower, .moodSketch { display: none; }
+.darkHero { display: block; }
+.landing :global(.landing-theme-moon) { display: none; }
+.artCaption { position: absolute; bottom: 20px; left: 20px; font-family: var(--font-editorial); font-size: 18px; }
+:global([data-theme="light"]) .landing {
+  --landing-bg: #faf7ed;
+  --landing-text: #294b3c;
+  --landing-muted: #526052;
+  --landing-dim: #657062;
+  --landing-border: #d9decc;
+}
+:global([data-theme="light"]) .darkHero,
+:global([data-theme="light"]) .darkArtwork { display: none; }
+:global([data-theme="light"]) .meadowHero,
+:global([data-theme="light"]) .footerInvitation,
+:global([data-theme="light"]) .lightArtwork { display: block; }
+.lightArtwork { object-fit: cover; }
+:global([data-theme="light"]) .artCaption { padding: 8px 14px; border-radius: 99px; background: #faf7ed; color: #294b3c; }
+:global([data-theme="light"]) .landing :global(.landing-theme-sun) { display: none; }
+:global([data-theme="light"]) .landing :global(.landing-theme-moon) { display: block; }
+:global([data-theme="light"]) .landing :global(.landing-mobile-menu) { background: #faf7ed; border-color: #d9decc; }
+:global([data-theme="light"]) .landing :global(.landing-mobile-menu) a { color: #294b3c; }
+:global([data-theme="light"]) .landing :global(.landing-mobile-menu) a:hover { background: #e6ecda; }
+:global([data-theme="light"]) .landing :global(.landing-theme-toggle):hover { background: #e6ecda; }
+:global([data-theme="light"]) .landing [class~="text-[#FAFAFA]"] { color: var(--landing-text); }
+:global([data-theme="light"]) .landing [class~="text-[#A3A3A3]"], :global([data-theme="light"]) .landing [class~="text-[#A3A3A3]/75"], :global([data-theme="light"]) .landing [class~="text-[#525252]"], :global([data-theme="light"]) .landing [class~="text-[#8F8F8F]"] { color: var(--landing-muted); }
+:global([data-theme="light"]) .landing [class~="bg-[#151515]"], :global([data-theme="light"]) .landing [class~="bg-[#111]"], :global([data-theme="light"]) .landing [class~="bg-white/[0.035]"] { background: #f0f0e3; }
+:global([data-theme="light"]) .landing [class~="bg-black/20"], :global([data-theme="light"]) .landing [class~="bg-white/[0.07]"] { background: #e7ebdb; }
+:global([data-theme="light"]) .landing [class~="border-white/10"], :global([data-theme="light"]) .landing [class~="border-white/15"] { border-color: var(--landing-border); }
+:global([data-theme="light"]) .landing [class~="bg-[#FAFAFA]"] { background: #294b3c; color: #faf7ed; }
+:global([data-theme="light"]) .landing :global(.section-eyebrow) { color: #526052; background: #f0efdf; border-color: #dcdecc; font-size: 14px; letter-spacing: .08em; }
+:global([data-theme="light"]) .landing :global(.section-eyebrow) i { background: #b37342; color: #b37342; box-shadow: none; }
+:global([data-theme="light"]) .landing :global(.about-word), :global([data-theme="light"]) .landing :global(.about-reveal.is-revealed .about-word) { color: #294b3c; }
+:global([data-theme="light"]) .landing :global(.feature-card):nth-child(1) { background: #e6eddc; }
+:global([data-theme="light"]) .landing :global(.feature-card):nth-child(2) { background: #e4eef0; }
+:global([data-theme="light"]) .landing :global(.feature-card):nth-child(3) { background: #f5e3d8; }
+:global([data-theme="light"]) .landing :global(.feature-card):nth-child(4) { background: #f4ebce; }
+:global([data-theme="light"]) .landing :global(.feature-card):hover { border-color: #a3b399; }
+:global([data-theme="light"]) .landing :global(.wave-chart) { background: #f2f2e8; border-color: #d9decc; }
+:global([data-theme="light"]) .landing :global(.wave-chart__ticks) { color: #526052; }
+:global([data-theme="light"]) .landing :global(.wave-chart) svg line { stroke: #d9decc; }
+:global([data-theme="light"]) .landing :global(.wave-chart__line) { stroke: #718b87; }
+:global([data-theme="light"]) .landing :global(.wave-chart__line):nth-of-type(4) { stroke: #a57630; }
+:global([data-theme="light"]) .landing :global(.wave-chart__pill) { fill: #e6ebdc; stroke: #cad3bd; }
+:global([data-theme="light"]) .landing :global(.wave-chart) svg text { fill: #526052; }
+:global([data-theme="light"]) .landing :global(.mood-card) { background: #f0f0e3; border-color: #d9decc; color: #294b3c; }
+:global([data-theme="light"]) .landing :global(.mood-card__heading) span, :global([data-theme="light"]) .landing :global(.mood-card__date), :global([data-theme="light"]) .landing :global(.mood-card) > p { color: #526052; }
+:global([data-theme="light"]) .landing :global(.mood-card__divider) { background: #d9decc; }
+:global([data-theme="light"]) .landing :global(.faq-row) { background: #f1f0e4; border-color: #d9decc; }
+:global([data-theme="light"]) .landing :global(.faq-row) summary { color: #294b3c; }
+:global([data-theme="light"]) .landing :global(.faq-row) p, :global([data-theme="light"]) .landing :global(.faq-plus), :global([data-theme="light"]) .landing :global(.faq-row[open] .faq-plus) { color: #526052; }
+:global([data-theme="light"]) .landing :global(.faq-row[open]) { background: #e8eedf; }
+:global([data-theme="light"]) .landing :global(.contact-card) { background: #e5eddc; border-color: #cedbc2; }
+:global([data-theme="light"]) .landing :global(.contact-aurora) { display: none; }
+:global([data-theme="light"]) .landing .sectionGlow { display: none; }
+:global([data-theme="light"]) .landing .faqFlower { display: block; width: 72px; height: 72px; margin-top: 30px; color: #b96d4e; stroke-width: 1; }
+:global([data-theme="light"]) .landing .moodSketch { display: block; margin-top: 20px; color: #ae693b; }
+:global([data-theme="light"]) .landing .moodSketch svg { width: 44px; height: 44px; stroke-width: 1.25; }
+:global([data-theme="light"]) .landing a:focus-visible, :global([data-theme="light"]) .landing button:focus-visible, :global([data-theme="light"]) .landing summary:focus-visible { outline: 3px solid #a96b2d; outline-offset: 4px; }
+
+.landing :global(.landing-brand) { font-family: var(--font-ui); font-size: 20px; font-weight: 600; letter-spacing: -.035em; }
+.architectureStrip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 1280px; margin: 0 auto; padding: 28px 24px; border-block: 1px solid var(--landing-border); gap: 24px; }
+.architectureStrip > div + div { border-left: 1px dashed var(--landing-border); padding-left: 24px; }
+.architectureStrip dt { font-size: 10px; font-family: var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--landing-muted); }
+.architectureStrip dd { margin-top: 8px; font-family: var(--font-editorial); font-size: 20px; line-height: 1.4; }
+.landing :global(.wave-chart) { padding: clamp(20px, 3vw, 32px); }
+.landing :global(.wave-chart__frame) { grid-template-columns: 40px minmax(0, 1fr); align-items: center; margin-top: 24px; }
+.landing :global(.wave-chart) svg { height: auto; aspect-ratio: 370 / 148; overflow: visible; }
+.landing :global(.wave-chart__ticks) { height: auto; align-self: stretch; padding-block: 12% 16%; }
+.landing :global(.wave-chart__line) { vector-effect: non-scaling-stroke; }
+@media (max-width: 900px) { .architectureStrip { grid-template-columns: repeat(2, minmax(0, 1fr)); } .architectureStrip > div:nth-child(3) { border-left: 0; padding-left: 0; } }
+@media (max-width: 480px) { .architectureStrip { grid-template-columns: 1fr; } .architectureStrip > div + div { border-left: 0; border-top: 1px dashed var(--landing-border); padding: 18px 0 0; } }
+@media (prefers-reduced-motion: reduce) { .landing :global(.wave-chart__line) { animation: none; stroke-dashoffset: 0; } }

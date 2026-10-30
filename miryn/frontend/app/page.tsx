@@ -1,14 +1,15 @@
 import Image from "next/image";
+import HeroCards from "./landing/HeroCards";
+import SpectrumOrb from "./landing/SpectrumOrb";
+import ToolIcons from "./landing/ToolIcons";
+import { Flower2, Sprout, Sun, CloudRain } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
-import HeroCards from "./landing/HeroCards";
 import AboutReveal from "./landing/AboutReveal";
 import CountUp from "./landing/CountUp";
 import LandingNav from "./landing/LandingNav";
 import MoodCarousel from "./landing/MoodCarousel";
 import Reveal from "./landing/Reveal";
-import SpectrumOrb from "./landing/SpectrumOrb";
-import ToolIcons from "./landing/ToolIcons";
 import WaveChart from "./landing/WaveChart";
 import styles from "./landing/LandingPage.module.css";
 
@@ -60,7 +61,7 @@ export default function LandingPage() {
     <main className={`${styles.landing} landing font-ui`}>
       <LandingNav />
 
-      <Reveal ambient as="section" id="hero" className="landing-hero relative isolate mx-auto max-w-7xl overflow-clip px-5 pb-24 pt-20 sm:px-8 sm:pt-28 lg:px-12 lg:pb-32 lg:pt-32">
+      <Reveal ambient as="section" id="hero-dark" className={`${styles.darkHero} landing-hero relative isolate mx-auto max-w-7xl overflow-clip px-5 pb-24 pt-20 sm:px-8 sm:pt-28 lg:px-12 lg:pb-32 lg:pt-32`}>
         <div className={`${styles.sectionGlow} ${styles.sectionGlowHero}`} aria-hidden="true" />
         <div className={`${styles.heroGrid} pointer-events-none absolute inset-x-0 top-0 -z-10 h-[680px]`} aria-hidden="true" />
         <SpectrumOrb />
@@ -84,6 +85,36 @@ export default function LandingPage() {
         <ToolIcons />
       </Reveal>
 
+      <section id="hero" className={styles.meadowHero}>
+        <div className={styles.heroLandscape} aria-hidden="true">
+          <Image src="/assets/nexura-meadow-hero.webp" alt="" fill priority sizes="100vw" className={styles.landscapeImage} />
+        </div>
+        <div className={styles.meadowCopy}>
+          <p className={styles.heroEyebrow}><span aria-hidden="true">✳</span> A little space for yourself</p>
+          <h1 className="font-editorial">
+            Life feels lighter<br />when you feel <em>heard.</em>
+          </h1>
+          <p className={styles.meadowDescription}>
+            Meet Miryn. An AI companion to talk things through, make room for your feelings, and remember what matters to you.
+          </p>
+          <div className={styles.meadowActions}>
+            <a href="/signup" className={styles.gardenButton}>Meet your companion <span aria-hidden="true">↗</span></a>
+            <a href="#about" className={styles.gardenLink}>Get to know Miryn <span aria-hidden="true">→</span></a>
+          </div>
+          <p className={styles.heroNote}>Your thoughts. Your pace. A fresh perspective.</p>
+        </div>
+        <div className={styles.meadowCaption}><span aria-hidden="true">✳</span> Room to reflect. Space to grow.</div>
+      </section>
+
+      <dl className={styles.architectureStrip} aria-label="Miryn architecture">
+        {[
+          ["Memory architecture", "Redis + Vector + Core SQL"],
+          ["Identity reflection", "Asynchronous 24/7 workers"],
+          ["Privacy standard", "Fernet AES-128 payload vault"],
+          ["Context retrieval", "Cross-session memory recall"],
+        ].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+      </dl>
+
       <section id="about" className="relative isolate mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
         <div className={`${styles.sectionGlow} ${styles.sectionGlowAbout}`} aria-hidden="true" />
         <div className="about-intro">
@@ -95,9 +126,10 @@ export default function LandingPage() {
           </Reveal>
           <Reveal>
           <div className="relative aspect-[16/9] overflow-hidden rounded-3xl border border-white/10 bg-[#151515] sm:aspect-[4/3]">
-            <Image src="/assets/A4rnasqJDMazGtLN9cqF0u3G37Y.webp" alt="Soft abstract waves" fill sizes="(max-width: 640px) 90vw, 360px" className="object-cover opacity-75" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A]/80 via-transparent to-white/10" />
-            <span className="absolute bottom-5 left-5 font-editorial text-lg">Memory, with a pulse.</span>
+            <Image className={styles.lightArtwork} src="/assets/nexura-countryside.webp" alt="A painted countryside with sunlit hills and a winding path" fill sizes="(max-width: 1024px) 90vw, 600px" />
+            <Image src="/assets/A4rnasqJDMazGtLN9cqF0u3G37Y.webp" alt="Soft abstract waves" fill sizes="(max-width: 640px) 90vw, 360px" className={`${styles.darkArtwork} object-cover opacity-75`} />
+            <div className={`${styles.darkArtwork} absolute inset-0 bg-gradient-to-t from-[#0A0A0A]/80 via-transparent to-white/10`} />
+            <span className={styles.artCaption}>Memory, with a pulse.</span>
           </div>
           </Reveal>
         </div>
@@ -158,7 +190,7 @@ export default function LandingPage() {
 
           <CapabilityRow title="Emotional context, without the guesswork" copy="Miryn notices the emotional texture of your conversations and gives you a gentle, useful reflection instead of a generic mood label.">
             <div className="grid grid-cols-2 gap-3">
-              {moods.map(([title, copy, color]) => <div key={title} className="min-h-[170px] rounded-3xl border border-white/10 bg-[#151515] p-4" style={{ borderTopColor: color }}><div className="flex items-start justify-between"><h3 className="font-editorial text-lg text-[#FAFAFA]">{title}</h3><span className="text-xs text-[#525252]">Today</span></div><p className="mt-8 text-[11px] text-[#525252]">Thu, Apr 3</p><p className="mt-2 text-xs leading-5 text-[#A3A3A3]">{copy}</p></div>)}
+              {moods.map(([title, copy, color], index) => <div key={title} className="min-h-[170px] rounded-3xl border border-white/10 bg-[#151515] p-4" style={{ borderTopColor: color }}><div className="flex items-start justify-between"><h3 className="font-editorial text-lg text-[#FAFAFA]">{title}</h3><span className="text-xs text-[#525252]">Today</span></div><span className={styles.moodSketch} aria-hidden="true">{index === 0 ? <Flower2 /> : index === 1 ? <Sun /> : index === 2 ? <CloudRain /> : <Sprout />}</span><p className="mt-8 text-[11px] text-[#525252]">Thu, Apr 3</p><p className="mt-2 text-xs leading-5 text-[#A3A3A3]">{copy}</p></div>)}
             </div>
           </CapabilityRow>
 
@@ -180,7 +212,7 @@ export default function LandingPage() {
 
       <section id="faq" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
         <Reveal><p className="section-eyebrow section-eyebrow--faq"><i />FREQUENTLY ASKED QUESTIONS</p></Reveal>
-        <Reveal><h2 className="mt-5 font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Everything You Need to Know About Miryn</h2></Reveal>
+        <Reveal><Flower2 className={styles.faqFlower} aria-hidden="true" /><h2 className="mt-5 font-editorial text-4xl leading-tight tracking-[-0.04em] sm:text-6xl">Everything You Need to Know About Miryn</h2></Reveal>
         <div className="faq-grid mt-12">
           {[faqs.slice(0, 3), faqs.slice(3)].map((column, columnIndex) => <div className="faq-column" key={columnIndex}>
             {column.map(([question, answer], index) => <Reveal key={question} delay={index * 70}><details className="faq-row group"><summary><span>{question}</span><span className="faq-plus" aria-hidden="true">+</span></summary><p>{answer}</p></details></Reveal>)}
@@ -193,9 +225,20 @@ export default function LandingPage() {
         <Reveal className="contact-card rounded-[2rem] border border-white/10 bg-[#151515] px-6 py-16 text-center sm:px-12 lg:py-24"><div className="contact-aurora" aria-hidden="true" /><h2 className="relative font-editorial text-4xl tracking-[-0.04em] sm:text-6xl">We’d Love to Hear From You</h2><p className="relative mx-auto mt-5 max-w-xl text-base leading-7 text-[#A3A3A3] sm:text-lg">Have questions, suggestions, or feedback about Miryn? Our team is here to assist you.</p><a href="mailto:hello@miryn.ai" className="relative mt-8 inline-flex min-h-12 items-center justify-center rounded-full bg-[#FAFAFA] px-7 font-editorial text-base text-[#0A0A0A]">Send Message</a></Reveal>
       </section>
 
-      <footer className="border-t border-white/10">
+      <footer className={styles.gardenFooter}>
+        <section className={styles.footerInvitation} aria-labelledby="footer-invitation">
+          <div className={styles.footerLandscape} aria-hidden="true">
+            <Image src="/assets/nexura-meadow-footer.webp" alt="" fill sizes="100vw" className={styles.landscapeImage} />
+          </div>
+          <div className={styles.footerInvitationCopy}>
+            <p className={styles.heroEyebrow}>A moment, just for you</p>
+            <h2 id="footer-invitation" className="font-editorial">You don’t have to figure<br />it all out today.</h2>
+            <p>Start with what’s on your mind. Miryn is here to listen.</p>
+            <a href="/signup" className={styles.gardenButton}>Let’s talk <span aria-hidden="true">↗</span></a>
+          </div>
+        </section>
         <div className="mx-auto grid max-w-6xl gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[1.5fr_1fr_1fr]">
-          <Reveal><div><a href="/" className="inline-flex min-h-11 items-center font-editorial text-2xl text-[#FAFAFA]">Miryn AI</a><p className="mt-4 max-w-xs text-sm leading-6 text-[#A3A3A3]">Empowering Personal Growth Through Persistent Intelligence.</p></div></Reveal>
+          <Reveal><div><a href="/" className="inline-flex min-h-11 items-center font-editorial text-2xl text-[#FAFAFA]">Miryn AI</a><p className="mt-4 max-w-xs text-sm leading-6 text-[#A3A3A3]">A little more understood.<br />A little more yourself.</p></div></Reveal>
           <Reveal><FooterColumn title="Sections" links={[["About", "#about"], ["Features", "#features"], ["FAQ's", "#faq"], ["Contact", "#contact"]]} /></Reveal>
           <Reveal><FooterColumn title="Pages" links={[["Privacy & Security", "/privacy"], ["Terms of Service", "/terms"], ["Contact", "#contact"]]} /></Reveal>
         </div>
@@ -208,7 +251,7 @@ export default function LandingPage() {
 }
 
 function FooterColumn({ title, links }: { title: string; links: readonly (readonly [string, string])[] }) {
-  return <div><p className="font-editorial text-base text-[#FAFAFA]">{title}</p><div className="mt-3 flex flex-col items-start">{links.map(([label, href]) => <a key={`${title}-${label}`} href={href} className="flex min-h-11 min-w-11 items-center text-sm text-[#A3A3A3] transition-colors hover:text-[#FAFAFA]">{label}</a>)}</div></div>;
+  return <div><h3 className="font-ui text-sm font-semibold tracking-wide text-[#FAFAFA]">{title}</h3><div className="mt-3 flex flex-col items-start">{links.map(([label, href]) => <a key={`${title}-${label}`} href={href} className="flex min-h-11 min-w-11 items-center text-sm text-[#A3A3A3] transition-colors hover:text-[#FAFAFA]">{label}</a>)}</div></div>;
 }
 
 function CapabilityRow({ title, copy, reverse = false, children }: { title: string; copy: string; reverse?: boolean; children: ReactNode }) {

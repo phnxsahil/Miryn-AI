@@ -101,12 +101,12 @@ type Term = {
 
 export default function TermsOfService() {
   return (
-    <div className="min-h-dvh bg-[color:var(--miryn-warm-black)] font-ui text-[color:var(--text-primary)] antialiased">
+    <div className="legal-page min-h-dvh bg-[color:var(--miryn-warm-black)] font-ui text-[color:var(--text-primary)] antialiased">
       <nav className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[color:var(--miryn-card-border)] bg-[color:var(--nav-scrim)] px-6 backdrop-blur lg:px-12">
         <Link href="/" className="rounded-sm transition-opacity hover:opacity-80">
           <MirynLogo showText />
         </Link>
-        <Link href="/" className="inline-block py-2 text-[13px] text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">
+        <Link href="/" className="inline-flex min-h-11 items-center py-2.5 text-[13px] text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">
           ← Back to home
         </Link>
       </nav>
@@ -187,8 +187,8 @@ export default function TermsOfService() {
         <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--miryn-card-border)] pt-6">
           <span className="text-[12px] text-[color:var(--text-dim)]">© 2026 Miryn Technologies, Inc.</span>
           <div className="flex gap-5 text-[12px]">
-        <Link href="/privacy" className="inline-block py-2 text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">Privacy Policy</Link>
-        <Link href="/" className="inline-block py-2 text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">Home</Link>
+        <Link href="/privacy" className="inline-flex min-h-11 items-center py-2.5 text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">Privacy Policy</Link>
+        <Link href="/" className="inline-flex min-h-11 items-center py-2.5 text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">Home</Link>
           </div>
         </div>
       </div>

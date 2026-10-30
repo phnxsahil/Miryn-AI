@@ -32,7 +32,7 @@ export default function MirynLogo({
         )}
         <Image
           src="/miryn-logo.png"
-          alt="Miryn AI Logo"
+          alt="Miryn Logo"
           width={size}
           height={size}
           priority
@@ -42,16 +42,14 @@ export default function MirynLogo({
 
       {showText && (
         <span
-          className="font-medium tracking-tight text-[color:var(--theme-text)] flex items-center gap-1.5"
+          className="font-ui font-semibold tracking-tight text-[color:var(--theme-text)] flex items-center gap-1.5"
           style={{
             fontSize: Math.max(16, Math.round(size * 0.6)),
             letterSpacing: "-0.02em",
           }}
         >
           Miryn
-          <span className="text-xs uppercase font-mono px-1.5 py-0.5 rounded bg-[color:var(--theme-overlay)] text-[color:var(--theme-accent)] font-semibold tracking-wider">
-            AI
-          </span>
+
         </span>
       )}
     </div>
