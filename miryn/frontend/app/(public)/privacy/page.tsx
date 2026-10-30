@@ -60,7 +60,7 @@ const SECTIONS = [
       { name: "Neon", role: "PostgreSQL database" },
       { name: "Render", role: "API server, background worker, key-value store" },
       { name: "Vercel", role: "Frontend hosting" },
-      { name: "Resend", role: "Transactional email" },
+      { name: "Resend", role: "Transactional email (when configured)" },
     ],
   },
   {
