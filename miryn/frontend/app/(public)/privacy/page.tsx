@@ -67,8 +67,9 @@ const SECTIONS = [
     id: "06",
     title: "Analytics",
     content: [
-      "We do not currently run analytics, advertising trackers, or session recording on Miryn.",
-      "If we enable privacy-limited, aggregate analytics in the future - page-view counts only, with no message content and no account identifiers - we will update this policy before switching it on.",
+      "Miryn uses Vercel Web Analytics for aggregate visits and page views on public landing, sign-in, signup and legal pages. We exclude private app routes, conversation content, account identifiers, URL queries and fragments. We do not use advertising trackers, session replay or recordings. Website traffic collection starts only after the production switch is enabled; historical visits are not reconstructed.",
+      "Vercel receives limited technical data to report aggregate page counts, referrers, countries, browsers and devices. Its visitor hash expires after 24 hours, so visitor totals do not identify named people or provide an exact long-term count of individuals. The Hobby dashboard has 30 days of viewable history. Browser blocking and excluded routes can reduce counts.",
+      "The operator can also view aggregate account-creation and deletion-status counts from the existing account database in an access-controlled owner dashboard. No emails, messages or identity profiles are displayed in these counts. Owner and test accounts are included. Not-deleted accounts are not the same as recently active users.",
     ],
   },
   {
@@ -256,4 +257,4 @@ export default function PrivacyPolicy() {
       </div>
     </div>
   );
-}
+  }

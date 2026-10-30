@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     # Resend (email)
     RESEND_API_KEY: Optional[str] = None
 
+    # Server-only owner analytics access. Empty denies everyone.
+    ANALYTICS_OWNER_USER_IDS: str = ""
+
     # Observability
     SENTRY_DSN: Optional[str] = None
     SENTRY_ENVIRONMENT: str = "development"

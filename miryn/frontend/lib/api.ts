@@ -287,6 +287,10 @@ class ApiClient {
     });
   }
 
+  async getOwnerAnalytics() {
+    return this.request("/analytics/owner", { cache: "no-store" });
+  }
+
   async getMe() {
     return this.request("/auth/me") as Promise<User>;
   }
