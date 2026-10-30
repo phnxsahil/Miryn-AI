@@ -113,7 +113,6 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
 
           <div className="flex items-center justify-between text-[color:var(--theme-dim)] text-xs font-mono tracking-wider">
             <span>{"// 384-DIM PGVECTOR"}</span>
-            <span>BUILT-IN AT-REST ENCRYPTION</span>
             <span>&lt;1.5S HYBRID RETRIEVAL</span>
           </div>
         </div>
