@@ -1,0 +1,58 @@
+name: regen-meadow-assets
+on:
+  push:
+    branches: [landing-meadow-ratio-fix]
+permissions:
+  contents: write
+jobs:
+  regen:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: landing-meadow-ratio-fix
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install image dependencies
+        run: pip install pillow numpy scipy
+      - name: Regenerate alpha meadow assets from existing repo assets
+        run: |
+          python3 - <<'PYEOF'
+          import numpy as np
+          from PIL import Image
+          from scipy.ndimage import median_filter, minimum_filter, gaussian_filter
+
+          def unmix_sky(src, dst, sky_sample_box, t_lo=8, t_hi=50):
+              im = Image.open(src).convert('RGB')
+              raw = np.asarray(im).astype(np.float32)
+              den = np.stack([median_filter(raw[...,c], size=3) for c in range(3)], axis=2)
+              x0,y0,x1,y1 = sky_sample_box
+              sky = np.median(raw[y0:y1, x0:x1].reshape(-1,3), axis=0)
+              dist = np.sqrt(((den - sky)**2).sum(axis=2))
+              alpha = np.clip((dist - t_lo) / (t_hi - t_lo), 0, 1)
+              alpha = minimum_filter(alpha, size=3)
+              alpha = gaussian_filter(alpha, sigma=0.8)
+              alpha = np.where(alpha < 0.12, 0, alpha)
+              af = alpha[..., None]
+              safe = np.maximum(af, 1e-3)
+              F = (raw - (1 - af) * sky) / safe
+              F = np.where(af > 0.02, F, raw)
+              F = np.clip(F, 0, 255)
+              out = np.dstack([F, alpha * 255]).astype(np.uint8)
+              Image.fromarray(out, 'RGBA').save(dst, 'WEBP', quality=90, method=6)
+              print(dst, 'transparent %=', round(float((alpha<0.05).mean()*100),1))
+
+          base = 'miryn/frontend/public/assets/'
+          unmix_sky(base + 'nexura-meadow-hero.webp', base + 'nexura-meadow-hero.webp', (1000,20,1400,120))
+          unmix_sky(base + 'nexura-meadow-footer.webp', base + 'nexura-meadow-footer.webp', (1000,15,1400,100))
+          PYEOF
+      - name: Commit regenerated assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add miryn/frontend/public/assets/nexura-meadow-hero.webp miryn/frontend/public/assets/nexura-meadow-footer.webp
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git commit -m "Restore alpha backdrop on meadow illustrations"
+          git push origin landing-meadow-ratio-fix
