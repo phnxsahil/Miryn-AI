@@ -4,7 +4,7 @@ export const metadata = { title: "Questions about Miryn" };
 
 const answers = [
   ["How does Miryn remember?", "Miryn saves useful context from conversations and retrieves relevant details in later chats."],
-  ["Is my conversation private?", "Conversation content is encrypted in storage and handled according to the privacy policy."],
+  ["Is my conversation private?", "Miryn is built to encrypt stored conversation content, and your data is handled as described in the privacy policy."],
   ["Can I forget saved context?", "Yes. Review saved memories in Memory Bank and forget individual items whenever you want."],
   ["How do I get started?", "Create an account, open a conversation, and share what is on your mind."],
 ];
