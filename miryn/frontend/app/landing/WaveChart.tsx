@@ -39,9 +39,7 @@ export default function WaveChart({ title, label, ticks, accent, variant }: Wave
       return;
     }
     const observer = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) return;
-      element.classList.add("wave-chart--visible");
-      observer.disconnect();
+      element.classList.toggle("wave-chart--visible", entry.isIntersecting);
     }, { threshold: .2 });
     observer.observe(element);
     return () => observer.disconnect();
@@ -51,9 +49,10 @@ export default function WaveChart({ title, label, ticks, accent, variant }: Wave
     <article ref={chartRef} className="wave-chart">
       <p className="text-sm text-[#A3A3A3]">{title}</p>
       <p className="mt-2 font-editorial text-2xl">{label}</p>
+      <p className="mt-2 text-xs text-[#A3A3A3]">Illustrative trend · not live measurements</p>
       <div className="wave-chart__frame">
         <div className="wave-chart__ticks">{ticks.map((tick) => <span key={tick}>{tick}</span>)}</div>
-        <svg viewBox="0 0 370 148" role="img" aria-label={`${label} wave chart`} preserveAspectRatio="none">
+        <svg viewBox="0 0 370 148" role="img" aria-label={`${label} wave chart`} preserveAspectRatio="xMidYMid meet">
           <defs>
             <linearGradient id={`wave-fill-${variant}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stopColor={accent} stopOpacity=".2" />

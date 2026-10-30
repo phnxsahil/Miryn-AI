@@ -25,18 +25,27 @@ try {
     });
     await page.goto(base, { waitUntil: "networkidle" });
     await page.waitForTimeout(1200);
+    const initialTheme = await page.locator('html').getAttribute('data-theme');
+    await page.getByRole('button', { name: 'Toggle color theme' }).click();
+    assert.notEqual(await page.locator('html').getAttribute('data-theme'), initialTheme);
+    await page.reload({ waitUntil: 'networkidle' });
+    assert.notEqual(await page.locator('html').getAttribute('data-theme'), initialTheme);
+    assert.equal(await page.locator('h1:visible').count(), 1);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.getByRole('button', { name: 'Toggle color theme' }).click();
     const measurements = await page.evaluate(() => {
       const entries = [...performance.getEntriesByType("navigation"), ...performance.getEntriesByType("resource")];
       const badTargets = [...document.querySelectorAll("a,button,summary")].filter((e) => {
         const r = e.getBoundingClientRect();
         return r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44);
       }).map((e) => ({ text: e.textContent.trim().slice(0, 30), width: e.getBoundingClientRect().width, height: e.getBoundingClientRect().height }));
-      const headline = document.querySelector("h1").getBoundingClientRect();
+      const headings = [...document.querySelectorAll("h1")].filter((e) => e.getBoundingClientRect().height > 0);
+      const headline = headings[0].getBoundingClientRect();
       const overlap = [...document.querySelectorAll(".hero-card")].filter((e) => {
         const r = e.getBoundingClientRect();
         return r.width > 0 && r.left < headline.right && r.right > headline.left && r.top < headline.bottom && r.bottom > headline.top;
       }).length;
-      return { width: innerWidth, scrollWidth: document.documentElement.scrollWidth, h1: document.querySelectorAll("h1").length, iframes: document.querySelectorAll("iframe").length, requests: entries.length, transferredKB: +(entries.reduce((n, e) => n + e.transferSize, 0) / 1024).toFixed(1), ...window.landingVitals, badTargets, headlineCardOverlap: overlap };
+      return { width: innerWidth, scrollWidth: document.documentElement.scrollWidth, h1: headings.length, iframes: document.querySelectorAll("iframe").length, requests: entries.length, transferredKB: +(entries.reduce((n, e) => n + e.transferSize, 0) / 1024).toFixed(1), ...window.landingVitals, badTargets, headlineCardOverlap: overlap };
     });
     assert.equal(measurements.h1, 1);
     assert.equal(measurements.iframes, 0);

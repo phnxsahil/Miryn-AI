@@ -699,3 +699,32 @@ html.js .landing-ambient:not(.is-near) .mood-orb { animation-play-state: paused;
   .spectrum-orb, .contact-aurora, .feature-card { animation: none; transition: none; }
   .feature-card:hover, .feature-card:focus-within { transform: none; }
 }
+
+/* Public legal pages share the landing palette without changing app surfaces. */
+.legal-page {
+  --miryn-warm-black: #0a0a0a;
+  --miryn-surface: #151515;
+  --miryn-card-border: #303030;
+  --miryn-parchment: #fafafa;
+  --miryn-parchment-muted: #a3a3a3;
+  --miryn-moss: #a7c995;
+  --text-primary: #fafafa;
+  --text-dim: #a3a3a3;
+  --nav-scrim: #0a0a0aee;
+  --theme-accent: #a7c995;
+}
+[data-theme="light"] .legal-page {
+  --miryn-warm-black: #faf7ed;
+  --miryn-surface: #f0f0e3;
+  --miryn-card-border: #d9decc;
+  --miryn-parchment: #294b3c;
+  --miryn-parchment-muted: #526052;
+  --miryn-moss: #637b43;
+  --text-primary: #294b3c;
+  --text-dim: #657062;
+  --nav-scrim: #faf7edee;
+  --theme-accent: #526b37;
+}
+.legal-page .miryn-wall-card { background: var(--miryn-surface); border: 1px solid var(--miryn-card-border); border-radius: 20px; box-shadow: none; }
+.legal-page .miryn-fragment { color: var(--miryn-parchment-muted); }
+.legal-page a:focus-visible { outline: 2px solid var(--miryn-moss); outline-offset: 4px; }
