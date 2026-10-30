@@ -59,6 +59,7 @@
   .heroLandscape { height: auto; aspect-ratio: 2400 / 669; }
   .meadowActions { gap: 4px; flex-direction: column; margin-top: 24px; }
   .heroNote { margin-top: 10px; }
+  .meadowCaption { bottom: calc(27.9vw + 14px); }
   .footerInvitation { min-height: 0; padding: 54px 24px calc(26vw + 64px); }
   .footerLandscape { height: auto; aspect-ratio: 2387 / 620; }
 }
