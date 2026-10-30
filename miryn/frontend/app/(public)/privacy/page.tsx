@@ -51,7 +51,7 @@ const SECTIONS = [
     id: "05",
     title: "AI processing & third-party providers",
     content: [
-      "Miryn sends your conversation content to Google's Gemini API to generate replies. As of October 2026, Miryn's configuration uses Google's unpaid (free) API tier. Under Google's terms for unpaid services, Google may use submitted content and generated responses to provide, improve and develop its products and machine-learning technologies, and human reviewers at Google may read and annotate that content (Google states it disconnects this data from the Google account, API key and Cloud project before review). Google's terms also ask that sensitive, confidential or personal information not be submitted to the unpaid services - and Miryn is a personal reflection app, so this tension is real: anything you share in chat is sent to Google under those terms. You can read Google's Gemini API terms at ai.google.dev/gemini-api/terms. Please keep this in mind when deciding what to share; we are evaluating a paid tier under which Google does not use content for product improvement.",
+      "Miryn sends your conversation content to Google's Gemini API to generate replies. What Google may do with that content depends on the billing tier of the Gemini API account Miryn runs on, and we have not independently verified the current tier. Under Google's terms for the unpaid (free) tier, Google may use submitted content and generated responses to provide, improve and develop its products and machine-learning technologies, and human reviewers at Google may read and annotate that content (Google states it disconnects this data from the Google account, API key and Cloud project before review); Google's terms also say not to submit sensitive, confidential or personal information to the unpaid services. Under the paid tier, Google states it does not use prompts or responses to improve its products. Because Miryn is a personal reflection app, this matters: anything you share in chat is sent to Google under whichever of those terms applies. You can read Google's Gemini API terms at ai.google.dev/gemini-api/terms. Please keep this in mind when deciding what to share.",
       "We run on these providers, each processing data only as needed to deliver the service:",
     ],
     providers: [
@@ -75,7 +75,7 @@ const SECTIONS = [
     id: "07",
     title: "Storage & security",
     content: [
-      "Conversation and memory content is stored encrypted at rest. Passwords are stored only as salted hashes. All traffic is served over HTTPS.",
+      "Miryn's server software encrypts stored conversation and memory content at rest using authenticated AES encryption, and the deployed service is configured with an encryption key. Passwords are stored only as salted hashes. All traffic is served over HTTPS.",
       "These are our reasonable security practices under Section 43A of the Information Technology Act, 2000. No system is perfectly secure; if a breach affects your personal data, we will tell you what happened and what we are doing about it.",
     ],
   },
@@ -84,7 +84,7 @@ const SECTIONS = [
     title: "Retention & deletion",
     content: [
       "We keep your data while your account is active. Some memory entries expire automatically as part of the memory system.",
-      "You can delete individual memories at any time from the Memory page. When you delete your account from Settings, it is deactivated immediately and the email tied to it is anonymised - but account deletion does not by itself erase stored conversation and memory records. If you want those erased, email us at worksahilsharma@gmail.com and we will erase those records for you.",
+      "You can delete individual memories at any time from the Memory page; in-app deletion flags those records so they are no longer shown or used. When you delete your account from Settings, it is deactivated immediately and the email tied to it is anonymised - but account deletion does not by itself erase stored conversation and memory records. For erasure of remaining records, email us at worksahilsharma@gmail.com with your request and we will respond within a reasonable time.",
       "Residual copies in provider backups and logs are removed on those providers' routine deletion cycles.",
     ],
   },
@@ -92,8 +92,8 @@ const SECTIONS = [
     id: "09",
     title: "Your rights & data export",
     content: [
-      "Miryn provides a JSON export of your memories, facts and identity profile. For a fuller archive, or to access or correct other personal data we hold about you, email worksahilsharma@gmail.com and we will respond within a reasonable time.",
-      "India's Digital Personal Data Protection Act, 2023 and the DPDP Rules, 2025 are coming into force in phases: the Data Protection Board provisions began on 13 November 2025, and the main rights and duties (notice, consent, data fiduciary obligations and data principal rights) take effect on 13 May 2027. This policy already gives you the core rights that framework introduces - access, correction, erasure and grievance redressal - and we will keep aligning Miryn as its provisions come into force.",
+      "Miryn provides a JSON export of your memories, facts and identity profile. To access or correct other personal data we hold about you, email worksahilsharma@gmail.com and we will respond within a reasonable time.",
+      "India's Digital Personal Data Protection Act, 2023 and the DPDP Rules, 2025 are coming into force in phases: the Data Protection Board provisions began on 13 November 2025, and the main rights and duties (notice, consent, data fiduciary obligations and data principal rights) take effect on 13 May 2027. We intend to align Miryn with that framework as its provisions come into force.",
     ],
   },
   {
@@ -137,10 +137,10 @@ const SECTIONS = [
 
 const TLDR = [
   "We collect your email, profile preferences, conversations, and the memory built from them.",
-  "Replies are generated by Google's Gemini API on its free tier - under Google's terms, Google may use that content to improve its products.",
+  "Replies are generated by Google's Gemini API. We have not verified the account's billing tier: on Google's unpaid tier, Google may use content to improve its products; on the paid tier, Google says it does not.",
   "We never sell your data, and we do not train any model of our own on your conversations.",
-  "You can delete any memory, export your data, or delete your account at any time.",
-  "Conversation content is stored encrypted at rest.",
+  "You can delete individual memories, export your core data, or deactivate your account at any time.",
+  "Conversation content is encrypted at rest by the server (AES), and the deployed service is configured with an encryption key.",
 ];
 
 type Section = {
@@ -257,4 +257,4 @@ export default function PrivacyPolicy() {
       </div>
     </div>
   );
-      }
+}
