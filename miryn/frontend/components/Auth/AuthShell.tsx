@@ -26,7 +26,7 @@ function AuthFooter() {
   return (
     <div className="relative z-10 mx-auto mt-6 w-full max-w-[38ch] text-center">
       <p className="text-xs leading-relaxed text-[color:var(--theme-dim)]">
-        Conversations are encrypted in storage. Review or forget saved memories anytime.
+        Review or forget saved memories anytime.
       </p>
       <p className="mt-2.5 flex items-center justify-center gap-3 text-xs text-[color:var(--theme-muted)]">
         <Link href="/terms" className="inline-flex min-h-11 items-center px-2 underline decoration-white/10 underline-offset-4 transition-colors hover:text-[color:var(--theme-text)]">
@@ -113,7 +113,7 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
 
           <div className="flex items-center justify-between text-[color:var(--theme-dim)] text-xs font-mono tracking-wider">
             <span>{"// 384-DIM PGVECTOR"}</span>
-            <span>FERNET ENCRYPTED</span>
+            <span>BUILT-IN AT-REST ENCRYPTION</span>
             <span>&lt;1.5S HYBRID RETRIEVAL</span>
           </div>
         </div>
