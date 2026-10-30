@@ -350,6 +350,13 @@ export default function SignupPage() {
               .
             </label>
           </div>
+          <p className="mt-1.5 pl-1 text-[12px] leading-5 text-[color:var(--miryn-parchment-muted)]">
+            Miryn sends your chats to Google&apos;s Gemini API to generate replies. On Google&apos;s unpaid tier, Google may use them to improve its products - please avoid sharing sensitive personal information.{" "}
+            <Link href="/privacy" className="text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
+              Learn more in our Privacy Policy
+            </Link>
+            .
+          </p>
           {fieldErrors.terms && (
             <p id="accept-terms-error" className="mt-1.5 pl-1 text-[12px] text-[color:var(--error-text)]">
               {fieldErrors.terms}
