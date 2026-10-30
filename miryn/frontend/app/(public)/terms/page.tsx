@@ -12,20 +12,21 @@ const TERMS = [
     id: "01",
     title: "The nature of Miryn",
     content: [
-      "Miryn is an AI-powered companion designed for personal reflection, emotional support, and identity exploration. It is a tool for self-discovery, not a medical device, licensed therapist, or clinical mental health service.",
-      "Miryn does not provide medical advice, diagnosis, or treatment. The AI's responses are generated based on patterns in language and your conversation history — they are not clinical assessments.",
+      "Miryn is an AI-powered companion for personal reflection, emotional support, and identity exploration, built and operated by Sahil Sharma, an independent developer based in India. It is a tool for self-discovery, not a medical device, licensed therapist, or clinical mental health service.",
+      "Miryn does not provide medical advice, diagnosis, or treatment. The AI's responses are generated from patterns in language and your conversation history - they are not clinical assessments, and they can be wrong.",
     ],
-    callout: "Miryn is not a substitute for professional mental health support, therapy, or medical advice. If you are in crisis, please contact professional services immediately.",
-    crisis: "Crisis resources: 988 Suicide & Crisis Lifeline (USA) · Crisis Text Line: text HOME to 741741 · International: findahelpline.com",
+    callout: "Miryn is not a substitute for professional mental health support, therapy, or medical advice. If you are in crisis or thinking about self-harm, please reach out to a helpline or emergency services now.",
+    crisis: "India: Tele-MANAS 14416 (24x7, Govt. of India) · KIRAN 1800-599-0019 · iCall 022-25521111 · Aasra 9820466728 · International: findahelpline.com",
   },
   {
     id: "02",
     title: "Access requirements",
+    content: [
+      "You must be at least 18 years of age to use Miryn. Under Indian law, an agreement with a minor is not a valid contract, so we cannot offer accounts to anyone under 18. By creating an account, you confirm you meet this requirement.",
+    ],
     bullets: [
-      "You must be at least 18 years of age to use Miryn.",
-      "By creating an account, you confirm you meet this requirement.",
       "You must provide accurate information during registration.",
-      "One account per person — shared accounts are not permitted.",
+      "One account per person - shared accounts are not permitted.",
       "You are responsible for maintaining the security of your account credentials.",
     ],
   },
@@ -46,31 +47,31 @@ const TERMS = [
     id: "04",
     title: "Intellectual property",
     content: [
-      "You retain ownership of all content you submit to Miryn. By submitting content, you grant Miryn a limited, non-exclusive license to process and store that content solely for the purpose of providing the service to you.",
-      "Miryn's software, design, trademarks, and system architecture are owned exclusively by Miryn Technologies, Inc. You may not copy, modify, or distribute any part of the service without express written consent.",
+      "You retain ownership of everything you write to Miryn. By submitting content, you grant us a limited, non-exclusive licence to process and store that content solely to provide the service to you.",
+      "Miryn's software, design, and brand are owned by the operator. You may not copy, resell, or distribute any part of the service without written consent.",
     ],
   },
   {
     id: "05",
     title: "Service availability & no warranty",
     content: [
-      "Miryn is currently provided in beta. We make no guarantees regarding the accuracy or truthfulness of AI-generated insights, 100% uptime, or the persistence of all data during major architectural updates.",
-      "The service is provided \"as-is\" without warranties of any kind, either express or implied. We will always provide advance notice of planned maintenance.",
+      "Miryn is currently provided in beta, free of charge. We make no guarantees regarding the accuracy of AI-generated responses, uninterrupted uptime, or the persistence of all data during major architectural updates.",
+      "To the fullest extent permitted by applicable law, the service is provided as-is, without warranties of any kind, express or implied. We will try to give advance notice of planned maintenance.",
     ],
   },
   {
     id: "06",
     title: "Limitation of liability",
     content: [
-      "To the fullest extent permitted by law, Miryn Technologies, Inc. shall not be liable for any indirect, incidental, special, or consequential damages resulting from your use of or inability to use the service.",
-      "Our total liability to you for any claim arising from these terms shall not exceed the amount you paid for the service in the 12 months preceding the claim.",
+      "To the fullest extent permitted by Indian law, the operator shall not be liable for any indirect, incidental, special, or consequential damages resulting from your use of, or inability to use, the service.",
+      "Miryn is currently free. If paid plans are introduced, our total liability for any claim arising from these terms will not exceed the amount you paid for the service in the 12 months preceding the claim. Nothing in these terms excludes liability that cannot be excluded under applicable law.",
     ],
   },
   {
     id: "07",
     title: "Termination",
     content: [
-      "You may delete your account at any time from Settings → Account → Delete account. Upon deletion, your data will be handled per our Privacy Policy.",
+      "You may delete your account at any time from Settings. Deletion deactivates your account and anonymises the email tied to it; our Privacy Policy explains exactly what happens to your data, including how to ask us to erase stored conversation and memory records.",
       "We may suspend or terminate accounts that violate these terms, with or without notice depending on the severity of the violation. We will provide notice and an opportunity to appeal for non-severe cases.",
     ],
   },
@@ -78,14 +79,22 @@ const TERMS = [
     id: "08",
     title: "Changes to these terms",
     content: [
-      "We may update these terms as Miryn evolves. For material changes, we will notify you via the email associated with your account at least 14 days in advance. Your continued use after that date constitutes acceptance.",
+      "We may update these terms as Miryn evolves. We will update this page and its effective date, and for material changes we will flag the update inside the app before it takes effect. Your continued use after that date constitutes acceptance.",
     ],
   },
   {
     id: "09",
-    title: "Governing law",
+    title: "Governing law & disputes",
     content: [
-      "These terms are governed by the laws of the State of Delaware, United States, without regard to its conflict of law provisions. Any disputes shall be resolved through binding arbitration under AAA rules.",
+      "These terms are governed by the laws of India.",
+      "If something goes wrong, please contact us first - most issues can be resolved directly. Any dispute that does reach a formal forum will be subject to the jurisdiction of courts in India, without affecting any statutory rights you may have, including as a consumer, to approach forums available to you under applicable law.",
+    ],
+  },
+  {
+    id: "10",
+    title: "Grievance Officer & contact",
+    content: [
+      "Under India's Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011, our Grievance Officer is Sahil Sharma, reachable at worksahilsharma@gmail.com. Grievances about the handling of personal data will be redressed as soon as possible, and in any case within one month of receipt.",
     ],
   },
 ];
@@ -127,7 +136,7 @@ export default function TermsOfService() {
             By using Miryn, you agree to these terms. We&apos;ve written them in plain language, because clarity is respect.
           </p>
           <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[12px] text-[color:var(--text-dim)] font-mono">
-            {["Last updated: September 20, 2026", "Effective: September 20, 2026"].map((t) => (
+            {["Last updated: October 31, 2026", "Effective: October 31, 2026"].map((t) => (
               <span key={t}>{t}</span>
             ))}
           </div>
@@ -177,15 +186,15 @@ export default function TermsOfService() {
           <p className="mb-2 text-[16px] font-medium text-[color:var(--text-primary)]">By using Miryn, you agree to these terms.</p>
           <p className="text-[14px] leading-relaxed text-[color:var(--miryn-parchment-muted)]">
             Questions about these terms? Contact{" "}
-            <a href="mailto:legal@miryn.ai" className="text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
-              legal@miryn.ai
+            <a href="mailto:worksahilsharma@gmail.com" className="text-[color:var(--miryn-moss)] underline underline-offset-4 hover:text-[color:var(--miryn-parchment)]">
+              worksahilsharma@gmail.com
             </a>
-            . We respond within 5 business days.
+            .
           </p>
         </div>
 
         <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--miryn-card-border)] pt-6">
-          <span className="text-[12px] text-[color:var(--text-dim)]">© 2026 Miryn Technologies, Inc.</span>
+          <span className="text-[12px] text-[color:var(--text-dim)]">© 2026 Miryn · Operated by Sahil Sharma</span>
           <div className="flex gap-5 text-[12px]">
         <Link href="/privacy" className="inline-flex min-h-11 items-center py-2.5 text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">Privacy Policy</Link>
         <Link href="/" className="inline-flex min-h-11 items-center py-2.5 text-[color:var(--miryn-parchment-muted)] transition-colors hover:text-[color:var(--miryn-parchment)]">Home</Link>
