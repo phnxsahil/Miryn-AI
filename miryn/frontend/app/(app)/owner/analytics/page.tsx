@@ -9,6 +9,7 @@ type Metrics = {
   daily_signups: { date: string; count: number }[];
 };
 export default function OwnerAnalytics() {
+  const trafficConfigured = process.env.NEXT_PUBLIC_TRAFFIC_ANALYTICS_ENABLED === "true" && process.env.NEXT_PUBLIC_VERCEL_ENV === "production";
   const [data, setData] = useState<Metrics | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -23,7 +24,7 @@ export default function OwnerAnalytics() {
     <p className="mb-8 text-[color:var(--theme-dim)]">Account counts from your database. No conversation content, email addresses or personal profiles appear here.</p>
     <section className="mb-8 rounded-2xl border border-[color:var(--theme-border)] p-5">
       <h2 className="text-xl mb-2">Website traffic</h2>
-      <p className="mb-3 text-sm text-[color:var(--theme-dim)]">Visitor and page-view collection is separate from these account counts. It stays off until the privacy update and approved production setup are complete. Historical visits cannot be recovered. Anonymous visitors are not named people.</p>
+      <p className="mb-3 text-sm text-[color:var(--theme-dim)]">{trafficConfigured ? "Public-page traffic collection is configured for this production build. Confirm incoming events in the private Vercel dashboard; browser blockers can reduce counts." : "Traffic collection is disabled for this build."} Historical visits cannot be recovered. Anonymous visitors are not named people.</p>
       <a className="inline-flex min-h-11 items-center underline" href="https://vercel.com/shanu133s-projects/miryn-ai/analytics" target="_blank" rel="noopener noreferrer">Open private Vercel traffic dashboard</a>
     </section>
     {error ? <section role="alert" className="rounded-2xl border border-[color:var(--theme-border)] p-5"><h2 className="text-xl mb-2">Account metrics unavailable</h2><p>{error}</p><p className="mt-3 text-sm text-[color:var(--theme-dim)]">Access requires an authenticated account whose ID is in the server-only owner allowlist. No counts are public.</p></section> : !data ? <p role="status">Loading account counts...</p> : <>
