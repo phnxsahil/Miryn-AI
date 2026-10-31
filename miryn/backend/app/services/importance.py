@@ -59,7 +59,8 @@ _CATEGORY_RULES: tuple[tuple[str, float, tuple[str, ...]], ...] = (
         r"\bi(?:'m| am| feel| have been feeling) (?:so |really |very |quite |terribly )?(?:stressed|anxious|overwhelmed|worried|burn(?:ed|t) out|scared|nervous|lonely|exhausted)\b(?: about| over| because| of)?",
         r"\b(?:visa|interview|exam|deadline|presentation|rent|loan|results?) (?:is|are|was|were)? ?(?:stressing|worrying|scaring)\b",
         r"\bi(?:'m| am) (?:stressed|anxious|worried|nervous) about\b",
-        r"\btension (?:ho|hai|rahi|about|between|because|over)\b",
+        r"\btension (?:ho|hai|rahi|about|because)\b",
+        r"\btension between us\b", r"\btension over (?:my|meri|mera|mujhe)\b",
     )),
     ("identity", 0.90, (
         r"\bmy name is\b", r"\bi(?:'m| am) called\b", r"\bcall me\b",
@@ -316,8 +317,6 @@ def _score_clause(normalized: str) -> ScoredFact | None:
     # Third-party Hindi pronouns ("uski nani", "uske bhai", "usko gift") mark
     # facts about someone else; storing them as the user's own memory is a
     # high-severity attribution error, so the clause is dropped outright.
-    if _THIRD_PARTY_HI.search(normalized):
-        return None
     first_person = bool(_FIRST_PERSON.search(normalized))
     self_implying = _self_implying_match(normalized)
     word_count = len(_WORDS.findall(normalized))
@@ -364,9 +363,19 @@ def score_message_heuristic(text: str) -> list[ScoredFact]:
             continue
         clauses = _assertion_clauses(normalized) if _is_recall_probe(normalized) else [normalized]
         for clause in clauses:
-            fact = _score_clause(clause)
-            if fact is not None:
-                facts.append(fact)
+            # A clause carrying a third-party Hindi pronoun ("uski nani",
+            # "uske bhai") states a fact about someone else; drop only those
+            # segments and keep scoring independent first-person segments
+            # ("uske ghar party hai, my interview is on Monday").
+            segments = [clause] if not _THIRD_PARTY_HI.search(clause) else [
+                seg.strip()
+                for seg in _split_clauses(clause)
+                if seg.strip() and not _THIRD_PARTY_HI.search(seg)
+            ]
+            for segment in segments:
+                fact = _score_clause(segment)
+                if fact is not None:
+                    facts.append(fact)
 
     facts.sort(key=lambda fact: fact.importance, reverse=True)
     return facts[: max(0, settings.IMPORTANCE_MAX_FACTS_PER_MESSAGE)]
