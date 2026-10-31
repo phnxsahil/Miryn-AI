@@ -20,15 +20,20 @@ synthetic conversations. No network, no database, no LLM calls, no secrets.
     python3 evals/memory_offline/offline_extract.py SCENARIOS_JSONL REPORT_JSON   # explicit paths
 
 Files: `scenarios.jsonl` is the dev pack the heuristic patterns were tuned
-against; `scenarios_holdout.jsonl` is a small held-out set written after
-tuning to sanity-check generalization; `offline_report_main.json` /
+against; `scenarios_holdout.jsonl` is a small VALIDATION set - written after
+tuning, but touched during fixing (one expectation reclassified, four
+scenarios added to pin fixes), so it is NOT an unseen holdout and its score
+must not be read as generalization evidence; `offline_report_main.json` /
 `offline_report_branch.json` / `offline_report_holdout.json` are the
 committed reports.
 
 Scores: baseline `main` 17/39; review branch at PR-35 review head 22/39;
-current branch 39/39 dev + 16/16 holdout. The dev score is an upper bound
-(patterns were tuned against that pack); the holdout score is the honest
-generalization signal. The holdout includes adversarial guards for the
+current branch 39/39 dev + 16/16 validation. Both packs informed the
+patterns, so both scores are upper bounds. Audit trail: HO-08's original
+not_store expectation was reclassified to store (preserved in its `audit`
+field) after the dev pack's QT-02 showed third-party relationship facts are
+stored on purpose; HO-13/14/15/16 were added to pin the probe-detection
+fixes they verify. The holdout includes adversarial guards for the
 broadest new patterns (Hinglish "kya" questions, aux+my inversions like
 "Is my interview today?", third-party Hindi without first-person markers,
 third-party "her bday"). Two design notes: (1) third-party relationship
