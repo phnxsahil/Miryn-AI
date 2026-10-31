@@ -64,7 +64,9 @@ def analyze_reflection(user_id: str, conversation: dict, source_message_id: str 
     if source_message_id and source_text and settings.IMPORTANCE_USE_LLM and llm_is_usable(llm) and not LLMService.quota_dead():
         try:
             refined_facts = asyncio.run(score_message_llm(llm, source_text))
-            FactStore().replace_heuristic_for_message(user_id, source_message_id, refined_facts)
+            store = FactStore()
+            store.replace_heuristic_for_message(user_id, source_message_id, refined_facts)
+            store.link_explicit_corrections(user_id, refined_facts, source_message_id)
         except Exception:
             logger.warning("Importance LLM refinement failed for user %s", user_id)
 
