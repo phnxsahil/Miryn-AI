@@ -15,7 +15,11 @@ def fact_has_all(text, toks):
     low = text.lower()
     return all(t.lower() in low for t in toks)
 
-scenarios = [json.loads(l) for l in open(Path(__file__).parent / "scenarios.jsonl") if l.strip()]
+# Optional argv: scenarios path (default: the dev pack next to this script) and
+# report output path (default: offline_report.json in cwd).
+_scen_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "scenarios.jsonl"
+_report_path = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("offline_report.json")
+scenarios = [json.loads(l) for l in open(_scen_path) if l.strip()]
 report = {"mode": "miryn-heuristic-offline", "code_source": "repo main, app/services/importance.py score_message_heuristic", "scenarios": []}
 tot_p = tot_t = 0
 by_cat = {}
@@ -44,7 +48,7 @@ for sc in scenarios:
 report["totals"] = {"checks_passed": tot_p, "checks_total": tot_t,
                     "pass_rate": round(tot_p / tot_t, 3) if tot_t else None}
 report["by_category"] = {k: {"passed": v[0], "total": v[1]} for k, v in sorted(by_cat.items())}
-json.dump(report, open("offline_report.json", "w"), ensure_ascii=False, indent=1)
+json.dump(report, open(_report_path, "w"), ensure_ascii=False, indent=1)
 
 print(f"storage checks: {tot_p}/{tot_t} passed ({report['totals']['pass_rate']})")
 for k, v in report["by_category"].items():
