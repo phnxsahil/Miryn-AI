@@ -1,7 +1,6 @@
 import asyncio
 import json
 import logging
-import re
 from datetime import datetime, timezone, timedelta
 from uuid import UUID, uuid4
 import redis.asyncio as aioredis
@@ -189,13 +188,13 @@ def _hydrate_history_row(row: dict) -> dict:
         except Exception:
             metadata = {}
 
-    timestamp = row.get("created_at") or datetime.now(timezone.utc).isoformat()
+    timestamp = iso_with_utc(row.get("created_at") or datetime.now(timezone.utc).isoformat())
     return {
         "id": str(row.get("id")),
         "role": row.get("role") or "assistant",
         "content": content or "",
-        "timestamp": str(timestamp),
-        "created_at": str(timestamp),
+        "timestamp": timestamp,
+        "created_at": timestamp,
         "metadata": metadata or {},
         "importance_score": float(row.get("importance_score") or 0.0),
     }
