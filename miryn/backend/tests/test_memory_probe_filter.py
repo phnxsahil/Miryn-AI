@@ -40,3 +40,37 @@ def test_assertion_before_opinion_question_is_kept():
 def test_plain_assertions_unaffected():
     facts = score_message_heuristic("I'm training for a triathlon in Goa on December 14.")
     assert facts and any("triathlon" in fact.text.lower() for fact in facts)
+
+
+def test_do_you_probe_is_not_stored():
+    assert not score_message_heuristic("Do you remember my sister's name?")
+
+
+def test_did_you_probe_is_not_stored():
+    assert not score_message_heuristic("Did you save my flight number?")
+
+
+def test_should_you_probe_is_not_stored():
+    assert not score_message_heuristic("Should you know my dog's name by now?")
+
+
+def test_guess_probe_is_not_stored():
+    assert not score_message_heuristic("Guess what my dog's name is.")
+
+
+def test_mixed_statement_probe_stores_no_question():
+    # The trailing clause is a question even though the sentence opens with a
+    # statement; the whole message is a recall probe and nothing is stored.
+    assert not score_message_heuristic("Given that the meeting moved to Friday, what's on my calendar?")
+
+
+def test_hypothetical_lead_without_question_mark_is_not_stored():
+    assert not score_message_heuristic("What if I quit my job.")
+
+
+def test_hypothetical_lead_with_question_mark_is_not_stored():
+    assert not score_message_heuristic("What if I moved to Pune next year?")
+
+
+def test_lets_say_hypothetical_is_not_stored():
+    assert not score_message_heuristic("Let's say I stopped drinking coffee, what would change?")
