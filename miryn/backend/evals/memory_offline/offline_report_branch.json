@@ -1,0 +1,679 @@
+{
+ "mode": "miryn-heuristic-offline",
+ "code_source": "repo main, app/services/importance.py score_message_heuristic",
+ "scenarios": [
+  {
+   "id": "KU-01",
+   "category": "knowledge_update_explicit",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "I live in Delhi with my parents in Karol Bagh",
+     "fact": "Lives in Delhi with my parents in Karol Bagh",
+     "category": "identity",
+     "importance": 0.9
+    },
+    {
+     "turn": "Actually I moved to Bangalore last week for my internship",
+     "fact": "Actually I moved to Bangalore last week for my internship",
+     "category": "identity",
+     "importance": 0.9
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['bangalore']",
+     "pass": true
+    }
+   ]
+  },
+  {
+   "id": "KU-02",
+   "category": "knowledge_update_explicit",
+   "checks_passed": 0,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "store ['gold']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "KI-01",
+   "category": "knowledge_update_implicit",
+   "checks_passed": 0,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "I work as a delivery partner at Zomato",
+     "fact": "Works as a delivery partner at Zomato",
+     "category": "work_career",
+     "importance": 0.7
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['swiggy']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "KI-02",
+   "category": "knowledge_update_implicit",
+   "checks_passed": 0,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "store ['broke up']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "EF-01",
+   "category": "embedded_fact_in_request",
+   "checks_passed": 2,
+   "checks_total": 2,
+   "extracted": [
+    {
+     "turn": "Given that my dog Biscuit is allergic to chicken, what food should I buy?",
+     "fact": "Their dog Biscuit is allergic to chicken",
+     "category": "relationship",
+     "importance": 0.85
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['biscuit', 'allerg']",
+     "pass": true
+    },
+    {
+     "check": "not_store ['what food should i buy']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "EF-02",
+   "category": "embedded_fact_in_request",
+   "checks_passed": 2,
+   "checks_total": 2,
+   "extracted": [
+    {
+     "turn": "Can you remind me to call nani tomorrow? my exam finally ends on May 12",
+     "fact": "Their exam finally ends on May 12",
+     "category": "life_event",
+     "importance": 0.85
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['exam', 'may 12']",
+     "pass": true
+    },
+    {
+     "check": "not_store ['can you remind me']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "NG-01",
+   "category": "negation_stance_flip",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "I hate coriander, please never add it to my food suggestions",
+     "fact": "Hates coriander, please never add it to my food suggestions",
+     "category": "preference",
+     "importance": 0.55
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['coriander']",
+     "pass": true
+    }
+   ]
+  },
+  {
+   "id": "NG-02",
+   "category": "negation_stance_flip",
+   "checks_passed": 0,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "Running is not for me at all, I hate it",
+     "fact": "Running is not for me at all, I hate it",
+     "category": "preference",
+     "importance": 0.55
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['5k']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "TR-01",
+   "category": "temporal_reference",
+   "checks_passed": 0,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "store ['interview']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "TR-02",
+   "category": "temporal_reference",
+   "checks_passed": 2,
+   "checks_total": 3,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "store ['birthday', 'march']",
+     "pass": false
+    },
+    {
+     "check": "not_store ['2026-03']",
+     "pass": true,
+     "offending": []
+    },
+    {
+     "check": "not_store ['2027-03']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "AB-01",
+   "category": "abstention",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store [\"what's my favorite movie\"]",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "AB-02",
+   "category": "abstention",
+   "checks_passed": 0,
+   "checks_total": 0,
+   "extracted": [],
+   "checks": []
+  },
+  {
+   "id": "MS-01",
+   "category": "multi_session_reasoning",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "My sister Tanvi lives in Pune",
+     "fact": "Their sister Tanvi lives in Pune",
+     "category": "relationship",
+     "importance": 0.85
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['tanvi', 'pune']",
+     "pass": true
+    }
+   ]
+  },
+  {
+   "id": "MS-02",
+   "category": "multi_session_reasoning",
+   "checks_passed": 1,
+   "checks_total": 2,
+   "extracted": [
+    {
+     "turn": "My physics exam is at 9am on October 20",
+     "fact": "Their physics exam is at 9am on October 20",
+     "category": "life_event",
+     "importance": 0.85
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['exam', 'october 20']",
+     "pass": true
+    },
+    {
+     "check": "store ['study', '1am']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "QG-01",
+   "category": "question_as_memory_guard",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store [\"what's my sister's name\"]",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "QG-02",
+   "category": "question_as_memory_guard",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store ['can you list my allergies']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "QT-01",
+   "category": "third_party_attribution",
+   "checks_passed": 0,
+   "checks_total": 0,
+   "extracted": [
+    {
+     "turn": "My friend Aman says he can't stand pineapple pizza, he complains every time",
+     "fact": "Their friend Aman says he can't stand pineapple pizza, he complains every time",
+     "category": "relationship",
+     "importance": 0.85
+    }
+   ],
+   "checks": []
+  },
+  {
+   "id": "QT-02",
+   "category": "third_party_attribution",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "My brother Arjun loves trekking in Himachal",
+     "fact": "Their brother Arjun loves trekking in Himachal",
+     "category": "relationship",
+     "importance": 0.85
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['arjun', 'trek']",
+     "pass": true
+    }
+   ]
+  },
+  {
+   "id": "HY-01",
+   "category": "hypothetical",
+   "checks_passed": 2,
+   "checks_total": 2,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store ['what if i quit my job']",
+     "pass": true,
+     "offending": []
+    },
+    {
+     "check": "not_store ['became a chef']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "HY-02",
+   "category": "hypothetical",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store ['won 2 crore']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "CA-01",
+   "category": "correction_of_own_message",
+   "checks_passed": 0,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "store ['flight', '12th']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "CA-02",
+   "category": "correction_of_assistant",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store ['paris', 'germany']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "CS-01",
+   "category": "code_switching",
+   "checks_passed": 0,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "store ['nani', '15 november']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "CS-02",
+   "category": "code_switching",
+   "checks_passed": 0,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "store ['68']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "TY-01",
+   "category": "typos_shorthand",
+   "checks_passed": 0,
+   "checks_total": 2,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "store ['flat', '1st dec']",
+     "pass": false
+    },
+    {
+     "check": "store ['9k']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "TY-02",
+   "category": "typos_shorthand",
+   "checks_passed": 0,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "store ['12 may']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "EM-01",
+   "category": "emotional_disclosure",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store ['i feel so alone']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "EM-02",
+   "category": "emotional_disclosure",
+   "checks_passed": 0,
+   "checks_total": 0,
+   "extracted": [],
+   "checks": []
+  },
+  {
+   "id": "ME-01",
+   "category": "multi_entity",
+   "checks_passed": 1,
+   "checks_total": 2,
+   "extracted": [
+    {
+     "turn": "my dog Rocky absolutely hates baths",
+     "fact": "Their dog Rocky absolutely hates baths",
+     "category": "relationship",
+     "importance": 0.85
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['rocky']",
+     "pass": true
+    },
+    {
+     "check": "store ['tommy']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "ME-02",
+   "category": "multi_entity",
+   "checks_passed": 0,
+   "checks_total": 0,
+   "extracted": [
+    {
+     "turn": "Aditya my roommate is moving out next week",
+     "fact": "Aditya my roommate is moving out next week",
+     "category": "relationship",
+     "importance": 0.85
+    }
+   ],
+   "checks": []
+  },
+  {
+   "id": "RA-01",
+   "category": "reaffirmation_guard",
+   "checks_passed": 0,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "I moved to Bangalore in March for work",
+     "fact": "Moved to Bangalore in March for work",
+     "category": "identity",
+     "importance": 0.9
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['delhi']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "RA-02",
+   "category": "reaffirmation_guard",
+   "checks_passed": 0,
+   "checks_total": 0,
+   "extracted": [],
+   "checks": []
+  },
+  {
+   "id": "TD-01",
+   "category": "topic_drift",
+   "checks_passed": 0,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "store ['bus', 'pune']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "TD-02",
+   "category": "topic_drift",
+   "checks_passed": 0,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "store ['charger']",
+     "pass": false
+    }
+   ]
+  },
+  {
+   "id": "IM-01",
+   "category": "memory_command",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store ['4421']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "IM-02",
+   "category": "recall_request",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store ['tell me everything you know about me']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  }
+ ],
+ "totals": {
+  "checks_passed": 22,
+  "checks_total": 39,
+  "pass_rate": 0.564
+ },
+ "by_category": {
+  "abstention": {
+   "passed": 1,
+   "total": 1
+  },
+  "code_switching": {
+   "passed": 0,
+   "total": 2
+  },
+  "correction_of_assistant": {
+   "passed": 1,
+   "total": 1
+  },
+  "correction_of_own_message": {
+   "passed": 0,
+   "total": 1
+  },
+  "embedded_fact_in_request": {
+   "passed": 4,
+   "total": 4
+  },
+  "emotional_disclosure": {
+   "passed": 1,
+   "total": 1
+  },
+  "hypothetical": {
+   "passed": 3,
+   "total": 3
+  },
+  "knowledge_update_explicit": {
+   "passed": 1,
+   "total": 2
+  },
+  "knowledge_update_implicit": {
+   "passed": 0,
+   "total": 2
+  },
+  "memory_command": {
+   "passed": 1,
+   "total": 1
+  },
+  "multi_entity": {
+   "passed": 1,
+   "total": 2
+  },
+  "multi_session_reasoning": {
+   "passed": 2,
+   "total": 3
+  },
+  "negation_stance_flip": {
+   "passed": 1,
+   "total": 2
+  },
+  "question_as_memory_guard": {
+   "passed": 2,
+   "total": 2
+  },
+  "reaffirmation_guard": {
+   "passed": 0,
+   "total": 1
+  },
+  "recall_request": {
+   "passed": 1,
+   "total": 1
+  },
+  "temporal_reference": {
+   "passed": 2,
+   "total": 4
+  },
+  "third_party_attribution": {
+   "passed": 1,
+   "total": 1
+  },
+  "topic_drift": {
+   "passed": 0,
+   "total": 2
+  },
+  "typos_shorthand": {
+   "passed": 0,
+   "total": 3
+  }
+ }
+}
