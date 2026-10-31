@@ -6,6 +6,7 @@ files (011 + 013), covering the transaction, audit row, rollback, and the
 partial-unique-index behavior that pure resolver unit tests cannot prove.
 """
 
+import json
 import uuid
 from datetime import datetime, timedelta
 
@@ -16,7 +17,7 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.core import database
-from app.core.encryption import encrypt_text
+from app.core.encryption import decrypt_text, encrypt_text
 from app.services.fact_store import FactStore
 from app.services.importance import ScoredFact, fact_key
 
@@ -49,6 +50,7 @@ def pg(tmp_path_factory):
 def db(pg, monkeypatch):
     monkeypatch.setattr(settings, "DATABASE_URL", pg.get_uri())
     monkeypatch.setattr(settings, "ENCRYPTION_KEY", Fernet.generate_key().decode())
+    monkeypatch.setattr(settings, "MEMORY_SUPERSESSION_ENABLED", True)
     database._db = database.Database()
     with database._db.engine.begin() as conn:
         conn.execute(text(USERS_STUB))
@@ -114,8 +116,15 @@ def test_link_supersedes_unique_candidate_with_audit_row(db):
     assert len(audits) == 1
     assert str(audits[0]["old_fact_id"]) == old_id
     assert str(audits[0]["new_fact_id"]) == links[0]["new_fact_id"]
-    assert audits[0]["corrects"]["new_value"] == "January 11"
-    assert audits[0]["corrects"]["old_value"] == "December 14"
+    # Encryption parity: the audit payload is Fernet-encrypted at rest, so
+    # the raw column must not leak the user's values as plaintext JSONB.
+    raw_corrects = audits[0]["corrects"]
+    assert isinstance(raw_corrects, str)
+    assert "January 11" not in raw_corrects
+    assert "December 14" not in raw_corrects
+    payload = json.loads(decrypt_text(raw_corrects))
+    assert payload["new_value"] == "January 11"
+    assert payload["old_value"] == "December 14"
     # Readers only see active rows: the stale date is hidden, the new one shows.
     visible = [row["content"] for row in store.list_top(USER, 10)]
     assert visible == [NEW_TEXT]
@@ -194,3 +203,76 @@ def test_repeated_correction_does_not_double_link(db):
     assert second == [], "old fact is already superseded, so no eligible candidate remains"
     assert str(_rows(db, "SELECT status FROM memory_facts WHERE id = :id", id=old_id)[0]["status"]) == "superseded"
     assert len(_rows(db, "SELECT id FROM memory_fact_supersessions WHERE user_id = :u", u=USER)) == 1
+
+
+def test_linking_disabled_by_flag_leaves_everything_active(db, monkeypatch):
+    monkeypatch.setattr(settings, "MEMORY_SUPERSESSION_ENABLED", False)
+    _seed_fact(db, OLD_TEXT)
+    store = FactStore()
+    new_fact = _new_scored_fact()
+    store.upsert_facts(USER, [new_fact], MSG1)
+
+    assert store.link_explicit_corrections(USER, [new_fact], MSG1) == []
+    active = _rows(db, "SELECT id FROM memory_facts WHERE user_id = :u AND status = 'active'", u=USER)
+    assert len(active) == 2
+    assert not _rows(db, "SELECT id FROM memory_fact_supersessions WHERE user_id = :u", u=USER)
+
+
+def _link_one(db):
+    old_id = _seed_fact(db, OLD_TEXT)
+    store = FactStore()
+    new_fact = _new_scored_fact()
+    store.upsert_facts(USER, [new_fact], MSG1)
+    links = store.link_explicit_corrections(USER, [new_fact], MSG1)
+    assert len(links) == 1
+    return store, old_id, links[0]["new_fact_id"]
+
+
+def test_restore_superseded_reactivates_and_marks_audit(db):
+    store, old_id, _ = _link_one(db)
+
+    assert store.restore_superseded(USER, old_id) == "restored"
+
+    row = _rows(db, "SELECT status, superseded_by FROM memory_facts WHERE id = :id", id=old_id)[0]
+    assert row["status"] == "active" and row["superseded_by"] is None
+    audit = _rows(db, "SELECT restored_at FROM memory_fact_supersessions WHERE old_fact_id = :id", id=old_id)[0]
+    assert audit["restored_at"] is not None
+    visible = sorted(row["content"] for row in store.list_top(USER, 10))
+    assert visible == sorted([OLD_TEXT, NEW_TEXT])
+
+
+def test_restore_after_old_text_restated_is_a_safe_conflict(db):
+    store, old_id, _ = _link_one(db)
+    # User re-states the old text: the partial unique index frees the slot,
+    # and a new active row with the same fact_key now exists.
+    store.upsert_facts(USER, [ScoredFact(OLD_TEXT, "goal", 0.9, 0.0, "llm")], MSG2)
+
+    assert store.restore_superseded(USER, old_id) == "conflict"
+
+    row = _rows(db, "SELECT status FROM memory_facts WHERE id = :id", id=old_id)[0]
+    assert row["status"] == "superseded", "conflicting restore must be a no-op"
+
+
+def test_restore_unknown_fact_is_not_found(db):
+    assert FactStore().restore_superseded(USER, str(uuid.uuid4())) == "not_found"
+
+
+def test_list_supersessions_returns_decrypted_history(db):
+    store, old_id, new_id = _link_one(db)
+
+    history = store.list_supersessions(USER, 10)
+
+    assert len(history) == 1
+    entry = history[0]
+    assert entry["old_fact_id"] == old_id
+    assert entry["new_fact_id"] == new_id
+    assert entry["corrects"]["new_value"] == "January 11"
+    assert entry["restored_at"] is None
+
+
+def test_soft_delete_removes_referencing_audit_rows(db):
+    store, old_id, new_id = _link_one(db)
+
+    assert store.soft_delete(USER, new_id) is True
+
+    assert not _rows(db, "SELECT id FROM memory_fact_supersessions WHERE user_id = :u", u=USER)
