@@ -38,6 +38,8 @@ _CATEGORY_RULES: tuple[tuple[str, float, tuple[str, ...]], ...] = (
         r"\bi (?:started|began) (?:dating|seeing)\b", r"\bi(?:'m| am) (?:dating|seeing|engaged to|married to)\b",
         r"\bmy (?:ex|crush|roommate|manager|mentor|cousin|uncle|aunt|grandma|grandpa|grandmother|grandfather)\b",
         r"\bwe (?:started dating|got together|moved in)\b", r"\bi (?:broke up|split up) with\b",
+        r"\band i broke up\b",
+        r"\bmy other (?:dog|cat|pet|car|bike|phone|laptop|flat|house|account)\b",
         r"\bmy (?:mom|mother|dad|father|wife|husband|partner|girlfriend|boyfriend|fiance|fiancé|brother|sister|son|daughter|kid|child|friend|best friend|boss|colleague|therapist|dog|cat|pet)\b",
         r"\bwe broke up\b", r"\bgot engaged\b", r"\bgot married\b", r"\bdivorc(?:e|ed)\b",
     )),
@@ -45,6 +47,7 @@ _CATEGORY_RULES: tuple[tuple[str, float, tuple[str, ...]], ...] = (
         r"\bi (?:quit|stopped|gave up|cut out|started|began) (?:smoking|drinking|vaping|caffeine|sugar|junk food|gaming|\w+ing)\b",
         r"\bi(?:'m| am) (?:trying to )?(?:quit|cut down on|cutting down on)\b",
         r"\bi(?:'ve| have) been (?:sober|clean|vegan|running|meditating)\b",
+        r"\bi (?:switched|shifted|changed) to\b", r"\bi usually\b",
         r"\b\d+ (?:days|weeks|months|years) (?:sober|clean|smoke[- ]free)\b",
     )),
     ("goal", 0.80, (
@@ -56,6 +59,7 @@ _CATEGORY_RULES: tuple[tuple[str, float, tuple[str, ...]], ...] = (
         r"\bi(?:'m| am| feel| have been feeling) (?:so |really |very |quite |terribly )?(?:stressed|anxious|overwhelmed|worried|burn(?:ed|t) out|scared|nervous|lonely|exhausted)\b(?: about| over| because| of)?",
         r"\b(?:visa|interview|exam|deadline|presentation|rent|loan|results?) (?:is|are|was|were)? ?(?:stressing|worrying|scaring)\b",
         r"\bi(?:'m| am) (?:stressed|anxious|worried|nervous) about\b",
+        r"\btension\b",
     )),
     ("identity", 0.90, (
         r"\bmy name is\b", r"\bi(?:'m| am) called\b", r"\bcall me\b",
@@ -79,10 +83,13 @@ _CATEGORY_RULES: tuple[tuple[str, float, tuple[str, ...]], ...] = (
         r"\bi got (?:the job|promoted|fired|laid off|accepted|diagnosed)\b",
         r"\bpassed away\b", r"\bdied\b", r"\bgraduated\b", r"\bhad a baby\b",
         r"\bmoved\b", r"\bstarted my job\b", r"\bquit my job\b", r"\b(?:exam|results|surgery)\b",
+        r"\bmy first\b", r"\bmy flight\b", r"\bi (?:\w+ )?booked\b",
+        r"\bbroke again\b", r"\bi(?:'m| am) back in\b", r"\boperation\b",
     )),
     ("work_career", 0.70, (
         r"\bi work (?:at|as|in)\b", r"\bmy job\b", r"\bmy startup\b",
         r"\bi study\b", r"\bi(?:'m| am) studying\b", r"\bmy major\b", r"\bmy company\b",
+        r"\bmy interview\b",
     )),
     ("health", 0.70, (
         r"\bdiagnosed\b", r"\banxiety\b", r"\bdepression\b", r"\bpanic(?:king)?\b",
@@ -103,18 +110,19 @@ _EMOTION_TERMS = (
     "devastated", "heartbroken", "terrified", "panicking", "furious", "overjoyed",
     "ecstatic", "grieving", "ashamed", "hopeless", "so proud", "can't stop crying",
 )
-_FIRST_PERSON = re.compile(r"\b(?:i|i'm|i am|my|me|we|our|ours)\b", re.IGNORECASE)
+_FIRST_PERSON = re.compile(r"\b(?:i|i'm|i am|my|me|we|our|ours|meri|mera|mere|main|mujhe)\b", re.IGNORECASE)
 _WORDS = re.compile(r"\b[\w']+\b")
 _GREETING_PREFIX = re.compile(r"^(?:hi|hey|hello|so|well|also|btw|ok(?:ay)?)(?:,|\s)+", re.IGNORECASE)
 _WH_LEAD = re.compile(
     r"^(?:what(?:'s| is| are| was| were)?|who(?:'s| is| are)?|when(?:'s| is| did)?"
     r"|where(?:'s| is| did| do| does)?|why(?:'s| is| did| do| am)?|how(?:'s| is| did| do| am)?"
-    r"|which|whose)\b",
+    r"|which|whose|kya)\b",
     re.IGNORECASE,
 )
 _AUX_INVERSION = re.compile(
     r"\b(?:do|does|did|should|would|could|can|am|are|is|have|has)\s+i\b"
-    r"|\b(?:do|does|did|have|has|are|were|was|can|could|will|would|should)\s+you\b",
+    r"|\b(?:do|does|did|have|has|are|were|was|can|could|will|would|should)\s+you\b"
+    r"|\b(?:do|does|did|have|has|are|were|was|is|can|could|will|would|should)\s+my\b",
     re.IGNORECASE,
 )
 _REQUEST_LEAD = re.compile(r"^(?:list|remind me|tell me|show me|give me|recap|guess)\b", re.IGNORECASE)
@@ -279,13 +287,35 @@ def _emotional_weight(sentence: str) -> float:
     return weight
 
 
+# Patterns that imply the speaker even without a first-person pronoun
+# ("Mom's birthday is March 3", "First day at Swiggy was hectic"). Kept
+# narrow on purpose; each entry still needs the 4-word floor and is dropped
+# for questions unless a first-person marker is present.
+_SELF_IMPLYING_RULES: tuple[tuple[str, float, str], ...] = (
+    ("work_career", 0.75, r"\bfirst day (?:at|of)\b"),
+    ("relationship", 0.85, r"\b(?:mom|dad|mother|father|sister|brother|nani|dadi|nana|dada|bhai|didi|bhaiya)'s\b"),
+    ("identity", 0.90, r"(?<!his )(?<!her )(?<!their )(?<!its )\bbday\b"),
+    ("life_event", 0.70, r"\b(?:shifting|moving) to\b"),
+    ("health", 0.70, r"\b\d+\s?kg\b.*\b(?:gaya|weigh|weight|dropping|gaining|lost)\b"),
+    ("health", 0.70, r"\b(?:gaya|weigh|weight|dropping|gaining|lost)\b.*\b\d+\s?kg\b"),
+)
+
+
+def _self_implying_match(normalized: str) -> tuple[str, float] | None:
+    for category, base, pattern in _SELF_IMPLYING_RULES:
+        if re.search(pattern, normalized, re.IGNORECASE):
+            return category, base
+    return None
+
+
 def _score_clause(normalized: str) -> ScoredFact | None:
     first_person = bool(_FIRST_PERSON.search(normalized))
+    self_implying = _self_implying_match(normalized)
     word_count = len(_WORDS.findall(normalized))
     emotional_weight = _emotional_weight(normalized)
     if normalized.endswith("?") and not first_person:
         return None
-    if word_count < 4 or not first_person:
+    if word_count < 4 or not (first_person or self_implying):
         return None
 
     category = "chitchat"
@@ -295,6 +325,8 @@ def _score_clause(normalized: str) -> ScoredFact | None:
             category = candidate
             base = candidate_base
             break
+    if category == "chitchat" and self_implying:
+        category, base = self_implying
     if category == "chitchat" and emotional_weight < 0.6:
         return None
     if category == "chitchat" and emotional_weight >= 0.6:
