@@ -114,10 +114,13 @@ _WH_LEAD = re.compile(
 )
 _AUX_INVERSION = re.compile(
     r"\b(?:do|does|did|should|would|could|can|am|are|is|have|has)\s+i\b"
-    r"|\b(?:can|could|will|would)\s+you\b",
+    r"|\b(?:do|does|did|have|has|are|were|was|can|could|will|would|should)\s+you\b",
     re.IGNORECASE,
 )
-_REQUEST_LEAD = re.compile(r"^(?:list|remind me|tell me|show me|give me|recap)\b", re.IGNORECASE)
+_REQUEST_LEAD = re.compile(r"^(?:list|remind me|tell me|show me|give me|recap|guess)\b", re.IGNORECASE)
+_HYPOTHETICAL_LEAD = re.compile(
+    r"^(?:what if|let's say|lets say|suppose|supposing|imagine if)\b", re.IGNORECASE
+)
 _RECALL_MARKER = re.compile(
     r"\b(?:you should (?:know|remember)|no hints|without scrolling|what do you remember)\b",
     re.IGNORECASE,
@@ -127,13 +130,25 @@ _DISCOURSE_PREFIX = re.compile(
 )
 
 
-def _is_recall_probe(sentence: str) -> bool:
+def _split_clauses(sentence: str) -> list[str]:
+    return [clause.strip() for clause in re.split(r"\s*[,;:]\s*", sentence) if clause.strip()]
+
+
+def _is_recall_probe(sentence: str, clauses: list[str] | None = None) -> bool:
     """True when the sentence is asking Miryn to recall, not stating a fact."""
     if _RECALL_MARKER.search(sentence):
         return True
     if _REQUEST_LEAD.match(sentence):
         return True
-    return sentence.endswith("?") and bool(_WH_LEAD.match(sentence) or _AUX_INVERSION.search(sentence))
+    if not sentence.endswith("?"):
+        return False
+    if _WH_LEAD.match(sentence) or _AUX_INVERSION.search(sentence):
+        return True
+    # A question need not start with the interrogative clause:
+    # "Given that X, what's on my calendar?" is still a probe.
+    if clauses is None:
+        clauses = _split_clauses(sentence)
+    return any(_is_interrogative_clause(clause) for clause in clauses)
 
 
 def _is_interrogative_clause(clause: str) -> bool:
@@ -150,7 +165,7 @@ def _assertion_clauses(sentence: str) -> list[str]:
     be captured while the question itself is dropped.
     """
     kept: list[str] = []
-    for clause in re.split(r"\s*[,;:]\s*", sentence):
+    for clause in _split_clauses(sentence):
         clause = clause.strip().rstrip("?").strip()
         if not clause or _is_interrogative_clause(clause):
             continue
@@ -300,6 +315,11 @@ def score_message_heuristic(text: str) -> list[ScoredFact]:
     for sentence in sentences:
         normalized = normalize_fact(sentence)
         if not normalized:
+            continue
+        # Obvious hypotheticals ("What if I quit my job.") are never durable
+        # facts, regardless of punctuation. Narrow on purpose: musings and
+        # third-party statements are out of scope for this filter.
+        if _HYPOTHETICAL_LEAD.match(normalized):
             continue
         clauses = _assertion_clauses(normalized) if _is_recall_probe(normalized) else [normalized]
         for clause in clauses:
