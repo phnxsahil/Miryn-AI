@@ -111,6 +111,7 @@ def export_user_data(
             "identity": identity,
             "memories": memories,
             "facts": facts,
+            "fact_supersessions": FactStore().list_supersessions(user_id, limit),
             "exported_at": datetime.now(timezone.utc).isoformat(),
         }),
         headers={"Content-Disposition": "attachment; filename=miryn_data.json"},
