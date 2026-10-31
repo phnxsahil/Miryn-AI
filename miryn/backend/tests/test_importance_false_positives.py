@@ -94,3 +94,36 @@ def test_third_party_occasion_never_becomes_user_identity():
     ):
         for fact in score_message_heuristic(sentence):
             assert fact.category != "identity", sentence
+
+
+# Round-3 additions: residual classes from the independent reviewer's second
+# probe set (R1 third-party news tension, R2 code-mixed genuine facts).
+def test_third_party_news_tension_not_stored():
+    assert score_message_heuristic("I read about the tension between the two countries") == []
+
+
+def test_possessive_anchored_tension_stored():
+    assert score_message_heuristic("I feel the tension over my exam results")
+    assert score_message_heuristic("mujhe tension ho rahi hai interview ki")
+
+
+def test_negated_hinglish_stress_not_stored():
+    assert score_message_heuristic("mujhe tension nahi hai, sab theek hai") == []
+
+
+def test_third_party_guard_preserves_first_person_segment():
+    facts = score_message_heuristic("uske ghar party hai, my interview is on Monday")
+    assert facts, "genuine interview fact must survive"
+    assert all("interview" in f.text.lower() for f in facts)
+    assert all("uske" not in f.text.lower() and "party" not in f.text.lower() for f in facts)
+
+    facts = score_message_heuristic("main usko kal call karunga, I quit my job today")
+    assert facts, "genuine quit fact must survive"
+    assert all("quit" in f.text.lower() for f in facts)
+    assert all("usko" not in f.text.lower() for f in facts)
+
+
+def test_mixed_question_and_assertion_with_third_party_segment():
+    facts = score_message_heuristic("what's the plan for uske ghar ki party, and my interview is on Monday?")
+    assert all("interview" in f.text.lower() for f in facts)
+    assert all("uske" not in f.text.lower() for f in facts)
