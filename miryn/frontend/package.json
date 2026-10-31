@@ -9,7 +9,8 @@
     "postbuild": "node scripts/prepare-standalone.mjs",
     "lint": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next lint",
     "check:bom": "node scripts/check-bom.mjs",
-    "verify": "npm run lint && npm run check:bom"
+    "verify": "npm run lint && npm run check:bom",
+    "test:api-401": "tsc -p tsconfig.api-tests.json && node --test lib/__tests__/api-401.test.mjs"
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.4",

@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "module": "commonjs",
+    "target": "es2020",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": { "@/*": ["./*"] },
+    "outDir": "lib/__tests__/api-compiled",
+    "strict": false
+  },
+  "include": ["lib/api.ts"]
+}

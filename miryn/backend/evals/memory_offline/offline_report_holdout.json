@@ -1,0 +1,331 @@
+{
+ "mode": "miryn-heuristic-offline",
+ "code_source": "repo main, app/services/importance.py score_message_heuristic",
+ "scenarios": [
+  {
+   "id": "HO-01",
+   "category": "life_event",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "My first marathon is in February, just started training for it",
+     "fact": "Their first marathon is in February, just started training for it",
+     "category": "life_event",
+     "importance": 0.85
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['marathon']",
+     "pass": true
+    }
+   ]
+  },
+  {
+   "id": "HO-02",
+   "category": "life_event",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "I just booked my tickets to Jaipur for Diwali",
+     "fact": "Booked my tickets to Jaipur for Diwali",
+     "category": "life_event",
+     "importance": 0.85
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['jaipur']",
+     "pass": true
+    }
+   ]
+  },
+  {
+   "id": "HO-03",
+   "category": "relationship",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "Nani's operation is on Friday, taking the day off",
+     "fact": "Nani's operation is on Friday, taking the day off",
+     "category": "relationship",
+     "importance": 0.85
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['nani', 'friday']",
+     "pass": true
+    }
+   ]
+  },
+  {
+   "id": "HO-04",
+   "category": "identity",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "bday coming up on 3rd jan, don't forget this time",
+     "fact": "Bday coming up on 3rd jan, don't forget this time",
+     "category": "identity",
+     "importance": 0.9
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['3rd jan']",
+     "pass": true
+    }
+   ]
+  },
+  {
+   "id": "HO-05",
+   "category": "habit_change",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "I shifted to a cheaper flat in Whitefield last week",
+     "fact": "Shifted to a cheaper flat in Whitefield last week",
+     "category": "habit_change",
+     "importance": 0.8
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['whitefield']",
+     "pass": true
+    }
+   ]
+  },
+  {
+   "id": "HO-06",
+   "category": "health",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "Weighed myself today, 71 kg, finally dropping",
+     "fact": "Weighed myself today, 71 kg, finally dropping",
+     "category": "health",
+     "importance": 0.7
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['71', 'kg']",
+     "pass": true
+    }
+   ]
+  },
+  {
+   "id": "HO-07",
+   "category": "work_career",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "My interview with Amazon got moved to Thursday",
+     "fact": "Their interview with Amazon got moved to Thursday",
+     "category": "life_event",
+     "importance": 0.85
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['interview', 'amazon']",
+     "pass": true
+    }
+   ]
+  },
+  {
+   "id": "HO-08",
+   "category": "third_party_attribution",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "My friend said his bday party was wild",
+     "fact": "Their friend said his bday party was wild",
+     "category": "relationship",
+     "importance": 0.85
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['friend', 'bday']",
+     "pass": true
+    }
+   ]
+  },
+  {
+   "id": "HO-09",
+   "category": "hypothetical",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store ['surgery']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "HO-10",
+   "category": "third_party_attribution",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store ['broke up']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "HO-11",
+   "category": "goal",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [
+    {
+     "turn": "Training for my first triathlon next year",
+     "fact": "Training for my first triathlon next year",
+     "category": "life_event",
+     "importance": 0.85
+    }
+   ],
+   "checks": [
+    {
+     "check": "store ['triathlon']",
+     "pass": true
+    }
+   ]
+  },
+  {
+   "id": "HO-12",
+   "category": "question_as_memory_guard",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store ['ring']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "HO-13",
+   "category": "question_as_memory_guard",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store ['interview']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "HO-14",
+   "category": "question_as_memory_guard",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store ['tension']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "HO-15",
+   "category": "third_party_attribution",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store ['operation']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  },
+  {
+   "id": "HO-16",
+   "category": "third_party_attribution",
+   "checks_passed": 1,
+   "checks_total": 1,
+   "extracted": [],
+   "checks": [
+    {
+     "check": "not_store ['bday']",
+     "pass": true,
+     "offending": []
+    }
+   ]
+  }
+ ],
+ "totals": {
+  "checks_passed": 16,
+  "checks_total": 16,
+  "pass_rate": 1.0
+ },
+ "by_category": {
+  "goal": {
+   "passed": 1,
+   "total": 1
+  },
+  "habit_change": {
+   "passed": 1,
+   "total": 1
+  },
+  "health": {
+   "passed": 1,
+   "total": 1
+  },
+  "hypothetical": {
+   "passed": 1,
+   "total": 1
+  },
+  "identity": {
+   "passed": 1,
+   "total": 1
+  },
+  "life_event": {
+   "passed": 2,
+   "total": 2
+  },
+  "question_as_memory_guard": {
+   "passed": 3,
+   "total": 3
+  },
+  "relationship": {
+   "passed": 1,
+   "total": 1
+  },
+  "third_party_attribution": {
+   "passed": 4,
+   "total": 4
+  },
+  "work_career": {
+   "passed": 1,
+   "total": 1
+  }
+ }
+}

@@ -14,6 +14,7 @@ from app.core.database import get_db, get_sql_session, has_sql
 from app.core.cache import redis_client
 from app.core.encryption import decrypt_text
 from app.core.security import get_current_user_id
+from app.core.timefmt import iso_with_utc
 from app.config import settings
 from app.schemas.chat import ChatRequest, ChatResponse, PinUpdate, TitleUpdate
 from app.services.importance import make_conversation_title, score_message_heuristic
@@ -187,13 +188,13 @@ def _hydrate_history_row(row: dict) -> dict:
         except Exception:
             metadata = {}
 
-    timestamp = row.get("created_at") or datetime.now(timezone.utc).isoformat()
+    timestamp = iso_with_utc(row.get("created_at") or datetime.now(timezone.utc).isoformat())
     return {
         "id": str(row.get("id")),
         "role": row.get("role") or "assistant",
         "content": content or "",
-        "timestamp": str(timestamp),
-        "created_at": str(timestamp),
+        "timestamp": timestamp,
+        "created_at": timestamp,
         "metadata": metadata or {},
         "importance_score": float(row.get("importance_score") or 0.0),
     }
@@ -570,7 +571,13 @@ def list_conversations(user_id: str = Depends(get_current_user_id)):
                 ),
                 {"user_id": user_id},
             )
-            return [dict(row) for row in result.mappings().all()]
+            rows = []
+            for row in result.mappings().all():
+                item = dict(row)
+                item["created_at"] = iso_with_utc(item.get("created_at"))
+                item["updated_at"] = iso_with_utc(item.get("updated_at"))
+                rows.append(item)
+            return rows
     db = get_db()
     response = (
         db.table("conversations")
@@ -580,7 +587,15 @@ def list_conversations(user_id: str = Depends(get_current_user_id)):
         .order("updated_at", desc=True)
         .execute()
     )
-    return [{**row, "message_count": 0} for row in (response.data or [])]
+    return [
+        {
+            **row,
+            "created_at": iso_with_utc(row.get("created_at")),
+            "updated_at": iso_with_utc(row.get("updated_at")),
+            "message_count": 0,
+        }
+        for row in (response.data or [])
+    ]
 
 
 @router.get("/history")
@@ -854,4 +869,3 @@ def post_sanctuary_checkin(payload: dict, user_id: str = Depends(get_current_use
         "recorded_at": now.isoformat(),
         "companion_reflection": f"I hear you. Acknowledging that you're feeling {emotion.lower()} is the first step toward releasing tension. Your thoughts are safely held in episodic storage."
     }
-

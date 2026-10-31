@@ -1,0 +1,16 @@
+{"id": "HO-01", "category": "life_event", "sessions": [{"turns": ["My first marathon is in February, just started training for it"]}], "expect": {"store": [{"all_of": ["marathon"]}]}}
+{"id": "HO-02", "category": "life_event", "sessions": [{"turns": ["I just booked my tickets to Jaipur for Diwali"]}], "expect": {"store": [{"all_of": ["jaipur"]}]}}
+{"id": "HO-03", "category": "relationship", "sessions": [{"turns": ["Nani's operation is on Friday, taking the day off"]}], "expect": {"store": [{"all_of": ["nani", "friday"]}]}}
+{"id": "HO-04", "category": "identity", "sessions": [{"turns": ["bday coming up on 3rd jan, don't forget this time"]}], "expect": {"store": [{"all_of": ["3rd jan"]}]}}
+{"id": "HO-05", "category": "habit_change", "sessions": [{"turns": ["I shifted to a cheaper flat in Whitefield last week"]}], "expect": {"store": [{"all_of": ["whitefield"]}]}}
+{"id": "HO-06", "category": "health", "sessions": [{"turns": ["Weighed myself today, 71 kg, finally dropping"]}], "expect": {"store": [{"all_of": ["71", "kg"]}]}}
+{"id": "HO-07", "category": "work_career", "sessions": [{"turns": ["My interview with Amazon got moved to Thursday"]}], "expect": {"store": [{"all_of": ["interview", "amazon"]}]}}
+{"id": "HO-08", "category": "third_party_attribution", "sessions": [{"turns": ["My friend said his bday party was wild"]}], "expect": {"store": [{"all_of": ["friend", "bday"]}]}, "note": "Third-party storage is intended (pack QT-02); attribution at recall is not tested offline.", "audit": "Original expectation: not_store [bday] (classified as junk). Reclassified to store during fixing because dev pack QT-02 intentionally stores third-party relationship facts with speaker normalization. Recall-time attribution remains untested offline."}
+{"id": "HO-09", "category": "hypothetical", "sessions": [{"turns": ["What if mom's surgery gets delayed, should I call her?"]}], "expect": {"not_store": [{"no_fact_with_all": ["surgery"]}]}}
+{"id": "HO-10", "category": "third_party_attribution", "sessions": [{"turns": ["Riya's sister broke up with her boyfriend, she told me yesterday"]}], "expect": {"not_store": [{"no_fact_with_all": ["broke up"]}]}}
+{"id": "HO-11", "category": "goal", "sessions": [{"turns": ["Training for my first triathlon next year"]}], "expect": {"store": [{"all_of": ["triathlon"]}]}}
+{"id": "HO-12", "category": "question_as_memory_guard", "sessions": [{"turns": ["Did I tell you where mom's ring is?"]}], "expect": {"not_store": [{"no_fact_with_all": ["ring"]}]}}
+{"id": "HO-13", "category": "question_as_memory_guard", "sessions": [{"turns": ["Is my interview today?"]}], "expect": {"not_store": [{"no_fact_with_all": ["interview"]}]}}
+{"id": "HO-14", "category": "question_as_memory_guard", "sessions": [{"turns": ["kya main bahut tension mein hoon?"]}], "expect": {"not_store": [{"no_fact_with_all": ["tension"]}]}}
+{"id": "HO-15", "category": "third_party_attribution", "sessions": [{"turns": ["uski nani ka operation kal hai, wo bahut pareshan hai"]}], "expect": {"not_store": [{"no_fact_with_all": ["operation"]}]}}
+{"id": "HO-16", "category": "third_party_attribution", "sessions": [{"turns": ["her bday is next week btw"]}], "expect": {"not_store": [{"no_fact_with_all": ["bday"]}]}}
