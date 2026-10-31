@@ -7,7 +7,10 @@ CREATE TABLE IF NOT EXISTS memory_fact_supersessions (
   old_fact_id UUID NOT NULL REFERENCES memory_facts(id),
   new_fact_id UUID NOT NULL REFERENCES memory_facts(id),
   source_message_id UUID,
-  corrects JSONB NOT NULL,
+  -- Fernet-encrypted JSON payload (encryption parity with memory_facts.fact):
+  -- {"entity","attribute","old_value","new_value","polarity_old","polarity_new"}
+  corrects TEXT NOT NULL,
+  restored_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
