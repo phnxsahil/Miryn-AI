@@ -269,6 +269,16 @@
     .log-entry li { color: #c9c9c9; font-size: 15px; line-height: 1.7; padding-left: 22px; position: relative; margin-bottom: 8px; }
     .log-entry li::before { content: ''; position: absolute; left: 0; top: 11px; width: 8px; height: 8px; border-radius: 50%; background: rgba(245,158,11,0.55); }
     .log-note { color: #8a8a8a; font-size: 13.5px; margin-top: 36px; text-align: center; }
+
+    @media (max-width: 520px) {
+      header { height: 60px; padding: 0 16px; }
+      .nav-brand { font-size: 15px; gap: 8px; }
+      .nav-brand img { width: 26px; height: 26px; }
+      .nav-brand span { white-space: nowrap; }
+      .nav-actions { gap: 10px; }
+      .back-btn { font-size: 12px; white-space: nowrap; }
+      .cta-btn { padding: 7px 12px; font-size: 12px; white-space: nowrap; }
+    }
   </style>
 </head>
 <body>
@@ -292,10 +302,10 @@
 
     <section class="log-entry">
       <div class="log-date">October 31, 2026</div>
-      <h2 class="log-title">Memory reliability round<span class="review-tag">In final review</span></h2>
+      <h2 class="log-title">Memory reliability round<span class="review-tag">Live</span></h2>
       <ul>
-        <li>Questions are no longer saved as memories. Recall-style prompts ("what do you remember about...?", Hinglish "kya ...?") and hypotheticals are recognised and skipped, while real facts embedded in them are still kept.</li>
-        <li>Corrections get a typed path: when you tell Miryn something changed ("actually I moved to Bangalore"), a supersession engine links the new fact to the old one and keeps an encrypted audit trail. Ships behind a feature flag, off by default until staging validation.</li>
+        <li>Improved filtering of recall-style questions and hypotheticals ("what do you remember about...?", Hinglish "kya ...?") so they are far less likely to be stored as memories, while facts embedded in them are still kept. Coverage keeps widening; unusual phrasings can still slip through.</li>
+        <li>Corrections get a typed path: when you tell Miryn something changed ("actually I moved to Bangalore"), a supersession engine links the new fact to the old one and keeps an encrypted audit trail. The engine ships in production behind a feature flag, still off by default while validation finishes.</li>
         <li>Conversation-list timestamps now carry an explicit UTC offset, so chats no longer slide into "Yesterday" around local midnight.</li>
         <li>Sign-in and sign-up show the server's actual error message instead of a generic "session expired", and a failed credential attempt no longer clears a stored session.</li>
         <li>New offline evaluation suite for the memory heuristics, with regression tests pinning every false-positive class found during independent review.</li>
