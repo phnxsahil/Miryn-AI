@@ -158,7 +158,17 @@ class ApiClient {
 
     if (!res.ok) {
       const responseRequestId = res.headers.get("X-Request-ID") || requestId;
-      if (res.status === 401 && !triedRefresh && endpoint !== "/auth/refresh" && this.refreshTokenValue) {
+      // Credential endpoints validate the login itself: a 401 there means the
+      // credentials were rejected, not that an existing session expired.
+      const isCredentialEndpoint =
+        endpoint === "/auth/login" || endpoint === "/auth/signup" || endpoint === "/auth/google";
+      if (
+        res.status === 401 &&
+        !triedRefresh &&
+        !isCredentialEndpoint &&
+        endpoint !== "/auth/refresh" &&
+        this.refreshTokenValue
+      ) {
         try {
           const refreshed = await this.refreshSession();
           this.setSession(refreshed);
@@ -171,6 +181,9 @@ class ApiClient {
 
       const message = await this.parseError(res);
       if (res.status === 401) {
+        if (isCredentialEndpoint) {
+          throw new Error(`${message || "Invalid email or password"} [req ${responseRequestId}]`);
+        }
         this.clearToken();
         throw new Error(`Session expired. Please log in again. [req ${responseRequestId}]`);
       }
