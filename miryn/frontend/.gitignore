@@ -1,0 +1,2 @@
+# Local tsc output for the api-401 node tests
+lib/__tests__/api-compiled/
