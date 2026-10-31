@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     # Importance scoring
     IMPORTANCE_CORE_THRESHOLD: float = 0.75
     IMPORTANCE_USE_LLM: bool = True
+    # Explicit-correction supersession stays OFF until staging validation
+    # confirms the LLM correction marker is reliable; while off, no
+    # existing memory is ever auto-hidden.
+    MEMORY_SUPERSESSION_ENABLED: bool = False
     IMPORTANCE_MAX_FACTS_PER_MESSAGE: int = 3
     SANCTUARY_MIN_USER_MESSAGES: int = 10
 
