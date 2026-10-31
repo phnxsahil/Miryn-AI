@@ -16,10 +16,28 @@ synthetic conversations. No network, no database, no LLM calls, no secrets.
 ## Run
 
     cd miryn/backend
-    python3 evals/memory_offline/offline_extract.py > offline_report.json
+    python3 evals/memory_offline/offline_extract.py                       # dev pack -> offline_report.json
+    python3 evals/memory_offline/offline_extract.py SCENARIOS_JSONL REPORT_JSON   # explicit paths
 
-Baseline on `main` at the time of the PR-35 review round: 17/39 checks pass.
-With the review branch: 22/39 (see the PR body for the fail→PASS diff).
+Files: `scenarios.jsonl` is the dev pack the heuristic patterns were tuned
+against; `scenarios_holdout.jsonl` is a small held-out set written after
+tuning to sanity-check generalization; `offline_report_main.json` /
+`offline_report_branch.json` / `offline_report_holdout.json` are the
+committed reports.
+
+Scores: baseline `main` 17/39; review branch at PR-35 review head 22/39;
+current branch 39/39 dev + 16/16 holdout. The dev score is an upper bound
+(patterns were tuned against that pack); the holdout score is the honest
+generalization signal. The holdout includes adversarial guards for the
+broadest new patterns (Hinglish "kya" questions, aux+my inversions like
+"Is my interview today?", third-party Hindi without first-person markers,
+third-party "her bday"). Two design notes: (1) third-party relationship
+facts are stored on purpose - the dev pack's QT-02 expects "My brother
+Arjun loves trekking" to be stored with speaker normalization - so HO-08
+checks storage, and recall-time attribution stays untested in offline
+mode; (2) probe detection now also treats "kya" as a question lead and
+aux+my ("is my interview today?") as inversion, so those questions are
+not stored as facts.
 
 ## Provenance and rights
 
