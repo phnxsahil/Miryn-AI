@@ -94,6 +94,7 @@ def test_stance_correction_matches_with_prefix_tolerance():
 
 
 def test_link_returns_empty_without_sql(monkeypatch):
+    monkeypatch.setattr("app.services.fact_store.settings.MEMORY_SUPERSESSION_ENABLED", True)
     monkeypatch.setattr("app.services.fact_store.has_sql", lambda: False)
     fact = type("F", (), {"corrects": CORRECTS, "text": "x", "category": "goal"})()
     assert FactStore().link_explicit_corrections("user-1", [fact], "msg-1") == []
@@ -101,4 +102,56 @@ def test_link_returns_empty_without_sql(monkeypatch):
 
 def test_facts_without_corrections_are_ignored():
     fact = type("F", (), {"corrects": None, "text": "x", "category": "goal"})()
+    assert FactStore().link_explicit_corrections("user-1", [fact], "msg-1") == []
+
+
+def test_preference_correction_requires_both_polarities():
+    corrects = {
+        "entity": "coriander",
+        "attribute": "food preference",
+        "old_value": "hate coriander",
+        "new_value": "like coriander",
+        # polarity_old missing
+        "polarity_new": "positive",
+    }
+    new_fact = {"category": "preference", "created_at": BASE}
+    old = _cand("Hates coriander", category="preference")
+    assert select_supersede_candidate([old], new_fact, corrects) is None
+
+
+def test_preference_agreement_is_not_a_correction():
+    # Both polarities negative: the new statement agrees, nothing changed.
+    corrects = {
+        "entity": "coriander",
+        "attribute": "food preference",
+        "old_value": "hate coriander",
+        "new_value": "dislike coriander",
+        "polarity_old": "negative",
+        "polarity_new": "negative",
+    }
+    new_fact = {"category": "preference", "created_at": BASE}
+    old = _cand("Hates coriander", category="preference")
+    assert select_supersede_candidate([old], new_fact, corrects) is None
+
+
+def test_short_entity_token_needs_exact_match():
+    # Adversarial: entity "Goa" must not match the word "goal" in an
+    # unrelated Pune deadline, so the wrong fact is never superseded.
+    corrects = {
+        "entity": "Goa",
+        "attribute": "date",
+        "old_value": "December 14",
+        "new_value": "January 11",
+        "polarity_old": "neutral",
+        "polarity_new": "neutral",
+    }
+    new_fact = {"category": "goal", "created_at": BASE}
+    pune = _cand("My goal is to finish the Pune project by December 14")
+    assert select_supersede_candidate([pune], new_fact, corrects) is None
+
+
+def test_link_disabled_by_default_flag():
+    # MEMORY_SUPERSESSION_ENABLED defaults to False: without staging
+    # validation of the LLM correction marker, nothing is ever auto-hidden.
+    fact = type("F", (), {"corrects": CORRECTS, "text": "x", "category": "goal"})()
     assert FactStore().link_explicit_corrections("user-1", [fact], "msg-1") == []
