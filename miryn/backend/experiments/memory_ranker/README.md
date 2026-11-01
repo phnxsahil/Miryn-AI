@@ -8,7 +8,7 @@ Question: does a learned reranker beat the hand-weighted hybrid in `memory_layer
 ## Caveats (read before trusting any number)
 - Labels are model-generated, not human or real-usage labels.
 - Semantic score is bge, not Gemini. bge cosines are compressed, so the 0.3 recency term dominates the baseline. The baseline's big deficit is probably partly this scale mismatch and would differ with Gemini scores. Not tested.
-- Candidate pool is all 24 memories (no candidate-stage recall loss). Importance is fixed at the repo default 0.5 for all memories; learned models get category one-hot instead of the real heuristic.
+- Candidate pool is all 24 memories (no candidate-stage recall loss). Importance now comes from the repo's own `score_message_heuristic` (max importance of extracted facts, else the 0.5 default), used by both baseline and learned models. Rerun changed numbers by under 0.01 nDCG, conclusion unchanged.
 - 35 personas / 280 queries. Small.
 - Baseline wins on "recent" queries, so recency matters for some intents; a learned model without query-intent signal loses there.
 
@@ -21,3 +21,6 @@ Question: does a learned reranker beat the hand-weighted hybrid in `memory_layer
 - Embedder: BAAI/bge-small-en-v1.5 via fastembed (ONNX, 384-d, local). It is NOT the app's Gemini embedder.
 - Deployment constraints (not tested): any serving of this would add onnxruntime if bge were used; the rankers themselves are tiny. Nothing here is wired into the app.
 - Conclusion: on this synthetic setup, semantic-only matches the learned rankers; no ML benefit demonstrated. The baseline comparison is invalid for the live system (different embedder, importance fixed, whole-memory pool).
+
+- Cost logging fix (not yet exercised by a run): `generate_data.py` now also writes `data/calls.jsonl` with tokens, estimated cost, ok flag and stop reason for every completed API call, including ones whose JSON failed to parse. Earlier runs have no such log, so their failed-call usage remains unknown. Estimates are tokens x list price, not billed amounts.
+- Learned vs semantic-only after the rerun: logreg +0.018 nDCG@5 (CI +0.005..+0.030), GBDT +0.013 (CI -0.001..+0.026). Small, on synthetic generator-made labels, with extra features; not evidence of a live gain.
