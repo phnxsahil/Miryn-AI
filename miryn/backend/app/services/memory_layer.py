@@ -19,6 +19,7 @@ def chat_tier_for(importance: float) -> str:
 
 
 class MemoryLayer:
+    MIN_PERSISTED_SLOTS = 2
     """
     Multi-tiered memory retrieval system.
     Hybrid: semantic + temporal + importance.
@@ -165,6 +166,13 @@ class MemoryLayer:
             """
             return str(obj)
 
+        # Transient messages are the only recent-conversation context in the prompt, so they stay first.
+        # But they must not crowd out every persisted memory: keep the most recent ones and reserve
+        # up to MIN_PERSISTED_SLOTS slots for scored memories.
+        scored_ids = {m.get("id") for m in transient_results if m.get("id")}
+        available = [m for m in scored if m.get("id") not in scored_ids]
+        reserved = min(len(available), self.MIN_PERSISTED_SLOTS, max(limit, 0))
+        transient_results = transient_results[-(limit - reserved):] if limit - reserved > 0 else []
         combined = self._prepend_transient(transient_results, scored)
 
         try:
