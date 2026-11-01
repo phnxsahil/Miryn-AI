@@ -60,3 +60,31 @@ def test_paid_run_refused_without_approval():
 
 def test_model_ids_are_verified_ones():
     assert ce.REPLY_MODEL == "claude-sonnet-5-5" and ce.JUDGE_MODEL == "claude-haiku-5-5"
+
+GOOD = '{"a_uses_relevant_memory":2,"b_uses_relevant_memory":1,"a_wrong_or_stale_fact":false,"b_wrong_or_stale_fact":true,"a_natural_tone":2,"b_natural_tone":1,"winner":"A"}'
+def test_parse_plain_and_fenced():
+    assert ce.parse_judge(GOOD)["winner"] == "A"
+    assert ce.parse_judge("```json\n" + GOOD + "\n```")["winner"] == "A"
+    assert ce.parse_judge("```\n" + GOOD)["winner"] == "A"          # unclosed fence
+
+def test_parse_rejects_bad():
+    assert ce.parse_judge("") is None and ce.parse_judge("```") is None
+    assert ce.parse_judge(GOOD, "max_tokens") is None                 # truncated by token limit
+    assert ce.parse_judge(GOOD[:120]) is None                         # cut JSON
+    assert ce.parse_judge(GOOD.replace('"winner":"A"', '"winner":"C"')) is None
+    assert ce.parse_judge(GOOD.replace('"a_natural_tone":2', '"a_natural_tone":9')) is None
+    assert ce.parse_judge(GOOD.replace('"b_wrong_or_stale_fact":true', '"b_wrong_or_stale_fact":"yes"')) is None
+
+def test_campaign_cap_spans_invocations():
+    d = tempfile.mkdtemp(); p = d + "/l.sqlite"
+    # three separate "processes" with the same campaign id share ONE run cap
+    l1 = Ledger(p, 50, run_id="camp", run_cap_usd=0.05); l1.reserve(0.03, "m")
+    l2 = Ledger(p, 50, run_id="camp", run_cap_usd=0.05)
+    try: l2.reserve(0.03, "m"); assert False
+    except BudgetExceeded: pass
+
+def test_paid_run_needs_campaign():
+    import subprocess
+    env = dict(os.environ, EXPERIMENT_PAID_RUN_APPROVED="yes", EXPERIMENT_TOTAL_CAP_USD="50")
+    p = subprocess.run([sys.executable, os.path.join(os.path.dirname(__file__), "conv_eval.py")], capture_output=True, text=True, env=env)
+    assert p.returncode != 0 and "campaign" in (p.stdout + p.stderr)
