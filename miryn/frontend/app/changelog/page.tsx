@@ -24,8 +24,8 @@ const entries: Entry[] = [
     title: "Claude adapter merged, not enabled",
     live: true,
     points: [
-      "The code that lets Miryn use Claude as its chat model is now merged. It is not switched on: Miryn still runs on its current model, and no one's chats go to Claude.",
-      "Claude calls cannot start without a hard spend limit. Each call reserves its worst-case cost first, and the limit starts at zero.",
+      "The code that lets Miryn use Claude as a chat model is now merged. It is not switched on: no Claude key or settings have been added, so nothing is sent to Claude.",
+      "Before any Claude call, the code checks a spend limit and sets aside that call's maximum possible cost. With no limit configured, calls are refused. This is a safeguard in our code, not a guarantee from the billing provider.",
       "Research notes (not a product feature): we tested whether a learned model could rank memories better than today's hand-tuned scoring, using made-up conversations only. The gain over plain semantic matching was small, so nothing is shipping from it.",
     ],
   },
