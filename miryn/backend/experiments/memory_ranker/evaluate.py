@@ -4,6 +4,13 @@ from fastembed import TextEmbedding
 from sklearn.model_selection import GroupKFold
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import HistGradientBoostingClassifier
+import os, sys
+for k,v in dict(SECRET_KEY='x',ENCRYPTION_KEY='x',DATABASE_URL='sqlite:////tmp/x.db',GEMINI_API_KEY='test-key-not-real',LLM_PROVIDER='openai').items(): os.environ.setdefault(k,v)
+sys.path.insert(0,os.path.join(os.path.dirname(__file__),'..','..'))
+from app.services.importance import score_message_heuristic  # the repo's own extractor (no network)
+def real_importance(text):
+    f=score_message_heuristic(text)
+    return max(x.importance for x in f) if f else 0.5  # 0.5 = repo default when nothing extracted
 rows=[json.loads(l) for l in open('data/personas.jsonl')]
 emb=TextEmbedding('BAAI/bge-small-en-v1.5')
 CATS=sorted({m['category'] for r in rows for m in r['memories']})
@@ -15,12 +22,13 @@ for pi,r in enumerate(rows):
     qe=np.array(list(emb.embed([x['text'] for x in r['queries']])))
     for qi,qq in enumerate(r['queries']):
         sims=me@qe[qi]; qt=tok(qq['text'])
+        imp=[real_importance(m['text']) for m in M]
         for mi,m in enumerate(M):
             d=m['days_ago'];rec=math.exp(-0.1*d)
             lex=len(qt&tok(m['text']))/max(1,len(qt))
-            f=[sims[mi],rec,0.5,math.log1p(d),lex,sims[mi]-sims.max(),(sims>sims[mi]).sum()]+[m['category']==c for c in CATS]
+            f=[sims[mi],rec,imp[mi],math.log1p(d),lex,sims[mi]-sims.max(),(sims>sims[mi]).sum()]+[m['category']==c for c in CATS]
             X.append(f);y.append(m['id'] in qq['relevant']);g.append(pi);qid.append(q)
-            base.append(0.5*sims[mi]+0.3*rec+0.2*0.5)
+            base.append(0.5*sims[mi]+0.3*rec+0.2*imp[mi])
         kind.append(qq['kind']);q+=1
 X=np.array(X,float);y=np.array(y);g=np.array(g);qid=np.array(qid);base=np.array(base)
 def metrics(score):
