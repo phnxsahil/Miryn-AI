@@ -231,3 +231,13 @@ def test_model_switch_does_not_reset_ledger(monkeypatch, ledger):
     assert ledger.row()[0] == 14000
     with ledger.engine.begin() as c:
         assert c.execute(text("SELECT count(*) FROM llm_budget")).scalar() == 1
+
+
+def test_prior_spend_is_deducted_from_cap(monkeypatch, ledger):
+    monkeypatch.setattr(settings, "ANTHROPIC_TOTAL_BUDGET_USD", 0.01)  # 10000 micro
+    monkeypatch.setattr(settings, "ANTHROPIC_PRIOR_SPEND_USD", 0.0099)  # leaves 100 micro
+    with pytest.raises(llm_budget.BudgetUnavailable):
+        asyncio.run(llm_budget.reserve("m", 0, 100))  # needs 3048
+    monkeypatch.setattr(settings, "ANTHROPIC_PRIOR_SPEND_USD", 0.02)  # prior exceeds cap
+    with pytest.raises(llm_budget.BudgetUnavailable):
+        asyncio.run(llm_budget.reserve("m", 0, 1))
