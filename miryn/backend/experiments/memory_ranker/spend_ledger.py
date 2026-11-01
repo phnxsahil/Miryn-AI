@@ -18,13 +18,27 @@ class BudgetExceeded(RuntimeError):
     pass
 
 class Ledger:
-    def __init__(self, path, total_cap_usd, run_id=None, run_cap_usd=None):
+    def __init__(self, path, total_cap_usd, run_id=None, run_cap_usd=None, allow_raise=False):
         self.path, self.total_cap, self.run_cap = str(path), float(total_cap_usd), run_cap_usd
         self.run_id = run_id or uuid.uuid4().hex[:8]
         with closing(self._c()) as c:
             c.execute("""CREATE TABLE IF NOT EXISTS calls(
                 id TEXT PRIMARY KEY, run_id TEXT, ts REAL, state TEXT, reserved_usd REAL,
                 actual_usd REAL, model TEXT, in_tok INTEGER, out_tok INTEGER, note TEXT)""")
+            c.execute("CREATE TABLE IF NOT EXISTS caps(name TEXT PRIMARY KEY, usd REAL)")
+            # Persisted cap definitions: a later process may LOWER a cap but cannot raise it (or reset the total) silently.
+            for name, usd in (("total", self.total_cap), ("run:" + self.run_id, run_cap_usd)):
+                if usd is None: continue
+                row = c.execute("SELECT usd FROM caps WHERE name=?", (name,)).fetchone()
+                if row is None:
+                    c.execute("INSERT INTO caps VALUES(?,?)", (name, float(usd)))
+                elif float(usd) > row[0] + 1e-12:
+                    if not allow_raise:
+                        raise BudgetExceeded(f"cap '{name}' is persisted at {row[0]}; refusing higher {usd} without explicit authority (allow_raise)")
+                    c.execute("UPDATE caps SET usd=? WHERE name=?", (float(usd), name))
+                elif float(usd) < row[0]:
+                    c.execute("UPDATE caps SET usd=? WHERE name=?", (float(usd), name))
+                    if name == "total": self.total_cap = float(usd)
             c.commit()
 
     def _c(self):
