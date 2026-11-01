@@ -12,11 +12,32 @@ import threading
 import time
 from pathlib import Path
 from app.config import settings
+from app.services import llm_budget
 from app.services.safety import SAFETY_POLICY, BLOCKED_REPLY, immediate_safety_reply, provider_blocked
 
 
 class QuotaExhausted(RuntimeError):
     """Gemini's configured fallback chain is temporarily out of quota."""
+
+
+async def _anthropic_reserve(model: str, system: Any, messages: Any, max_tokens: int):
+    request_bytes = len(json.dumps({"system": system, "messages": messages}, ensure_ascii=False).encode("utf-8"))
+    try:
+        return await llm_budget.reserve(model, request_bytes, max_tokens)
+    except llm_budget.BudgetUnavailable as exc:
+        logging.getLogger(__name__).warning("Claude call refused by spend ledger: %s", exc)
+        raise QuotaExhausted(str(exc)) from exc
+
+
+def _anthropic_rejected(exc: Exception) -> bool:
+    """HTTP error status from the API: the request was refused before any generation, so nothing was billed."""
+    return isinstance(getattr(exc, "status_code", None), int)
+
+
+def _anthropic_busy_error(exc: Exception) -> bool:
+    """Rate limit (429) or overloaded (529) from Anthropic: show the busy reply, don't crash."""
+    status = getattr(exc, "status_code", None)
+    return status in (429, 529) or type(exc).__name__ in {"RateLimitError", "OverloadedError"}
 
 
 _quota_lock = threading.Lock()
@@ -273,7 +294,7 @@ Partial reply:
             if not settings.ANTHROPIC_API_KEY:
                 raise ValueError("ANTHROPIC_API_KEY is required when LLM_PROVIDER=anthropic")
             self.client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
-            self.model = "claude-3-5-sonnet-20241022"
+            self.model = settings.ANTHROPIC_MODEL
         elif self.provider == "gemini":
             from google import genai
 
@@ -343,19 +364,32 @@ Partial reply:
                 return content
 
             if self.provider == "anthropic":
-                response = await self.client.messages.create(
-                    model=self.model,
-                    max_tokens=max_tokens,
-                    system=system_prompt or "",
-                    messages=[{"role": "user", "content": prompt}],
+                res = await _anthropic_reserve(self.model, system_prompt or "", [{"role": "user", "content": prompt}], max_tokens)
+                usage, charged = None, True
+                try:
+                    response = await self.client.messages.create(
+                        model=self.model,
+                        max_tokens=max_tokens,
+                        system=system_prompt or "",
+                        messages=[{"role": "user", "content": prompt}],
+                    )
+                    usage = getattr(response, "usage", None)
+                except Exception as exc:
+                    charged = not _anthropic_rejected(exc)
+                    if _anthropic_busy_error(exc):
+                        raise QuotaExhausted("Anthropic rate limited or overloaded") from exc
+                    raise
+                finally:
+                    await asyncio.shield(llm_budget.settle(res, usage, charged=charged))
+                if getattr(response, "stop_reason", None) == "refusal":
+                    return BLOCKED_REPLY
+                text = "".join(
+                    getattr(block, "text", "") or ""
+                    for block in (getattr(response, "content", None) or [])
+                    if getattr(block, "type", "text") == "text"
                 )
-                content_blocks = getattr(response, "content", None) or []
-                if not content_blocks:
-                    raise RuntimeError("Anthropic response did not include content blocks")
-                primary = content_blocks[0]
-                text = getattr(primary, "text", None)
-                if text is None:
-                    raise RuntimeError("Anthropic response was empty")
+                if not text:
+                    raise RuntimeError("Anthropic response did not include text")
                 return text
 
             if self.provider == "gemini":
@@ -465,14 +499,30 @@ Partial reply:
             return
 
         if self.provider == "anthropic":
-            async with self.client.messages.stream(
-                model=self.model,
-                system=system_prompt,
-                messages=[{"role": "user", "content": full_prompt}],
-                max_tokens=CHAT_MAX_OUTPUT_TOKENS,
-            ) as stream:
-                async for text in stream.text_stream:
-                    yield text
+            res = await _anthropic_reserve(self.model, system_prompt, [{"role": "user", "content": full_prompt}], CHAT_MAX_OUTPUT_TOKENS)
+            usage, charged = None, True
+            try:
+                async with self.client.messages.stream(
+                    model=self.model,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": full_prompt}],
+                    max_tokens=CHAT_MAX_OUTPUT_TOKENS,
+                ) as stream:
+                    async for text in stream.text_stream:
+                        yield text
+                    final = await stream.get_final_message()
+                usage = getattr(final, "usage", None)
+            except Exception as exc:
+                charged = not _anthropic_rejected(exc)
+                if _anthropic_busy_error(exc):
+                    raise QuotaExhausted("Anthropic rate limited or overloaded") from exc
+                raise
+            finally:
+                # Also runs when the client disconnects mid-stream: unknown usage stays fully charged.
+                await asyncio.shield(llm_budget.settle(res, usage, charged=charged))
+            if getattr(final, "stop_reason", None) == "refusal":
+                # A safety refusal is terminal; never retry elsewhere.
+                yield BLOCKED_REPLY
             return
 
         if self.provider == "gemini":
