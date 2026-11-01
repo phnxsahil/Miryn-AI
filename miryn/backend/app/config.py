@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     # LLM
     OPENAI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
+    ANTHROPIC_MODEL: str = "claude-sonnet-5-5"
+    # Lifetime spend ceiling in USD, shared by all workers via the llm_budget table.
+    # 0 (default) means Claude calls are refused: the guard fails closed.
+    ANTHROPIC_TOTAL_BUDGET_USD: float = 0.0
+    # Optional USD-per-million-token override (both must be set). Unset: price comes from the
+    # known-model table in llm_budget.py, and an unknown model is refused.
+    ANTHROPIC_INPUT_USD_PER_MTOK: Optional[float] = None
+    ANTHROPIC_OUTPUT_USD_PER_MTOK: Optional[float] = None
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-3.5-flash"
     GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
