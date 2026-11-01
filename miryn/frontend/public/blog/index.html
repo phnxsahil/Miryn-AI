@@ -260,6 +260,16 @@
       text-decoration: underline;
       text-underline-offset: 3px;
     }
+
+    @media (max-width: 520px) {
+      header { height: 60px; padding: 0 16px; }
+      .nav-brand { font-size: 15px; gap: 8px; }
+      .nav-brand img { width: 26px; height: 26px; }
+      .nav-brand span { white-space: nowrap; }
+      .nav-actions { gap: 10px; }
+      .back-btn { font-size: 12px; white-space: nowrap; }
+      .cta-btn { padding: 7px 12px; font-size: 12px; white-space: nowrap; }
+    }
   </style>
 </head>
 <body>
@@ -282,6 +292,28 @@
     </div>
 
     <div class="article-grid">
+      <!-- Version Log -->
+      <a href="./changelog.html" class="card">
+        <div class="card-banner" style="background:linear-gradient(135deg,#151515 0%,#241a08 55%,#3a2a10 100%);display:flex;align-items:center;justify-content:center;">
+          <span style="font-family:'Fragment Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#f59e0b;border:1px solid rgba(245,158,11,0.4);border-radius:999px;padding:8px 16px;">Version Log</span>
+        </div>
+        <div class="card-body">
+          <div class="card-meta">
+            <span class="card-tag" style="color:#f59e0b;border-color:rgba(245,158,11,0.3)">What's New</span>
+            <span>Updated Nov 1, 2026</span>
+          </div>
+          <h2 class="card-title">What's New in Miryn: The Version Log</h2>
+          <p class="card-excerpt">A running log of what changed and when: memory reliability, corrections with an audit trail, timestamp and sign-in fixes, the landing redesign, and the memory ranking model.</p>
+          <div class="card-footer">
+            <div class="author-info">
+              <img src="../assets/0O5v3itGAnPaIlNYp2Dtalj5s.png" alt="Sahil Sharma">
+              <span>Sahil Sharma</span>
+            </div>
+            <span class="read-more">Read the log &rarr;</span>
+          </div>
+        </div>
+      </a>
+
       <!-- Article 1: Mental Health -->
       <a href="./persistent-memory-human-ai-collaboration.html" class="card">
         <img src="../assets/8QSV8713iAwFaGT6PSn3muGjb0.webp" alt="Mental Health" class="card-banner">
