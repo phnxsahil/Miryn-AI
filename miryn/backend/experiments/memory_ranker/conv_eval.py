@@ -93,7 +93,9 @@ class Runner:
                 r = await self.client.messages.create(model=model, max_tokens=max_tokens, messages=[{"role": "user", "content": user}], **kw)
                 text = "".join(b.text for b in r.content if getattr(b, "type", "") == "text")
                 self.last_stop = getattr(r, "stop_reason", None)
-                u_in, u_out = r.usage.input_tokens, r.usage.output_tokens
+                us = r.usage
+                u_in = (us.input_tokens or 0) + int(1.25 * (getattr(us, "cache_creation_input_tokens", 0) or 0)) + (getattr(us, "cache_read_input_tokens", 0) or 0)
+                u_out = us.output_tokens or 0   # includes any thinking tokens
         except BaseException as e:
             self.ledger.mark_ambiguous(cid, repr(e)); print("call failed, counted at worst case:", repr(e)[:120], file=sys.stderr); return None
         pi, po = price(model)
@@ -122,7 +124,7 @@ async def run(args):
     ledger = Ledger(args.ledger, float(os.environ.get("EXPERIMENT_TOTAL_CAP_USD", "0")), run_id=args.campaign, run_cap_usd=args.run_cap)  # campaign id is stable across invocations, so the cap cannot reset per process
     client = None
     if not args.mock:
-        from anthropic import AsyncAnthropic; client = AsyncAnthropic()
+        from anthropic import AsyncAnthropic; client = AsyncAnthropic(max_retries=0)  # SDK auto-retries would spend extra requests under ONE reservation
     R = Runner(ledger, client, args.mock)
     sem = asyncio.Semaphore(3)
     out = []
