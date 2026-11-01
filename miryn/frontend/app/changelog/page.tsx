@@ -34,7 +34,7 @@ const entries: Entry[] = [
     points: [
       "New landing design with light and dark themes, landscape illustrations, themed legal pages and a consistent wordmark.",
       "India-focused Terms and Privacy rewrite: plain-language terms, public privacy and grievance contact.",
-      "Privacy-limited analytics for public pages only (no chat content tracked), with a private dashboard locked to the owner; the owner's first dashboard sign-in is still being verified.",
+      "Added privacy-limited public-page analytics collection; no chat content is tracked.",
       "Improved filtering of recall-style questions and hypotheticals (\"what do you remember about...?\", Hinglish \"kya ...?\") so they are far less likely to be stored as memories, while facts embedded in them are still kept. Coverage keeps widening; unusual phrasings can still slip through.",
       "Corrections get a typed path: when you tell Miryn something changed (\"actually I moved to Bangalore\"), a supersession engine links the new fact to the old one and keeps an encrypted audit trail. The engine ships in production behind a feature flag, still off by default while validation finishes.",
       "Conversation-list timestamps now carry an explicit UTC offset, so chats no longer slide into \"Yesterday\" around local midnight.",
