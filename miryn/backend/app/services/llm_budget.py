@@ -1,4 +1,8 @@
-"""Persistent, shared spend ceiling for paid LLM calls.
+"""Persistent, shared spend ceiling for paid LLM calls made by Miryn's own code.
+
+Scope: this ledger sees only calls routed through LLMService in this deployment's
+database. It cannot see other uses of the same Anthropic key or account; set a
+spend limit in the Anthropic console as the account-wide stop.
 
 Every API worker, Celery worker and restart shares one row in the database, so
 the ceiling holds across processes. A call first RESERVES its worst-case cost
@@ -105,8 +109,8 @@ class Reservation:
 
 
 def _reserve_sync(est: int) -> None:
-    cap = usd_to_micro(settings.ANTHROPIC_TOTAL_BUDGET_USD)
-    if cap <= 0:
+    cap = usd_to_micro(settings.ANTHROPIC_TOTAL_BUDGET_USD) - usd_to_micro(settings.ANTHROPIC_PRIOR_SPEND_USD)
+    if usd_to_micro(settings.ANTHROPIC_TOTAL_BUDGET_USD) <= 0 or cap <= 0:
         raise BudgetUnavailable("ANTHROPIC_TOTAL_BUDGET_USD is not set")
     engine = _engine()
     if engine is None:
