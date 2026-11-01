@@ -19,10 +19,19 @@ type Entry = {
 
 const entries: Entry[] = [
   {
+    version: "v0.8.3",
+    date: "November 2, 2026",
+    title: "Recent chat no longer crowds out saved memories",
+    live: true,
+    points: [
+      "Fixed a memory-recall edge case: when a conversation had several short recent messages, they could fill every slot of the context sent to the model and no saved memory was included. Recent messages still come first, but up to 2 of the 5 slots are now kept for saved memories when relevant ones exist.",
+      "The number of reserved slots is an engineering judgment call, not a measured quality improvement. Covered by offline tests that check the slot logic only; they do not measure answer quality.",
+    ],
+  },
+  {
     version: "v0.8.2",
     date: "November 2, 2026",
     title: "Claude adapter merged, not enabled",
-    live: true,
     points: [
       "The code that lets Miryn use Claude as a chat model is now merged. It is not switched on: no Claude key or settings have been added, so nothing is sent to Claude.",
       "Before any Claude call, the code checks a spend limit and sets aside that call's maximum possible cost. With no limit configured, calls are refused. This is a safeguard in our code, not a guarantee from the billing provider.",
