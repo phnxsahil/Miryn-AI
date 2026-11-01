@@ -156,3 +156,43 @@ def test_non_hybrid_strategies_return_raw_candidates(monkeypatch):
     assert _ids(asyncio.run(ml.retrieve_context("u", "q", strategy="semantic"))) == ["s"]
     assert _ids(asyncio.run(ml.retrieve_context("u", "q", strategy="temporal"))) == ["t"]
     assert _ids(asyncio.run(ml.retrieve_context("u", "q", strategy="importance"))) == ["i"]
+
+
+def _many(monkeypatch, limit, n_t=8, persisted=("f1", "f2", "f3")):
+    transient = [_msg(f"hi{i}", text="ok") for i in range(n_t)]
+    sem = [_msg(p, days=3, sim=0.9 - i * 0.01) for i, p in enumerate(persisted)]
+    ml = _layer(monkeypatch, transient=transient, semantic=sem)
+    return _ids(asyncio.run(ml.retrieve_context("u", "q", limit=limit)))
+
+
+def test_limit_zero_returns_nothing(monkeypatch):
+    assert _many(monkeypatch, 0) == []
+
+
+def test_limit_one_keeps_newest_transient_not_persisted(monkeypatch):
+    assert _many(monkeypatch, 1) == ["hi7"]
+
+
+def test_limit_two_and_three_reserve_at_most_half(monkeypatch):
+    assert _many(monkeypatch, 2) == ["hi7", "f1"]
+    assert _many(monkeypatch, 3) == ["hi6", "hi7", "f1"]
+    assert _many(monkeypatch, 5) == ["hi5", "hi6", "hi7", "f1", "f2"]
+
+
+def test_persisted_duplicate_of_transient_does_not_use_a_reserved_slot(monkeypatch):
+    transient = [_msg(f"hi{i}", text="ok") for i in range(8)]
+    # hi7 is also returned by the semantic search: it must not count as a persisted candidate
+    sem = [_msg("hi7", sim=0.95), _msg("f1", days=3, sim=0.9)]
+    ml = _layer(monkeypatch, transient=transient, semantic=sem)
+    out = _ids(asyncio.run(ml.retrieve_context("u", "q", limit=5)))
+    assert out.count("hi7") == 1 and out[-1] == "f1" and len(out) == 5
+    assert out == ["hi4", "hi5", "hi6", "hi7", "f1"]
+
+
+def test_id_present_in_both_lists_is_never_duplicated(monkeypatch):
+    transient = [_msg(f"hi{i}", text="ok") for i in range(8)]
+    sem = [_msg("hi0", days=3, sim=0.95)]   # old transient message also persisted-ranked
+    ml = _layer(monkeypatch, transient=transient, semantic=sem)
+    out = _ids(asyncio.run(ml.retrieve_context("u", "q", limit=5)))
+    # transient and persisted ids do not overlap in practice (transient ids are content hashes); this pins no-duplication
+    assert out.count("hi0") <= 1 and len(out) == 5
