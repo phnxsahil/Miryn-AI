@@ -48,6 +48,24 @@ Reply B:
 Return ONLY JSON: {{"a_uses_relevant_memory": 0-2, "b_uses_relevant_memory": 0-2, "a_wrong_or_stale_fact": true|false, "b_wrong_or_stale_fact": true|false, "a_natural_tone": 0-2, "b_natural_tone": 0-2, "winner": "A"|"B"|"tie"}}
 Score uses_relevant_memory 0 = ignores it, 2 = uses it naturally. wrong_or_stale_fact = states something that contradicts the listed memories (e.g. an old fact after a newer one replaced it)."""
 
+
+JUDGE_KEYS = ["a_uses_relevant_memory", "b_uses_relevant_memory", "a_wrong_or_stale_fact", "b_wrong_or_stale_fact", "a_natural_tone", "b_natural_tone", "winner"]
+def parse_judge(text, stop_reason=None):
+    """Return the judge dict, or None. Strips ``` fences; rejects truncated output and incomplete or out-of-range JSON."""
+    if stop_reason == "max_tokens" or not text: return None
+    t = text.strip()
+    if t.startswith("```"):
+        t = t.split("\n", 1)[1] if "\n" in t else ""
+        t = t.rsplit("```", 1)[0]
+    try: d = json.loads(t[t.index("{"): t.rindex("}") + 1])
+    except Exception: return None
+    if any(k not in d for k in JUDGE_KEYS) or d["winner"] not in ("A", "B", "tie"): return None
+    for k in JUDGE_KEYS[:2] + JUDGE_KEYS[4:6]:
+        if d[k] not in (0, 1, 2): return None
+    for k in JUDGE_KEYS[2:4]:
+        if not isinstance(d[k], bool): return None
+    return d
+
 def build_case(p, q, ident, svc, rng):
     mem = {m["id"]: m for m in p["memories"]}
     rel = [mem[i] for i in q["relevant"] if i in mem]
@@ -63,6 +81,7 @@ def build_case(p, q, ident, svc, rng):
 class Runner:
     def __init__(self, ledger, client, mock):
         self.ledger, self.client, self.mock = ledger, client, mock
+        self.last_stop = None
     async def call(self, model, system, user, max_tokens):
         cid = self.ledger.reserve(worst(model, system + user, max_tokens), model)   # durable BEFORE the call
         try:
@@ -73,6 +92,7 @@ class Runner:
                 kw = {"system": system} if system else {}
                 r = await self.client.messages.create(model=model, max_tokens=max_tokens, messages=[{"role": "user", "content": user}], **kw)
                 text = "".join(b.text for b in r.content if getattr(b, "type", "") == "text")
+                self.last_stop = getattr(r, "stop_reason", None)
                 u_in, u_out = r.usage.input_tokens, r.usage.output_tokens
         except BaseException as e:
             self.ledger.mark_ambiguous(cid, repr(e)); print("call failed, counted at worst case:", repr(e)[:120], file=sys.stderr); return None
@@ -80,7 +100,12 @@ class Runner:
         self.ledger.settle(cid, (u_in * pi + u_out * po) / 1e6, u_in, u_out)
         return text
 
+REPLIES = HERE / "data" / "replies.jsonl"
+CACHE = {}
 async def run(args):
+    if REPLIES.exists():
+        for l in REPLIES.open():
+            r = json.loads(l); CACHE[r["key"]] = r
     rng = random.Random(args.seed)
     personas = [json.loads(l) for l in open(HERE / "data" / "personas.jsonl")]
     rng.shuffle(personas)
@@ -94,7 +119,7 @@ async def run(args):
         if not qs: continue
         q = rng.choice(qs)
         c = build_case(p, q, IDENT, svc, rng); c.update(pid=p["pid"], q=q["text"], kind=q["kind"]); cases.append(c)
-    ledger = Ledger(args.ledger, float(os.environ.get("EXPERIMENT_TOTAL_CAP_USD", "0")), run_cap_usd=args.run_cap)
+    ledger = Ledger(args.ledger, float(os.environ.get("EXPERIMENT_TOTAL_CAP_USD", "0")), run_id=args.campaign, run_cap_usd=args.run_cap)  # campaign id is stable across invocations, so the cap cannot reset per process
     client = None
     if not args.mock:
         from anthropic import AsyncAnthropic; client = AsyncAnthropic()
@@ -104,16 +129,22 @@ async def run(args):
     async def one(c):
         async with sem:
             try:
-                a = await R.call(REPLY_MODEL, c["sys"], c["bare"], 400)
-                b = await R.call(REPLY_MODEL, c["sys"], c["memory"], 400)
-                if a is None or b is None: return
+                key = f'{c["pid"]}|{c["q"]}|{REPLY_MODEL}'
+                if key in CACHE: a, b = CACHE[key]["bare"], CACHE[key]["memory"]   # reuse paid replies, never repay
+                else:
+                    a = await R.call(REPLY_MODEL, c["sys"], c["bare"], 400)
+                    b = await R.call(REPLY_MODEL, c["sys"], c["memory"], 400)
+                    if a is None or b is None: return
+                    CACHE[key] = {"bare": a, "memory": b}
+                    with REPLIES.open("a") as f: f.write(json.dumps({"key": key, "bare": a, "memory": b}, ensure_ascii=False) + "\n")
                 flip = rng.random() < 0.5
                 A, B = (b, a) if flip else (a, b)
-                j = await R.call(JUDGE_MODEL, "", JUDGE.format(mem=c["mem_text"], q=c["q"], kind=c["kind"], rel=c["rel"], a=A, b=B), 300)
+                j = await R.call(JUDGE_MODEL, "", JUDGE.format(mem=c["mem_text"], q=c["q"], kind=c["kind"], rel=c["rel"], a=A, b=B), 700)
                 if j is None: return
-                try:
-                    s = j.strip(); s = s[s.index("{"): s.rindex("}") + 1]; d = json.loads(s)
-                except Exception: print("unparseable judge (cost counted)", file=sys.stderr); return
+                d = parse_judge(j, R.last_stop)
+                if d is None:
+                    print("unusable judge output (cost counted)", file=sys.stderr)
+                    (HERE / "data" / "judge_raw_failures.txt").open("a").write(repr(j[:600]) + "\n"); return
                 mem_is = "A" if flip else "B"
                 w = d["winner"]; d["memory_won"] = None if w == "tie" else (w == mem_is)
                 d.update(pid=c["pid"], kind=c["kind"], mem_arm=mem_is)
@@ -138,11 +169,12 @@ if __name__ == "__main__":
     ap.add_argument("--cases", type=int, default=6); ap.add_argument("--kinds", default="correction,direct,advice")
     ap.add_argument("--seed", type=int, default=7); ap.add_argument("--run-cap", type=float, default=0.50)
     ap.add_argument("--ledger", default=str(HERE / "data" / "spend_ledger.sqlite")); ap.add_argument("--out", default=str(HERE / "data" / "conv_eval_results.json"))
-    ap.add_argument("--mock", action="store_true")
+    ap.add_argument("--mock", action="store_true"); ap.add_argument("--campaign", default=None, help="REQUIRED for paid runs: stable id; run cap counts ALL invocations with this id")
     a = ap.parse_args()
     if not a.mock:
         if os.environ.get("EXPERIMENT_PAID_RUN_APPROVED") != "yes": sys.exit("refusing paid run: needs EXPERIMENT_PAID_RUN_APPROVED=yes after owner approval")
         if "EXPERIMENT_TOTAL_CAP_USD" not in os.environ: sys.exit("set EXPERIMENT_TOTAL_CAP_USD")
+        if not a.campaign: sys.exit("paid runs need --campaign <stable id>: the run cap spans every invocation of the campaign")
     else:
         os.environ.setdefault("EXPERIMENT_TOTAL_CAP_USD", "1000")
     asyncio.run(run(a))
