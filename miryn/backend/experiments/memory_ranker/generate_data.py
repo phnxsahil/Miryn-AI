@@ -48,16 +48,26 @@ async def one(client, seed, i, state, lock):
         actual = (u.input_tokens * PRICE_IN + u.output_tokens * PRICE_OUT) / 1e6
         async with lock:
             state["last_actual"] = state.get("last_actual", 0.0) + actual
+        CALLS = OUT.with_name('calls.jsonl')
+        def _log(ok, why=''):
+            with CALLS.open('a') as cf:
+                cf.write(json.dumps({'i': i, 'model': MODEL, 'in': u.input_tokens, 'out': u.output_tokens, 'est_usd': actual, 'ok': ok, 'why': why, 'stop': r.stop_reason}) + '\n')
         text = "".join(b.text for b in r.content if getattr(b, "type", "") == "text").strip()
         if text.startswith("```"):
             text = text.strip("`").split("\n", 1)[1].rsplit("```", 1)[0]
-        d = json.loads(text)
+        try:
+            d = json.loads(text)
+        except Exception as e:
+            async with lock:
+                _log(False, repr(e)[:80])
+            raise
         d["seed"] = seed; d["pid"] = f"p{i:03d}"
         async with lock:  # persist immediately so a killed run loses nothing
             with OUT.open("a") as f:
                 f.write(json.dumps(d, ensure_ascii=False) + "\n")
             with OUT.with_suffix(".cost").open("a") as f:
                 f.write(f"{actual}\n")
+            _log(True)
         return d, actual
     except Exception as e:
         print("fail", i, repr(e)[:120], file=sys.stderr)
