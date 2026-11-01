@@ -88,3 +88,32 @@ def test_paid_run_needs_campaign():
     env = dict(os.environ, EXPERIMENT_PAID_RUN_APPROVED="yes", EXPERIMENT_TOTAL_CAP_USD="50")
     p = subprocess.run([sys.executable, os.path.join(os.path.dirname(__file__), "conv_eval.py")], capture_output=True, text=True, env=env)
     assert p.returncode != 0 and "campaign" in (p.stdout + p.stderr)
+
+def test_persisted_caps_reject_silent_raise_and_total_reset():
+    d = tempfile.mkdtemp(); p = d + "/l.sqlite"
+    Ledger(p, 50, run_id="camp", run_cap_usd=0.5)
+    for args in ((100, "camp", 0.5), (50, "camp", 2.0)):          # higher total, higher run cap
+        try: Ledger(p, args[0], run_id=args[1], run_cap_usd=args[2]); assert False
+        except BudgetExceeded: pass
+    Ledger(p, 50, run_id="camp", run_cap_usd=0.5)                  # same caps fine
+    l = Ledger(p, 10, run_id="camp", run_cap_usd=0.2)             # lowering is allowed and persists
+    try: Ledger(p, 50, run_id="camp", run_cap_usd=0.5); assert False
+    except BudgetExceeded: pass
+    Ledger(p, 100, run_id="camp", run_cap_usd=0.5, allow_raise=True)   # explicit authority only
+
+def test_sdk_auto_retries_disabled():
+    for f in ("conv_eval.py", "generate_data.py"):
+        src = open(os.path.join(os.path.dirname(__file__), f)).read()
+        assert "AsyncAnthropic(max_retries=0)" in src, f
+
+class CUsage: input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens = 100, 50, 80, 40
+class CResp: usage = CUsage(); content = [Blk()]; stop_reason = "end_turn"
+class CMsgs:
+    async def create(s, **kw): return CResp()
+class CClient: messages = CMsgs()
+
+def test_cache_usage_counted_conservatively():
+    l = mk(); r = ce.Runner(l, CClient(), False)
+    run(r.call("claude-haiku-5-5", "s", "u", 100))
+    import sqlite3; row = sqlite3.connect(l.path).execute("select in_tok,out_tok from calls").fetchone()
+    assert row == (100 + 100 + 40, 50)       # 80 cache-write tokens counted at 1.25x, cache reads at input price
