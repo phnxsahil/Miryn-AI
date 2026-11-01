@@ -10,7 +10,7 @@ const links = [
   ["Features", "#features"],
   ["FAQ's", "#faq"],
   ["Contact", "#contact"],
-  ["What's New", "/blog/changelog.html"],
+  ["What's New", "/changelog"],
 ] as const;
 
 export default function LandingNav() {
