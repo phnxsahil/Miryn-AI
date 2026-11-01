@@ -293,7 +293,8 @@ Partial reply:
         elif self.provider == "anthropic":
             if not settings.ANTHROPIC_API_KEY:
                 raise ValueError("ANTHROPIC_API_KEY is required when LLM_PROVIDER=anthropic")
-            self.client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+            # max_retries=0: the SDK would otherwise resend a failed request up to 2 more times under ONE budget reservation
+            self.client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY, max_retries=0)
             self.model = settings.ANTHROPIC_MODEL
         elif self.provider == "gemini":
             from google import genai
