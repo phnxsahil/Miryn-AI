@@ -241,3 +241,11 @@ def test_prior_spend_is_deducted_from_cap(monkeypatch, ledger):
     monkeypatch.setattr(settings, "ANTHROPIC_PRIOR_SPEND_USD", 0.02)  # prior exceeds cap
     with pytest.raises(llm_budget.BudgetUnavailable):
         asyncio.run(llm_budget.reserve("m", 0, 1))
+
+
+def test_sdk_auto_retries_are_disabled(monkeypatch):
+    """One reservation must cover exactly one request: the real client is built with no automatic retries."""
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "test-key-not-real")
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "anthropic")
+    monkeypatch.setattr(settings, "ANTHROPIC_MODEL", "claude-test-model")
+    assert LLMService().client.max_retries == 0
