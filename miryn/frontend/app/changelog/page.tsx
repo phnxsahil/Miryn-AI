@@ -19,10 +19,20 @@ type Entry = {
 
 const entries: Entry[] = [
   {
+    version: "v0.8.2",
+    date: "November 2, 2026",
+    title: "Claude adapter merged, not enabled",
+    live: true,
+    points: [
+      "The code that lets Miryn use Claude as its chat model is now merged. It is not switched on: Miryn still runs on its current model, and no one's chats go to Claude.",
+      "Claude calls cannot start without a hard spend limit. Each call reserves its worst-case cost first, and the limit starts at zero.",
+      "Research notes (not a product feature): we tested whether a learned model could rank memories better than today's hand-tuned scoring, using made-up conversations only. The gain over plain semantic matching was small, so nothing is shipping from it.",
+    ],
+  },
+  {
     version: "v0.8.1",
     date: "November 1, 2026",
     title: "What's New version log",
-    live: true,
     points: [
       "Added this What's New page, a single running log of what changed and when, linked from the main navigation.",
     ],
