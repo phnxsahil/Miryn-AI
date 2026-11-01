@@ -1,0 +1,33 @@
+name: Backend offline pytest
+on:
+  pull_request:
+    paths: ['miryn/backend/**', '.github/workflows/backend-pytest.yml']
+  push:
+    branches: [main]
+    paths: ['miryn/backend/**', '.github/workflows/backend-pytest.yml']
+permissions:
+  contents: read
+jobs:
+  offline-pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Offline only: dummy placeholder env, no real keys, no network LLM calls.
+    # Excluded on purpose (NOT covered by this job):
+    #  - tests marked live / live_llm (need a running server or real LLM)
+    #  - tests/test_fact_supersession_db.py (needs `pgserver`, not in requirements.txt)
+    env:
+      SECRET_KEY: ci-placeholder-not-a-secret
+      ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+      DATABASE_URL: sqlite:///./ci.db
+      REDIS_URL: redis://127.0.0.1:9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+          cache-dependency-path: miryn/backend/requirements.txt
+      - run: pip install -r requirements.txt
+        working-directory: miryn/backend
+      - run: pytest -q tests --ignore=tests/test_fact_supersession_db.py -m "not live and not live_llm"
+        working-directory: miryn/backend
