@@ -72,7 +72,7 @@ async def main(n, start=0):
     ledger = Ledger(Path(__file__).parent / "data" / "spend_ledger.sqlite", float(cap),
                     run_cap_usd=float(os.environ.get("EXPERIMENT_RUN_CAP_USD", "0.25")))
     from anthropic import AsyncAnthropic
-    client = AsyncAnthropic()
+    client = AsyncAnthropic(max_retries=0)
     seeds = [SEEDS[i % len(SEEDS)] + (f" (variation {i // len(SEEDS) + 1})" if i >= len(SEEDS) else "") for i in range(start, start + n)]
     sem = asyncio.Semaphore(5)
     async def run(i, s):
