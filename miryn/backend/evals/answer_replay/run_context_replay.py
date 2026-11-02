@@ -91,7 +91,7 @@ def seed_scenario(engine, scenario):
                 if fact.get("created_at"):
                     conn.execute(
                         text(
-                            "UPDATE memory_facts SET created_at = :created "
+                            "UPDATE memory_facts SET created_at = :created, last_seen_at = :created "
                             "WHERE user_id = :user_id AND fact_key = :fact_key"
                         ),
                         {
@@ -107,8 +107,7 @@ def assemble(svc, scenario, facts):
     identity = dict(scenario.get("identity") or {})
     identity.setdefault("preset", "companion")
     system = svc._build_system_prompt(identity)
-    known_facts = [f["content"] for f in facts]
-    context = svc._format_context({"known_facts": known_facts, "memories": scenario.get("memories") or []})
+    context = svc._format_context({"known_facts": facts, "memories": scenario.get("memories") or []})
     return system, context
 
 
@@ -129,13 +128,18 @@ def run(pg):
         seeded_contents = [f["content"] for f in scenario.get("facts") or []]
         visible = [f["content"] for f in facts]
         missing_ctx = [c for c in seeded_contents if not any(c in v for v in visible)]
-        status = "PASS" if not missing_prompt and not missing_ctx else "FAIL"
+        dated = [f for f in scenario.get("facts") or [] if f.get("created_at")]
+        missing_dates = [f"[stated {f['created_at'][:10]}]" for f in dated
+                         if f"[stated {f['created_at'][:10]}]" not in context]
+        status = "PASS" if not missing_prompt and not missing_ctx and not missing_dates else "FAIL"
         failures += 0 if status == "PASS" else 1
         print(f"{status}  {name} (gate OFF: write+retrieval path, {THRESHOLD_NOTE})")
         for s in missing_prompt:
             print(f"  missing in prompt: {s!r}")
         for c in missing_ctx:
             print(f"  missing in retrieved context: {c!r}")
+        for d in missing_dates:
+            print(f"  missing statement date in context: {d}")
         if len(visible) > 1:
             print(f"  INFO retrieval order (importance-first on lexical miss): {visible}")
 

@@ -242,6 +242,7 @@ class FactStore:
                     "memory_tier": "core" if minimum is not None else "episodic",
                     "importance_score": row["importance"],
                     "created_at": row["created_at"],
+                    "last_seen_at": row["last_seen_at"],
                 }
             )
         return result

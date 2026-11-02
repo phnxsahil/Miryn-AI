@@ -39,12 +39,12 @@ Checks per scenario:
 
 Honest boundary: with the gate OFF, conflicting facts BOTH surface, ordered
 importance-first on a lexical miss (reported as INFO, not asserted as
-correct). Known facts reach the prompt as bare strings - `_format_context`
-emits no per-fact timestamps or supersession metadata, so the prompt's
-"most recent statement wins" rule can only draw on whatever chronology the
-conversation itself carries (episodic memories do get `[ts]` prefixes), not
-on fact metadata. Durable correction relies on the supersession gate, which
-stays fail-closed until real-LLM marker reliability is validated.
+correct). Known facts now reach the prompt with a `[stated YYYY-MM-DD]`
+prefix (last_seen_at, falling back to created_at: when the user last/first
+STATED the fact - statement time, not event time), so the prompt's
+"most recent statement wins" rule has per-fact chronology to work with.
+Durable correction still relies on the supersession gate, which stays
+fail-closed until real-LLM marker reliability is validated.
 Answer-level behaviour still needs gated real-model runs.
 
 ```
