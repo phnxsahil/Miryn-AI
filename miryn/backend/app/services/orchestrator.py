@@ -72,7 +72,7 @@ class ConversationOrchestrator:
             "patterns": {},
         }
         try:
-            context["known_facts"] = [fact["content"] for fact in FactStore().list_top(user_id, 8)]
+            context["known_facts"] = [fact["content"] for fact in FactStore().list_top(user_id, 8, query=message)]
         except Exception:
             self.logger.exception("Known-fact retrieval failed for user %s", user_id)
             context["known_facts"] = []

@@ -249,8 +249,31 @@ class FactStore:
     def list_core(self, user_id: str, limit: int = 50) -> list[dict[str, Any]]:
         return self._list(user_id, limit, settings.IMPORTANCE_CORE_THRESHOLD)
 
-    def list_top(self, user_id: str, n: int = 8) -> list[dict[str, Any]]:
-        return self._list(user_id, n)
+    def list_top(self, user_id: str, n: int = 8, query: str | None = None) -> list[dict[str, Any]]:
+        """Return the top facts for a user, optionally re-ranked against a query.
+
+        Without a query this is importance-ordered exactly as before. With a query,
+        a wider candidate set is scored as token-overlap relevance PLUS importance,
+        so a fact that matches the current message ranks above an unrelated one of
+        similar importance, while a highly important fact still beats a weakly
+        relevant one. Relevance is lexical (with prefix-tolerant matching), not
+        semantic: paraphrases and Hinglish-English mixes can miss a relevant fact,
+        in which case ordering falls back to importance.
+        """
+        facts = self._list(user_id, n * 3 if query else n)
+        if not query:
+            return facts
+        query_tokens = _correction_tokens(query)
+        if not query_tokens:
+            return facts[:n]
+
+        def relevance(fact: dict[str, Any]) -> float:
+            fact_tokens = _correction_tokens(str(fact["content"]))
+            hits = sum(1 for token in query_tokens if _tokens_match([token], fact_tokens))
+            return hits / len(query_tokens)
+
+        facts.sort(key=lambda f: relevance(f) + f["importance_score"], reverse=True)
+        return facts[:n]
 
     def create_manual(self, user_id: str, text_value: str) -> dict[str, Any] | None:
         if not has_sql():

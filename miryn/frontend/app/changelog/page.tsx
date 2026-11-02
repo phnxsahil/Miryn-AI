@@ -19,6 +19,18 @@ type Entry = {
 
 const entries: Entry[] = [
   {
+    version: "v0.8.4",
+    date: "November 2, 2026",
+    title: "Recall quality: no hash-noise matches, relevant facts first",
+    live: true,
+    points: [
+      "When Gemini embeddings are unavailable, Miryn stores a deterministic hash placeholder vector. Semantic recall no longer matches against those placeholders, and when the current question itself can only be hash-encoded, semantic recall pauses instead of ranking memories by noise; recall then relies on recency and importance only.",
+      "The facts Miryn keeps in mind while replying are now scored by word-overlap relevance to your current message plus importance, instead of importance alone, so a much more important fact still outranks a weakly relevant one. Word overlap is not semantic understanding: paraphrases and Hinglish-English mixes can miss a relevant fact, and then ordering falls back to importance. This ranking change is a heuristic, not a measured conversation-quality improvement.",
+      "Placeholder vectors already stored are excluded from matching but not re-embedded; a re-embedding pass needs provider calls and has not run.",
+      "Added an offline retrieval evaluation pack (fictional data only) that replays the production ranking rules. On it, hash placeholder vectors and a stand-in for the current compress-by-averaging approach both fail the 0.7 similarity gate on every test query, so semantic recall contributes nothing and answers lean on recency and importance; a native 384-dimension model passes the gate on relevant queries. This is synthetic stand-in evidence, not a measurement of real Gemini vectors or real conversations.",
+    ],
+  },
+  {
     version: "v0.8.3",
     date: "November 2, 2026",
     title: "Memory recall safeguard",

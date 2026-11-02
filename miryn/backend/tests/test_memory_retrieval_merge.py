@@ -35,6 +35,7 @@ class _Cache:
 
 class _Embedder:
     def embed(self, text): return [0.0]
+    def embed_with_source(self, text): return ([0.0], "gemini")
 
 
 def _layer(monkeypatch, transient=(), semantic=(), temporal=(), important=()):

@@ -1,0 +1,10 @@
+{"id": "q1", "query": "what food should I cook for dinner tonight", "relevant": [], "intrusive": ["m14"], "note": "selective quiet recall: generic food question should not drag in a loosely related preference"}
+{"id": "q2", "query": "mere dog ko kya khilau", "relevant": ["m2"], "intrusive": ["m7"], "note": "Hinglish; dog allergy is the useful memory"}
+{"id": "q3", "query": "I'm nervous about tomorrow", "relevant": ["m5"], "intrusive": [], "note": "paraphrase (nervous vs anxious): honest miss is acceptable, fabricated certainty is not"}
+{"id": "q4", "query": "update my profile - I don't work at the startup anymore", "relevant": ["m13"], "intrusive": ["m12"], "note": "correction should supersede the stale job fact"}
+{"id": "q5", "query": "what do you remember about where I work", "relevant": ["m13"], "intrusive": ["m12"], "note": "recall probe: newer correction beats older stale fact"}
+{"id": "q6", "query": "plan a weekend trek", "relevant": ["m4"], "intrusive": [], "note": "preference genuinely useful here"}
+{"id": "q7", "query": "ok", "relevant": [], "intrusive": [], "note": "content-free message: nothing should surface strongly"}
+{"id": "q8", "query": "can I eat this pad thai, does it have peanuts", "relevant": ["m1"], "intrusive": [], "note": "safety-relevant allergy must rank first"}
+{"id": "q9", "query": "help me prepare system design interview", "relevant": ["m11", "m5"], "intrusive": [], "note": "two genuinely relevant memories"}
+{"id": "q10", "query": "visiting my brother this weekend", "relevant": ["m6"], "intrusive": ["m14"], "note": "brother relevant; Delhi street food only loosely related"}
