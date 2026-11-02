@@ -1,0 +1,326 @@
+{
+  "note": "Fictional people only. The stub LLM returns the canned payloads below, so this replay validates the parse -> validate -> link -> audit chain end to end against a real database. It says nothing about whether the real model emits reliable correction markers.",
+  "scenarios": [
+    {
+      "name": "valid date correction supersedes",
+      "messages": [
+        {
+          "text": "I'm training for a triathlon in Goa on December 14",
+          "llm_response": {
+            "facts": [
+              {
+                "fact": "Training for a triathlon in Goa on December 14",
+                "category": "goal",
+                "importance": 0.8,
+                "emotional_weight": 0.3,
+                "corrects": null
+              }
+            ]
+          }
+        },
+        {
+          "text": "Actually the race is January 11, not December 14",
+          "llm_response": {
+            "facts": [
+              {
+                "fact": "Training for a triathlon in Goa on January 11",
+                "category": "goal",
+                "importance": 0.8,
+                "emotional_weight": 0.3,
+                "corrects": {
+                  "entity": "Goa triathlon",
+                  "attribute": "date",
+                  "old_value": "December 14",
+                  "new_value": "January 11",
+                  "polarity_old": "neutral",
+                  "polarity_new": "neutral"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected_active": [
+        "Training for a triathlon in Goa on January 11"
+      ],
+      "expected_superseded": [
+        "Training for a triathlon in Goa on December 14"
+      ]
+    },
+    {
+      "name": "preference correction with polarity flip supersedes",
+      "messages": [
+        {
+          "text": "I love coriander, I put it in everything",
+          "llm_response": {
+            "facts": [
+              {
+                "fact": "User loves coriander",
+                "category": "preference",
+                "importance": 0.7,
+                "emotional_weight": 0.2,
+                "corrects": null
+              }
+            ]
+          }
+        },
+        {
+          "text": "I actually hate coriander now",
+          "llm_response": {
+            "facts": [
+              {
+                "fact": "User hates coriander",
+                "category": "preference",
+                "importance": 0.7,
+                "emotional_weight": 0.2,
+                "corrects": {
+                  "entity": "coriander",
+                  "attribute": "taste",
+                  "old_value": "loves",
+                  "new_value": "hates",
+                  "polarity_old": "positive",
+                  "polarity_new": "negative"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected_active": [
+        "User hates coriander"
+      ],
+      "expected_superseded": [
+        "User loves coriander"
+      ]
+    },
+    {
+      "name": "preference correction without polarity flip fails closed",
+      "messages": [
+        {
+          "text": "I love coriander, I put it in everything",
+          "llm_response": {
+            "facts": [
+              {
+                "fact": "User loves coriander",
+                "category": "preference",
+                "importance": 0.7,
+                "emotional_weight": 0.2,
+                "corrects": null
+              }
+            ]
+          }
+        },
+        {
+          "text": "I actually hate coriander now",
+          "llm_response": {
+            "facts": [
+              {
+                "fact": "User hates coriander",
+                "category": "preference",
+                "importance": 0.7,
+                "emotional_weight": 0.2,
+                "corrects": {
+                  "entity": "coriander",
+                  "attribute": "taste",
+                  "old_value": "loves",
+                  "new_value": "hates"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected_active": [
+        "User loves coriander",
+        "User hates coriander"
+      ],
+      "expected_superseded": []
+    },
+    {
+      "name": "marker missing old_value is dropped at parse",
+      "messages": [
+        {
+          "text": "I'm training for a triathlon in Goa on December 14",
+          "llm_response": {
+            "facts": [
+              {
+                "fact": "Training for a triathlon in Goa on December 14",
+                "category": "goal",
+                "importance": 0.8,
+                "emotional_weight": 0.3,
+                "corrects": null
+              }
+            ]
+          }
+        },
+        {
+          "text": "Actually the race is January 11",
+          "llm_response": {
+            "facts": [
+              {
+                "fact": "Training for a triathlon in Goa on January 11",
+                "category": "goal",
+                "importance": 0.8,
+                "emotional_weight": 0.3,
+                "corrects": {
+                  "entity": "Goa triathlon",
+                  "attribute": "date",
+                  "old_value": "",
+                  "new_value": "January 11"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected_active": [
+        "Training for a triathlon in Goa on December 14",
+        "Training for a triathlon in Goa on January 11"
+      ],
+      "expected_superseded": []
+    },
+    {
+      "name": "identical old and new value is dropped at parse",
+      "messages": [
+        {
+          "text": "I'm training for a triathlon in Goa on December 14",
+          "llm_response": {
+            "facts": [
+              {
+                "fact": "Training for a triathlon in Goa on December 14",
+                "category": "goal",
+                "importance": 0.8,
+                "emotional_weight": 0.3,
+                "corrects": null
+              }
+            ]
+          }
+        },
+        {
+          "text": "The race is December 14",
+          "llm_response": {
+            "facts": [
+              {
+                "fact": "The Goa triathlon is on December 14",
+                "category": "goal",
+                "importance": 0.8,
+                "emotional_weight": 0.3,
+                "corrects": {
+                  "entity": "Goa triathlon",
+                  "attribute": "date",
+                  "old_value": "December 14",
+                  "new_value": "december 14"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected_active": [
+        "Training for a triathlon in Goa on December 14",
+        "The Goa triathlon is on December 14"
+      ],
+      "expected_superseded": []
+    },
+    {
+      "name": "manual memories are never superseded",
+      "setup_facts": [
+        {
+          "fact": "I never want to be contacted about work on Sundays",
+          "category": "preference",
+          "importance": 1.0,
+          "emotional_weight": 0.0,
+          "extractor": "manual"
+        }
+      ],
+      "messages": [
+        {
+          "text": "Actually contact me about work any day now",
+          "llm_response": {
+            "facts": [
+              {
+                "fact": "User is okay with work contact on Sundays",
+                "category": "preference",
+                "importance": 0.7,
+                "emotional_weight": 0.2,
+                "corrects": {
+                  "entity": "work contact Sundays",
+                  "attribute": "availability",
+                  "old_value": "never want to be contacted",
+                  "new_value": "okay with contact",
+                  "polarity_old": "negative",
+                  "polarity_new": "positive"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected_active": [
+        "I never want to be contacted about work on Sundays",
+        "User is okay with work contact on Sundays"
+      ],
+      "expected_superseded": []
+    },
+    {
+      "name": "multiple eligible candidates fail closed",
+      "messages": [
+        {
+          "text": "I'm training for a triathlon in Goa on December 14",
+          "llm_response": {
+            "facts": [
+              {
+                "fact": "Training for a triathlon in Goa on December 14",
+                "category": "goal",
+                "importance": 0.8,
+                "emotional_weight": 0.3,
+                "corrects": null
+              }
+            ]
+          }
+        },
+        {
+          "text": "I told my coach the Goa triathlon is December 14",
+          "llm_response": {
+            "facts": [
+              {
+                "fact": "Told coach the Goa triathlon is December 14",
+                "category": "goal",
+                "importance": 0.7,
+                "emotional_weight": 0.2,
+                "corrects": null
+              }
+            ]
+          }
+        },
+        {
+          "text": "Actually the race is January 11, not December 14",
+          "llm_response": {
+            "facts": [
+              {
+                "fact": "Training for a triathlon in Goa on January 11",
+                "category": "goal",
+                "importance": 0.8,
+                "emotional_weight": 0.3,
+                "corrects": {
+                  "entity": "Goa triathlon",
+                  "attribute": "date",
+                  "old_value": "December 14",
+                  "new_value": "January 11",
+                  "polarity_old": "neutral",
+                  "polarity_new": "neutral"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expected_active": [
+        "Training for a triathlon in Goa on December 14",
+        "Told coach the Goa triathlon is December 14",
+        "Training for a triathlon in Goa on January 11"
+      ],
+      "expected_superseded": []
+    }
+  ]
+}
