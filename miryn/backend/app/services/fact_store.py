@@ -114,13 +114,12 @@ def _enforce_correction_order(rows: list[dict[str, Any]]) -> list[dict[str, Any]
     unchanged. No stored importance, status, or supersession row is touched:
     durable supersession stays exclusively behind MEMORY_SUPERSESSION_ENABLED.
 
-    Scope limit: enforcement applies within the retrieved page (the SQL
-    LIMIT), so a correction ranked outside that page cannot pull ahead of a
-    stale fact inside it.
+    Callers fetch every marker-bearing active fact before enforcing, so a
+    correction outside the importance page still constrains ordering; the
+    page limit applies afterwards.
     """
     if not any(isinstance(row.get("corrects"), dict) for row in rows):
         return rows
-    ordered = list(rows)
     candidates = [
         {
             "id": row.get("id"),
@@ -131,6 +130,10 @@ def _enforce_correction_order(rows: list[dict[str, Any]]) -> list[dict[str, Any]
         }
         for row in rows
     ]
+    # Collect every validated constraint first: correcting fact before the
+    # fact it corrects. A correction is always newer than its target (the
+    # candidate age check), so the constraint graph is acyclic.
+    constraints: list[tuple[Any, Any]] = []
     for row in rows:
         marker = row.get("corrects")
         if not isinstance(marker, dict):
@@ -141,12 +144,23 @@ def _enforce_correction_order(rows: list[dict[str, Any]]) -> list[dict[str, Any]
             {"text": row.get("content"), "category": row.get("category"), "created_at": row.get("created_at")},
             marker,
         )
-        if chosen is None:
-            continue
-        new_pos = next(i for i, r in enumerate(ordered) if r.get("id") == row.get("id"))
-        old_pos = next(i for i, r in enumerate(ordered) if r.get("id") == chosen["id"])
-        if new_pos > old_pos:
-            ordered.insert(old_pos, ordered.pop(new_pos))
+        if chosen is not None:
+            constraints.append((row.get("id"), chosen["id"]))
+    ordered = list(rows)
+    # Fixpoint pass: move each violated correcting fact ahead of its target.
+    # Acyclic constraints guarantee convergence; the pass cap only guards
+    # against inconsistent input, leaving a best-effort order rather than
+    # looping or dropping rows.
+    for _ in range(len(ordered) + 1):
+        positions = {row.get("id"): i for i, row in enumerate(ordered)}
+        moved = False
+        for new_id, old_id in constraints:
+            if positions[new_id] > positions[old_id]:
+                ordered.insert(positions[old_id], ordered.pop(positions[new_id]))
+                positions = {row.get("id"): i for i, row in enumerate(ordered)}
+                moved = True
+        if not moved:
+            break
     return ordered
 
 
@@ -293,6 +307,24 @@ class FactStore:
                 ),
                 params,
             ).mappings().all()
+            if settings.MEMORY_CORRECTION_ORDERING_ENABLED:
+                # Containment for the page bound: marker-bearing facts are
+                # rare, so fetch all of them even when they fall outside the
+                # importance page, then enforce ordering and apply the limit
+                # afterwards. A validated correction is a current-truth
+                # claim, so it joins the list even below the tier minimum.
+                extra = session.execute(
+                    text(
+                        """
+                        SELECT id, fact, category, importance, created_at, last_seen_at, extractor, corrects
+                        FROM memory_facts
+                        WHERE user_id = :user_id AND status = 'active' AND corrects IS NOT NULL
+                        """
+                    ),
+                    {"user_id": user_id},
+                ).mappings().all()
+                seen = {str(row["id"]) for row in rows}
+                rows = list(rows) + [row for row in extra if str(row["id"]) not in seen]
         result = []
         for row in rows:
             try:
@@ -326,7 +358,9 @@ class FactStore:
                     "corrects": corrects,
                 }
             )
-        return _enforce_correction_order(result)
+        if not settings.MEMORY_CORRECTION_ORDERING_ENABLED:
+            return result[:limit]
+        return _enforce_correction_order(result)[:limit]
 
     def list_core(self, user_id: str, limit: int = 50) -> list[dict[str, Any]]:
         return [_public_fact(row) for row in self._list(user_id, limit, settings.IMPORTANCE_CORE_THRESHOLD)]
