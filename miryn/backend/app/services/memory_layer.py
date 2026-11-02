@@ -138,10 +138,16 @@ class MemoryLayer:
             except Exception:
                 pass
 
-        query_embedding = await asyncio.to_thread(self.embedder.embed, query)
+        query_embedding, query_embedding_source = await asyncio.to_thread(self.embedder.embed_with_source, query)
 
         transient_results = self._transient_search(user_id, conversation_id, limit=10)
-        semantic_results = self._semantic_search(user_id, query_embedding, limit=15, sql_session=sql_session)
+        if query_embedding_source == "hash_fallback":
+            # A hash pseudo-vector ranks stored vectors by hash noise, not meaning:
+            # skip the semantic leg rather than inject misleading matches.
+            self.logger.info("Skipping semantic memory search: query embedding is a hash fallback")
+            semantic_results = []
+        else:
+            semantic_results = self._semantic_search(user_id, query_embedding, limit=15, sql_session=sql_session)
         temporal_results = self._temporal_search(user_id, days=self.episodic_days, limit=15, sql_session=sql_session)
         important_results = self._importance_search(user_id, threshold=0.7, limit=15, sql_session=sql_session)
 
@@ -217,6 +223,7 @@ class MemoryLayer:
                         FROM messages
                         WHERE user_id = :user_id
                           AND memory_tier = 'core'
+                          AND embedding_source <> 'hash_fallback'
                           AND (delete_at IS NULL OR delete_at > NOW())
                           AND 1 - (embedding <=> CAST(:query_embedding AS vector)) > :match_threshold
                         ORDER BY embedding <=> CAST(:query_embedding AS vector)
@@ -241,6 +248,7 @@ class MemoryLayer:
                         FROM messages
                         WHERE user_id = :user_id
                           AND memory_tier = 'core'
+                          AND embedding_source <> 'hash_fallback'
                           AND (delete_at IS NULL OR delete_at > NOW())
                           AND 1 - (embedding <=> CAST(:query_embedding AS vector)) > :match_threshold
                         ORDER BY embedding <=> CAST(:query_embedding AS vector)
