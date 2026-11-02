@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     # confirms the LLM correction marker is reliable; while off, no
     # existing memory is ever auto-hidden.
     MEMORY_SUPERSESSION_ENABLED: bool = False
+    # Read-path correction ordering: a validated explicit correction sorts
+    # ahead of the fact it corrects. Separate from the supersession gate -
+    # no status flip, no importance mutation, no supersession row. Setting it
+    # back to False restores pure importance ordering with no data change.
+    MEMORY_CORRECTION_ORDERING_ENABLED: bool = True
     IMPORTANCE_MAX_FACTS_PER_MESSAGE: int = 3
     SANCTUARY_MIN_USER_MESSAGES: int = 10
 
