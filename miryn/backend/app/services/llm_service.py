@@ -45,7 +45,7 @@ _quota_dead_until = 0.0
 _model_quota_dead_until: dict[str, float] = {}
 CHAT_MAX_OUTPUT_TOKENS = 2048
 CHAT_CONTINUATION_MAX_TOKENS = 256
-_SENTENCE_END_RE = re.compile(r"[.!?…][\"'’»)\]}]*\s*$")
+_SENTENCE_END_RE = re.compile(r"[.!?â¦][\"'âÂ»)\]}]*\s*$")
 
 BANNED_PHRASES = [
     "it makes complete sense",
@@ -803,7 +803,7 @@ Speak naturally, like a thoughtful, sharp friend who truly knows them. Avoid sou
         return prompt
 
     def _build_user_prompt(self, context_text: str, user_message: str) -> str:
-        """Shared user prompt — no duplication between chat() and stream_chat()."""
+        """Shared user prompt â no duplication between chat() and stream_chat()."""
         parts = []
         if context_text:
             parts.append(context_text)
@@ -818,6 +818,23 @@ Formatting requirements:
 - For medical/health questions, include a brief safety note and suggest professional help.""")
         return "\n\n".join(parts)
 
+    @staticmethod
+    def _format_fact_line(fact) -> str:
+        """Format one known fact for the prompt.
+
+        Dict rows from FactStore.list_top carry created_at/last_seen_at: the
+        date the user first/last stated the fact. Prefixing that date lets the
+        "most recent statement wins" rule work across sessions; the date is
+        statement time, not event time. Plain strings pass through unchanged.
+        """
+        if not isinstance(fact, dict):
+            return f"- {fact}"
+        content = fact.get("content", "")
+        ts = fact.get("last_seen_at") or fact.get("created_at")
+        if hasattr(ts, "date"):
+            ts = ts.date()
+        return f"- [stated {ts}] {content}" if ts else f"- {content}"
+
     def _format_context(self, context: dict) -> str:
         memories = context.get("memories", [])
         known_facts = context.get("known_facts", [])
@@ -825,7 +842,7 @@ Formatting requirements:
         context_parts = []
         if known_facts:
             context_parts.append("What you know about this user (stable facts, use naturally, do not recite):")
-            context_parts.extend(f"- {fact}" for fact in known_facts[:8])
+            context_parts.extend(self._format_fact_line(fact) for fact in known_facts[:8])
         if memories:
             context_parts.append("Relevant past conversations:")
             for mem in memories[:5]:
