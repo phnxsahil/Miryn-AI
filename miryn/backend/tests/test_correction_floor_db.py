@@ -13,8 +13,9 @@ real migration files, like test_fact_supersession_db.py.
 import uuid
 from datetime import datetime, timedelta
 
-import pgserver
 import pytest
+
+pgserver = pytest.importorskip("pgserver")
 from cryptography.fernet import Fernet
 from sqlalchemy import text
 
