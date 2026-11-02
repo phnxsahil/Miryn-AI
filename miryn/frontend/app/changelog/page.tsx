@@ -21,11 +21,11 @@ const entries: Entry[] = [
   {
     version: "v0.8.3",
     date: "November 2, 2026",
-    title: "Recent chat no longer crowds out saved memories",
+    title: "Memory recall safeguard",
     live: true,
     points: [
-      "Fixed a memory-recall edge case: when a conversation had several short recent messages, they could fill every slot of the context sent to the model and no saved memory was included. Recent messages still come first, but up to 2 of the 5 slots are now kept for saved memories when relevant ones exist.",
-      "The number of reserved slots is an engineering judgment call, not a measured quality improvement. Covered by offline tests that check the slot logic only; they do not measure answer quality.",
+      "Added a safeguard to memory recall: if a very large share of recent-conversation context ever filled all 5 context slots, up to 2 slots stay reserved for saved memories. In today's chat paths those recent-message entries are not written this way, so this is protection against a possible edge case, not a fix for a problem we saw in real use.",
+      "The number of reserved slots is an engineering judgment call, not a measured quality improvement. It is covered by offline tests that check the slot logic only; they do not measure answer quality.",
     ],
   },
   {
