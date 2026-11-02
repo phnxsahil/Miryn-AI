@@ -105,7 +105,10 @@ def export_user_data(
     limit = _clamp_limit(limit)
     identity = identity_engine.get_identity(user_id)
     memories = _get_all_memories(user_id, limit, offset)
-    facts = FactStore().list_top(user_id, limit)
+    # The export serves the account owner their own data, so it includes
+    # the decrypted correction markers (entity/old/new values) that drive
+    # correction ordering - same sensitivity class as the fact texts above.
+    facts = FactStore().list_top(user_id, limit, include_markers=True)
     return JSONResponse(
         content=jsonable_encoder({
             "identity": identity,

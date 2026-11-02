@@ -36,7 +36,11 @@ MSG1 = str(uuid.uuid4())
 MSG2 = str(uuid.uuid4())
 
 USERS_STUB = "CREATE TABLE IF NOT EXISTS users (id UUID PRIMARY KEY DEFAULT gen_random_uuid());"
-MIGRATIONS = ["migrations/011_memory_facts.sql", "migrations/013_fact_supersession.sql"]
+MIGRATIONS = [
+    "migrations/011_memory_facts.sql",
+    "migrations/013_fact_supersession.sql",
+    "migrations/015_fact_corrects_marker.sql",
+]
 
 
 @pytest.fixture(scope="module")

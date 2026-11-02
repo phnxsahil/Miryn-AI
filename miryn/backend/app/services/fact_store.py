@@ -103,6 +103,75 @@ def select_supersede_candidate(
     return eligible[0]
 
 
+def _enforce_correction_order(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Order a validated explicit correction ahead of the fact it corrects.
+
+    Read-path only: reuses select_supersede_candidate's fail-closed evidence
+    bar. The marker comes solely from the LLM extractor (the heuristic scorer
+    never emits one) and must carry entity, attribute, old_value and
+    new_value, with old != new and a polarity flip for preferences, and match
+    exactly one older active non-manual candidate; otherwise ordering is left
+    unchanged. No stored importance, status, or supersession row is touched:
+    durable supersession stays exclusively behind MEMORY_SUPERSESSION_ENABLED.
+
+    Callers fetch every marker-bearing active fact before enforcing, so a
+    correction outside the importance page still constrains ordering; the
+    page limit applies afterwards.
+    """
+    if not any(isinstance(row.get("corrects"), dict) for row in rows):
+        return rows
+    candidates = [
+        {
+            "id": row.get("id"),
+            "text": row.get("content"),
+            "category": row.get("category"),
+            "extractor": row.get("extractor"),
+            "created_at": row.get("created_at"),
+        }
+        for row in rows
+    ]
+    # Collect every validated constraint first: correcting fact before the
+    # fact it corrects. A correction is always newer than its target (the
+    # candidate age check), so the constraint graph is acyclic.
+    constraints: list[tuple[Any, Any]] = []
+    for row in rows:
+        marker = row.get("corrects")
+        if not isinstance(marker, dict):
+            continue
+        pool = [candidate for candidate in candidates if candidate["id"] != row.get("id")]
+        chosen = select_supersede_candidate(
+            pool,
+            {"text": row.get("content"), "category": row.get("category"), "created_at": row.get("created_at")},
+            marker,
+        )
+        if chosen is not None:
+            constraints.append((row.get("id"), chosen["id"]))
+    ordered = list(rows)
+    # Fixpoint pass: move each violated correcting fact ahead of its target.
+    # Acyclic constraints guarantee convergence; the pass cap only guards
+    # against inconsistent input, leaving a best-effort order rather than
+    # looping or dropping rows.
+    for _ in range(len(ordered) + 1):
+        positions = {row.get("id"): i for i, row in enumerate(ordered)}
+        moved = False
+        for new_id, old_id in constraints:
+            if positions[new_id] > positions[old_id]:
+                ordered.insert(positions[old_id], ordered.pop(positions[new_id]))
+                positions = {row.get("id"): i for i, row in enumerate(ordered)}
+                moved = True
+        if not moved:
+            break
+    return ordered
+
+
+_INTERNAL_FACT_KEYS = ("category", "extractor", "corrects")
+
+
+def _public_fact(row: dict[str, Any], include_markers: bool = False) -> dict[str, Any]:
+    hidden = _INTERNAL_FACT_KEYS[:-1] if include_markers else _INTERNAL_FACT_KEYS
+    return {key: value for key, value in row.items() if key not in hidden}
+
+
 def bumped_importance(old: float, new: float) -> float:
     base = max(old, new)
     if base >= 1.0:
@@ -134,15 +203,24 @@ class FactStore:
             return
         with get_sql_session() as session:
             for fact, encrypted_fact in saved:
+                encrypted_corrects = None
+                if getattr(fact, "corrects", None):
+                    # Ordering-only metadata, encrypted at rest like the
+                    # supersession audit payload. If encryption is
+                    # unavailable the fact is still stored; only the
+                    # ordering hint is dropped (and logged).
+                    encrypted_corrects = encrypt_text(json.dumps(fact.corrects))
+                    if not encrypted_corrects:
+                        logger.error("correction marker dropped: encryption unavailable")
                 session.execute(
                     text(
                         """
                         INSERT INTO memory_facts (
                             user_id, fact, fact_key, category, importance, emotional_weight,
-                            source_message_id, extractor
+                            source_message_id, extractor, corrects
                         ) VALUES (
                             :user_id, :fact, :fact_key, :category, :importance, :emotional_weight,
-                            :source_message_id, :extractor
+                            :source_message_id, :extractor, :corrects
                         )
                         ON CONFLICT (user_id, fact_key) WHERE status = 'active'
                         DO UPDATE SET
@@ -154,6 +232,10 @@ class FactStore:
                                     + (1.0 - GREATEST(memory_facts.importance, EXCLUDED.importance)) * 0.15)
                             END,
                             emotional_weight = GREATEST(memory_facts.emotional_weight, EXCLUDED.emotional_weight),
+                            -- Keep the first stored marker unless the new write
+                            -- carries one (worker refinement can add it after a
+                            -- heuristic insert of the same text).
+                            corrects = COALESCE(EXCLUDED.corrects, memory_facts.corrects),
                             last_seen_at = NOW(),
                             updated_at = NOW()
                         """
@@ -167,6 +249,7 @@ class FactStore:
                         "emotional_weight": fact.emotional_weight,
                         "source_message_id": source_message_id,
                         "extractor": fact.extractor,
+                        "corrects": encrypted_corrects,
                     },
                 )
 
@@ -216,7 +299,7 @@ class FactStore:
             rows = session.execute(
                 text(
                     f"""
-                    SELECT id, fact, importance, created_at, last_seen_at, extractor
+                    SELECT id, fact, category, importance, created_at, last_seen_at, extractor, corrects
                     FROM memory_facts
                     WHERE user_id = :user_id AND status = 'active' {where_importance}
                     ORDER BY importance DESC, mention_count DESC, last_seen_at DESC
@@ -225,6 +308,28 @@ class FactStore:
                 ),
                 params,
             ).mappings().all()
+            if settings.MEMORY_CORRECTION_ORDERING_ENABLED:
+                # Containment for the page bound: marker-bearing facts are
+                # rare, so fetch all of them even when they fall outside the
+                # importance page, then enforce ordering and apply the limit
+                # afterwards. A validated correction is a current-truth
+                # claim, so it joins the list even below the tier minimum.
+                extra = session.execute(
+                    text(
+                        # Tenant-scoped like the main query; bounded because a
+                        # marker-carrying set is expected to be small.
+                        """
+                        SELECT id, fact, category, importance, created_at, last_seen_at, extractor, corrects
+                        FROM memory_facts
+                        WHERE user_id = :user_id AND status = 'active' AND corrects IS NOT NULL
+                        ORDER BY created_at DESC
+                        LIMIT 200
+                        """
+                    ),
+                    {"user_id": user_id},
+                ).mappings().all()
+                seen = {str(row["id"]) for row in rows}
+                rows = list(rows) + [row for row in extra if str(row["id"]) not in seen]
         result = []
         for row in rows:
             try:
@@ -233,6 +338,16 @@ class FactStore:
                 continue
             if content is None:
                 continue
+            corrects = None
+            raw_corrects = row["corrects"]
+            if raw_corrects is not None:
+                try:
+                    payload = decrypt_text(raw_corrects)
+                    parsed = json.loads(payload) if payload else None
+                    if isinstance(parsed, dict):
+                        corrects = parsed
+                except Exception:
+                    corrects = None
             if row["extractor"] == "heuristic":
                 content = clean_fact_text(content)
             result.append(
@@ -243,14 +358,22 @@ class FactStore:
                     "importance_score": row["importance"],
                     "created_at": row["created_at"],
                     "last_seen_at": row["last_seen_at"],
+                    "category": row["category"],
+                    "extractor": row["extractor"],
+                    "corrects": corrects,
                 }
             )
-        return result
+        if not settings.MEMORY_CORRECTION_ORDERING_ENABLED:
+            return result[:limit]
+        return _enforce_correction_order(result)[:limit]
 
-    def list_core(self, user_id: str, limit: int = 50) -> list[dict[str, Any]]:
-        return self._list(user_id, limit, settings.IMPORTANCE_CORE_THRESHOLD)
+    def list_core(self, user_id: str, limit: int = 50, include_markers: bool = False) -> list[dict[str, Any]]:
+        return [
+            _public_fact(row, include_markers)
+            for row in self._list(user_id, limit, settings.IMPORTANCE_CORE_THRESHOLD)
+        ]
 
-    def list_top(self, user_id: str, n: int = 8, query: str | None = None) -> list[dict[str, Any]]:
+    def list_top(self, user_id: str, n: int = 8, query: str | None = None, include_markers: bool = False) -> list[dict[str, Any]]:
         """Return the top facts for a user, optionally re-ranked against a query.
 
         Without a query this is importance-ordered exactly as before. With a query,
@@ -263,7 +386,7 @@ class FactStore:
         """
         facts = self._list(user_id, n * 3 if query else n)
         if not query:
-            return facts
+            return [_public_fact(row, include_markers) for row in facts]
         query_tokens = _correction_tokens(query)
         if not query_tokens:
             return facts[:n]
@@ -274,7 +397,10 @@ class FactStore:
             return hits / len(query_tokens)
 
         facts.sort(key=lambda f: relevance(f) + f["importance_score"], reverse=True)
-        return facts[:n]
+        # The relevance re-sort can undo correction ordering, so enforce again.
+        if settings.MEMORY_CORRECTION_ORDERING_ENABLED:
+            facts = _enforce_correction_order(facts)
+        return [_public_fact(row, include_markers) for row in facts[:n]]
 
     def create_manual(self, user_id: str, text_value: str) -> dict[str, Any] | None:
         if not has_sql():
