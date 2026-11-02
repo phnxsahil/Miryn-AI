@@ -822,10 +822,15 @@ Formatting requirements:
     def _format_fact_line(fact) -> str:
         """Format one known fact for the prompt.
 
-        Dict rows from FactStore.list_top carry created_at/last_seen_at: the
-        date the user first/last stated the fact. Prefixing that date lets the
-        "most recent statement wins" rule work across sessions; the date is
-        statement time, not event time. Plain strings pass through unchanged.
+        Dict rows from FactStore.list_top carry created_at/last_seen_at: DB row
+        times (TIMESTAMP DEFAULT NOW() at insert, NOW() on upsert conflict) from
+        the extraction pipeline, on the database clock. In live chat flow that is
+        shortly after the user's message, but it is record time, not proven
+        statement time: heuristic-to-LLM re-extraction replaces rows (new
+        created_at), retries delay upserts, and same-day facts share a date with
+        no ordering signal. Prefixing the date gives chronology context without
+        claiming it proves when the user said something. Plain strings pass
+        through unchanged.
         """
         if not isinstance(fact, dict):
             return f"- {fact}"
@@ -833,7 +838,7 @@ Formatting requirements:
         ts = fact.get("last_seen_at") or fact.get("created_at")
         if hasattr(ts, "date"):
             ts = ts.date()
-        return f"- [stated {ts}] {content}" if ts else f"- {content}"
+        return f"- [recorded {ts}] {content}" if ts else f"- {content}"
 
     def _format_context(self, context: dict) -> str:
         memories = context.get("memories", [])
