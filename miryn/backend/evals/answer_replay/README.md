@@ -39,10 +39,13 @@ Checks per scenario:
 
 Honest boundary: with the gate OFF, conflicting facts BOTH surface, ordered
 importance-first on a lexical miss (reported as INFO, not asserted as
-correct). Known facts now reach the prompt with a `[stated YYYY-MM-DD]`
-prefix (last_seen_at, falling back to created_at: when the user last/first
-STATED the fact - statement time, not event time), so the prompt's
-"most recent statement wins" rule has per-fact chronology to work with.
+correct). Known facts now reach the prompt with a `[recorded YYYY-MM-DD]`
+prefix (last_seen_at, falling back to created_at). These are DB row times
+- when the extraction pipeline first inserted or last upserted the fact
+row, on the database clock - NOT proven user statement times, and
+same-day facts share a date with no ordering signal. The prompt's
+truthfulness rules say so explicitly: a fact recorded later is not
+automatically truer; an in-conversation user correction is what wins.
 Durable correction still relies on the supersession gate, which stays
 fail-closed until real-LLM marker reliability is validated.
 Answer-level behaviour still needs gated real-model runs.
