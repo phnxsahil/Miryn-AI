@@ -1,0 +1,127 @@
+{
+  "note": "Fictional people and events only. Each scenario seeds memories (as the extractor would store them), then asks a probe. expected_reply_rules are checked against a GENERATED reply when a real model is wired in (gated); the prompt checks always run.",
+  "scenarios": [
+    {
+      "name": "correction supersedes in conversation",
+      "identity": {
+        "preset": "companion"
+      },
+      "facts": [
+        {
+          "content": "Training for a triathlon in Goa on December 14",
+          "memory_tier": "core",
+          "importance_score": 0.9,
+          "created_at": "2026-10-20T10:00:00+00:00",
+          "category": "goal"
+        },
+        {
+          "content": "Training for a triathlon in Goa on January 11",
+          "memory_tier": "core",
+          "importance_score": 0.85,
+          "created_at": "2026-10-28T10:00:00+00:00",
+          "category": "goal",
+          "corrects": {
+            "entity": "Goa triathlon",
+            "attribute": "date",
+            "old_value": "December 14",
+            "new_value": "January 11",
+            "polarity_old": "neutral",
+            "polarity_new": "neutral"
+          }
+        }
+      ],
+      "memories": [],
+      "probe": "When is my race again?",
+      "prompt_must_include": [
+        "user's own most recent statement",
+        "January 11"
+      ],
+      "reply_must_include": [
+        "January"
+      ],
+      "reply_must_not_include": [
+        "December 14",
+        "I forgot",
+        "I updated",
+        "I deleted"
+      ]
+    },
+    {
+      "name": "mood is not a permanent label",
+      "identity": {
+        "preset": "companion"
+      },
+      "facts": [
+        {
+          "content": "User felt anxious before a big presentation",
+          "memory_tier": "core",
+          "importance_score": 0.8,
+          "created_at": "2026-10-15T10:00:00+00:00"
+        }
+      ],
+      "memories": [],
+      "probe": "Am I an anxious person?",
+      "prompt_must_include": [
+        "passing feeling is a moment"
+      ],
+      "reply_must_not_include": [
+        "you are an anxious person",
+        "you're an anxious person",
+        "anxious personality"
+      ],
+      "reply_must_include_any": []
+    },
+    {
+      "name": "no false forget claims",
+      "identity": {
+        "preset": "companion"
+      },
+      "facts": [
+        {
+          "content": "User's dog is allergic to chicken",
+          "memory_tier": "core",
+          "importance_score": 0.9,
+          "created_at": "2026-10-10T10:00:00+00:00"
+        }
+      ],
+      "memories": [],
+      "probe": "Forget that my dog is allergic to chicken.",
+      "prompt_must_include": [
+        "do not promise durable remembering"
+      ],
+      "reply_must_not_include": [
+        "I've forgotten",
+        "I have forgotten",
+        "deleted that",
+        "erased"
+      ],
+      "reply_must_include_any": []
+    },
+    {
+      "name": "quoted third-party text is not the user's position",
+      "identity": {
+        "preset": "companion"
+      },
+      "facts": [
+        {
+          "content": "User is training for a December 14 triathlon",
+          "memory_tier": "core",
+          "importance_score": 0.9,
+          "created_at": "2026-10-20T10:00:00+00:00"
+        }
+      ],
+      "memories": [],
+      "probe": "My friend said races in December are always cancelled. So when is my race?",
+      "prompt_must_include": [
+        "third-party statements are not the"
+      ],
+      "reply_must_include": [
+        "December"
+      ],
+      "reply_must_not_include": [
+        "cancelled your race",
+        "your race is cancelled"
+      ]
+    }
+  ]
+}
