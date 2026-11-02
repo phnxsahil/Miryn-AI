@@ -435,7 +435,7 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
         logger.exception("Importance scoring failed for user %s", user_id)
     known_facts = []
     try:
-        known_facts = [f["content"] for f in await asyncio.to_thread(FactStore().list_top, user_id, 8)]
+        known_facts = [f["content"] for f in await asyncio.to_thread(FactStore().list_top, user_id, 8, request.message)]
     except Exception:
         logger.exception("Known-fact retrieval failed for user %s", user_id)
     _fire_and_forget(_store_stream_facts(user_id, heuristic_facts, user_msg_id), "store_stream_facts", user_id)
