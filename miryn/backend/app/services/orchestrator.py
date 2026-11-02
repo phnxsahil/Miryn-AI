@@ -72,12 +72,12 @@ class ConversationOrchestrator:
             "patterns": {},
         }
         try:
-            context["known_facts"] = [fact["content"] for fact in FactStore().list_top(user_id, 8, query=message)]
+            context["known_facts"] = FactStore().list_top(user_id, 8, query=message)
         except Exception:
             self.logger.exception("Known-fact retrieval failed for user %s", user_id)
             context["known_facts"] = []
 
-        # ponytail: fire-and-forget tasks must NOT receive sql_session — the
+        # ponytail: fire-and-forget tasks must NOT receive sql_session â the
         # caller's `with get_sql_session()` block closes before these run.
         def _fire_and_forget(coro, label: str):
             task = asyncio.create_task(coro)
@@ -198,7 +198,7 @@ class ConversationOrchestrator:
             self._cache_result(user_id, conversation_id, idempotency_key, result)
             return result
 
-        # ponytail: DS inference removed — reflection worker handles NER/emotion
+        # ponytail: DS inference removed â reflection worker handles NER/emotion
         # via LLM in the background. No duplicate local ML on the hot path.
 
         _fire_and_forget(
