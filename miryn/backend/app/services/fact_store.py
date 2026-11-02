@@ -167,8 +167,9 @@ def _enforce_correction_order(rows: list[dict[str, Any]]) -> list[dict[str, Any]
 _INTERNAL_FACT_KEYS = ("category", "extractor", "corrects")
 
 
-def _public_fact(row: dict[str, Any]) -> dict[str, Any]:
-    return {key: value for key, value in row.items() if key not in _INTERNAL_FACT_KEYS}
+def _public_fact(row: dict[str, Any], include_markers: bool = False) -> dict[str, Any]:
+    hidden = _INTERNAL_FACT_KEYS[:-1] if include_markers else _INTERNAL_FACT_KEYS
+    return {key: value for key, value in row.items() if key not in hidden}
 
 
 def bumped_importance(old: float, new: float) -> float:
@@ -315,10 +316,14 @@ class FactStore:
                 # claim, so it joins the list even below the tier minimum.
                 extra = session.execute(
                     text(
+                        # Tenant-scoped like the main query; bounded because a
+                        # marker-carrying set is expected to be small.
                         """
                         SELECT id, fact, category, importance, created_at, last_seen_at, extractor, corrects
                         FROM memory_facts
                         WHERE user_id = :user_id AND status = 'active' AND corrects IS NOT NULL
+                        ORDER BY created_at DESC
+                        LIMIT 200
                         """
                     ),
                     {"user_id": user_id},
@@ -362,10 +367,13 @@ class FactStore:
             return result[:limit]
         return _enforce_correction_order(result)[:limit]
 
-    def list_core(self, user_id: str, limit: int = 50) -> list[dict[str, Any]]:
-        return [_public_fact(row) for row in self._list(user_id, limit, settings.IMPORTANCE_CORE_THRESHOLD)]
+    def list_core(self, user_id: str, limit: int = 50, include_markers: bool = False) -> list[dict[str, Any]]:
+        return [
+            _public_fact(row, include_markers)
+            for row in self._list(user_id, limit, settings.IMPORTANCE_CORE_THRESHOLD)
+        ]
 
-    def list_top(self, user_id: str, n: int = 8, query: str | None = None) -> list[dict[str, Any]]:
+    def list_top(self, user_id: str, n: int = 8, query: str | None = None, include_markers: bool = False) -> list[dict[str, Any]]:
         """Return the top facts for a user, optionally re-ranked against a query.
 
         Without a query this is importance-ordered exactly as before. With a query,
@@ -378,7 +386,7 @@ class FactStore:
         """
         facts = self._list(user_id, n * 3 if query else n)
         if not query:
-            return [_public_fact(row) for row in facts]
+            return [_public_fact(row, include_markers) for row in facts]
         query_tokens = _correction_tokens(query)
         if not query_tokens:
             return facts[:n]
@@ -390,8 +398,9 @@ class FactStore:
 
         facts.sort(key=lambda f: relevance(f) + f["importance_score"], reverse=True)
         # The relevance re-sort can undo correction ordering, so enforce again.
-        facts = _enforce_correction_order(facts)
-        return [_public_fact(row) for row in facts[:n]]
+        if settings.MEMORY_CORRECTION_ORDERING_ENABLED:
+            facts = _enforce_correction_order(facts)
+        return [_public_fact(row, include_markers) for row in facts[:n]]
 
     def create_manual(self, user_id: str, text_value: str) -> dict[str, Any] | None:
         if not has_sql():
