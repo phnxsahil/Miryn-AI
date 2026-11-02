@@ -13,7 +13,9 @@ def test_memory_truthfulness_rules_reach_every_persona(preset):
     false forget/update claims, and moods are not permanent labels."""
     prompt = LLMService()._build_system_prompt({'preset': preset})
     assert SAFETY_POLICY in prompt
-    assert 'most recent statement' in prompt
+    assert "user's own most recent statement" in prompt
     assert 'older conflicting memories are history' in prompt
-    assert 'Never claim you forgot, deleted, erased or updated a stored memory' in prompt
+    assert "third-party statements are not the" in prompt
+    assert 'unless it actually was' in prompt
+    assert 'do not promise durable remembering' in prompt
     assert 'passing feeling is a moment' in prompt
