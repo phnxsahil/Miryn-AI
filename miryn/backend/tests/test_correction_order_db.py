@@ -65,6 +65,9 @@ def db(pg, monkeypatch):
     monkeypatch.setattr(settings, "ENCRYPTION_KEY", Fernet.generate_key().decode())
     # The live production state: durable supersession stays OFF.
     monkeypatch.setattr(settings, "MEMORY_SUPERSESSION_ENABLED", False)
+    # The ordering flag defaults OFF pending extractor validation; these
+    # tests exercise the enabled read path explicitly.
+    monkeypatch.setattr(settings, "MEMORY_CORRECTION_ORDERING_ENABLED", True)
     database._db = database.Database()
     with database._db.engine.begin() as conn:
         conn.execute(text(USERS_STUB))
@@ -296,3 +299,15 @@ def test_ordering_flag_off_restores_importance_order(db, monkeypatch):
     store.upsert_facts(USER, [_correction()], MSG2)
 
     assert _contents(store.list_top(USER, 8))[:2] == [OLD_TEXT, NEW_TEXT]
+def test_markers_hidden_by_default_and_exposed_on_request(db):
+    _seed(db, OLD_TEXT, importance=0.9)
+    store = FactStore()
+    store.upsert_facts(USER, [_correction()], MSG2)
+
+    plain = store.list_top(USER, 8)
+    assert "corrects" not in plain[0]
+    with_markers = store.list_top(USER, 8, include_markers=True)
+    assert with_markers[0]["corrects"]["new_value"] == "January 11"
+    # category and extractor stay internal either way
+    assert "category" not in with_markers[0]
+    assert "extractor" not in with_markers[0]
