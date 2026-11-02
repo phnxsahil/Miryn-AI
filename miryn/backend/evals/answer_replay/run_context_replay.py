@@ -47,7 +47,7 @@ from app.services.importance import ScoredFact, fact_key  # noqa: E402
 from app.services.llm_service import LLMService  # noqa: E402
 
 USERS_STUB = "CREATE TABLE IF NOT EXISTS users (id UUID PRIMARY KEY DEFAULT gen_random_uuid());"
-MIGRATIONS = ["migrations/011_memory_facts.sql", "migrations/013_fact_supersession.sql"]
+MIGRATIONS = ["migrations/011_memory_facts.sql", "migrations/013_fact_supersession.sql", "migrations/015_fact_corrects_marker.sql"]
 THRESHOLD_NOTE = "write path keeps facts with importance >= IMPORTANCE_CORE_THRESHOLD * 0.8"
 
 
