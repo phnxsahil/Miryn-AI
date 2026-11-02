@@ -60,7 +60,7 @@ async def _enforce_message_rate_limit(user_id: str) -> None:
 
 
 def _sanitize_error(exc: Exception) -> str:
-    """Return a clean user-facing error — never expose raw API responses."""
+    """Return a clean user-facing error â never expose raw API responses."""
     err = str(exc).lower()
     if "429" in err or "quota" in err or "resource_exhausted" in err or "rate" in err:
         return "The AI service is at capacity right now. Please try again in a minute."
@@ -435,7 +435,7 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
         logger.exception("Importance scoring failed for user %s", user_id)
     known_facts = []
     try:
-        known_facts = [f["content"] for f in await asyncio.to_thread(FactStore().list_top, user_id, 8, request.message)]
+        known_facts = await asyncio.to_thread(FactStore().list_top, user_id, 8, request.message)
     except Exception:
         logger.exception("Known-fact retrieval failed for user %s", user_id)
     _fire_and_forget(_store_stream_facts(user_id, heuristic_facts, user_msg_id), "store_stream_facts", user_id)
@@ -481,7 +481,7 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
         if response_text and not _has_sentence_ending(response_text):
             completion = await orchestrator.llm.complete_sentence(response_text, identity)
             if completion:
-                separator = "" if response_text.endswith((" ", "\n")) or completion.startswith(tuple(".,!?;:…")) else " "
+                separator = "" if response_text.endswith((" ", "\n")) or completion.startswith(tuple(".,!?;:â¦")) else " "
                 appended = f"{separator}{completion}"
                 chunks.append(appended)
                 yield f"data: {json.dumps({'chunk': appended})}\n\n"
