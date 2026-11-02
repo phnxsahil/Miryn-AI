@@ -80,7 +80,7 @@ def db(pg, monkeypatch):
     database._db.SessionLocal = None
 
 
-def _seed(engine, text_value, *, importance, age_hours=2, category="goal", extractor="llm"):
+def _seed(engine, text_value, *, importance, age_hours=2, category="goal", extractor="llm", corrects=None):
     fact_id = str(uuid.uuid4())
     created = datetime(2026, 10, 31, 6, 0, 0) - timedelta(hours=age_hours)
     with engine.begin() as conn:
@@ -88,9 +88,9 @@ def _seed(engine, text_value, *, importance, age_hours=2, category="goal", extra
             text(
                 """
                 INSERT INTO memory_facts (id, user_id, fact, fact_key, category, importance,
-                                          extractor, created_at)
+                                          extractor, created_at, corrects)
                 VALUES (:id, :user_id, :fact, :fact_key, :category, :importance,
-                        :extractor, :created_at)
+                        :extractor, :created_at, :corrects)
                 """
             ),
             {
@@ -102,6 +102,7 @@ def _seed(engine, text_value, *, importance, age_hours=2, category="goal", extra
                 "importance": importance,
                 "extractor": extractor,
                 "created_at": created,
+                "corrects": encrypt_text(json.dumps(corrects)) if corrects else None,
             },
         )
     return fact_id
@@ -198,3 +199,100 @@ def test_query_resort_keeps_correction_first(db):
     assert top[0]["content"] == NEW_TEXT
     # Public shape unchanged: no internal keys leak to callers.
     assert set(top[0].keys()) == {"id", "content", "memory_tier", "importance_score", "created_at", "last_seen_at"}
+CHAIN_A = "Training for a triathlon in Goa on December 14"
+CHAIN_B = "Training for a triathlon in Goa on January 11"
+CHAIN_C = "Training for a triathlon in Goa on March 5"
+
+
+def _marker(old_value, new_value):
+    return {
+        "entity": "Goa triathlon",
+        "attribute": "date",
+        "old_value": old_value,
+        "new_value": new_value,
+        "polarity_old": "neutral",
+        "polarity_new": "neutral",
+    }
+
+
+def test_correction_outside_page_still_constrains(db):
+    # 25 fillers at 0.85 push the 0.8 correction outside the n*3=24 page.
+    # Containment must still pull it in and rank it ahead of the stale fact.
+    for i in range(25):
+        _seed(db, f"Filler note number {i} about ordinary weekday routines", importance=0.85, age_hours=3 + i)
+    _seed(db, OLD_TEXT, importance=0.9)
+    store = FactStore()
+    store.upsert_facts(USER, [_correction()], MSG2)
+
+    top = store.list_top(USER, 8)
+    assert top[0]["content"] == NEW_TEXT
+    assert top[1]["content"] == OLD_TEXT
+
+
+def test_correction_below_core_minimum_still_constrains_core_list(db):
+    # Containment deliberately widens membership for marker-bearing facts: a
+    # validated correction is a current-truth claim, so it joins the core
+    # list even below the 0.8 tier minimum.
+    _seed(db, OLD_TEXT, importance=0.9)
+    store = FactStore()
+    store.upsert_facts(USER, [ScoredFact(NEW_TEXT, "goal", 0.7, 0.0, "llm", dict(CORRECTS))], MSG2)
+
+    core = _contents(store.list_core(USER))
+    assert core[:2] == [NEW_TEXT, OLD_TEXT]
+
+
+def test_reversal_chain_newest_correction_wins(db):
+    _seed(db, CHAIN_A, importance=0.9, age_hours=4)
+    store = FactStore()
+    store.upsert_facts(USER, [ScoredFact(CHAIN_B, "goal", 0.85, 0.0, "llm", _marker("December 14", "January 11"))], MSG2)
+    store.upsert_facts(USER, [ScoredFact(CHAIN_C, "goal", 0.8, 0.0, "llm", _marker("January 11", "March 5"))], MSG3)
+
+    assert _contents(store.list_top(USER, 8))[:3] == [CHAIN_C, CHAIN_B, CHAIN_A]
+
+
+def test_cycle_attempt_only_newer_constraint_applies(db):
+    # Adversarial/buggy extractor: both facts carry markers targeting each
+    # other. The older fact's marker cannot target a newer candidate (age
+    # check), so only the newer fact's constraint applies; nothing loops,
+    # nothing is dropped.
+    _seed(db, OLD_TEXT, importance=0.9, age_hours=4, corrects=_marker("January 11", "December 14"))
+    store = FactStore()
+    store.upsert_facts(USER, [_correction()], MSG2)
+
+    assert _contents(store.list_top(USER, 8))[:2] == [NEW_TEXT, OLD_TEXT]
+    rows = _rows(db, "SELECT id FROM memory_facts WHERE user_id = :u AND status = 'active'", u=USER)
+    assert len(rows) == 2
+
+
+def test_bogus_marker_without_match_changes_nothing(db):
+    # Extractor emitted a marker for a quoted/third-party statement whose
+    # entity and old value match no active fact: ordering is untouched.
+    _seed(db, OLD_TEXT, importance=0.9)
+    store = FactStore()
+    bogus = ScoredFact(
+        "My friend Ravi is moving to Delhi in March",
+        "life_event",
+        0.8,
+        0.0,
+        "llm",
+        {
+            "entity": "Ravi move",
+            "attribute": "city",
+            "old_value": "Mumbai",
+            "new_value": "Delhi",
+            "polarity_old": "neutral",
+            "polarity_new": "neutral",
+        },
+    )
+    store.upsert_facts(USER, [bogus], MSG2)
+
+    assert _contents(store.list_top(USER, 8))[:2] == [OLD_TEXT, "My friend Ravi is moving to Delhi in March"]
+
+
+def test_ordering_flag_off_restores_importance_order(db, monkeypatch):
+    monkeypatch.setattr(settings, "MEMORY_CORRECTION_ORDERING_ENABLED", False)
+    _seed(db, OLD_TEXT, importance=0.9)
+    store = FactStore()
+    store.upsert_facts(USER, [_correction()], MSG2)
+
+    assert _contents(store.list_top(USER, 8))[:2] == [OLD_TEXT, NEW_TEXT]
