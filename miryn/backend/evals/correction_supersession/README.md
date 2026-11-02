@@ -12,7 +12,10 @@ The stub LLM returns canned marker payloads, so this validates **mechanics
 only**: marker validation, fail-closed supersede selection, the transaction and
 audit-row behavior. It says **nothing** about whether the real model emits
 reliable correction markers. `MEMORY_SUPERSESSION_ENABLED` must stay off until
-real-LLM marker reliability is validated with real provider calls.
+real-LLM marker reliability is validated with real provider calls. While the
+gate is off, explicit durable correction (hiding a superseded fact) is
+unsupported in production; this replay is a prerequisite mechanics check, not
+that validation.
 
 ## Scenarios (all fictional people and events)
 
