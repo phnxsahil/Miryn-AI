@@ -129,8 +129,8 @@ def run(pg):
         visible = [f["content"] for f in facts]
         missing_ctx = [c for c in seeded_contents if not any(c in v for v in visible)]
         dated = [f for f in scenario.get("facts") or [] if f.get("created_at")]
-        missing_dates = [f"[stated {f['created_at'][:10]}]" for f in dated
-                         if f"[stated {f['created_at'][:10]}]" not in context]
+        missing_dates = [f"[recorded {f['created_at'][:10]}]" for f in dated
+                         if f"[recorded {f['created_at'][:10]}]" not in context]
         status = "PASS" if not missing_prompt and not missing_ctx and not missing_dates else "FAIL"
         failures += 0 if status == "PASS" else 1
         print(f"{status}  {name} (gate OFF: write+retrieval path, {THRESHOLD_NOTE})")
