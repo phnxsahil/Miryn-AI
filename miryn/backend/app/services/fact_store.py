@@ -114,6 +114,70 @@ class FactStore:
     def _unsupported(self) -> None:
         logger.warning("memory_facts: supabase backend not supported")
 
+    @staticmethod
+    def _active_candidates(session, user_id: str) -> list[dict[str, Any]]:
+        rows = session.execute(
+            text(
+                """
+                SELECT id, fact, category, extractor, importance, created_at
+                FROM memory_facts
+                WHERE user_id = :user_id AND status = 'active'
+                """
+            ),
+            {"user_id": user_id},
+        ).mappings().all()
+        candidates: list[dict[str, Any]] = []
+        for row in rows:
+            try:
+                content = decrypt_text(row["fact"])
+            except Exception:
+                continue
+            if content is None:
+                continue
+            candidates.append(
+                {
+                    "id": str(row["id"]),
+                    "text": content,
+                    "category": row["category"],
+                    "extractor": row["extractor"],
+                    "importance": row["importance"],
+                    "created_at": row["created_at"],
+                }
+            )
+        return candidates
+
+    @staticmethod
+    def _with_correction_floor(candidates: list[dict[str, Any]], fact: ScoredFact) -> ScoredFact:
+        """A validated explicit correction must not rank below the fact it corrects.
+
+        select_supersede_candidate applies the same strict evidence used for
+        linking (typed marker, matching entity + old value, single eligible
+        older candidate); when it finds a match, floor the new fact's
+        importance at the corrected fact's importance so retrieval ordering
+        never prefers the stale value. Ordering-only: no status change, no
+        supersession row - linking stays gated and fail-closed.
+        """
+        if not getattr(fact, "corrects", None):
+            return fact
+        chosen = select_supersede_candidate(
+            candidates,
+            {"text": fact.text, "category": fact.category, "created_at": None},
+            fact.corrects,
+        )
+        if chosen is None:
+            return fact
+        floor = float(chosen.get("importance") or 0.0)
+        if floor <= fact.importance:
+            return fact
+        return ScoredFact(
+            fact.text,
+            fact.category,
+            min(0.99, floor),
+            fact.emotional_weight,
+            fact.extractor,
+            fact.corrects,
+        )
+
     def upsert_facts(self, user_id: str, facts: list[ScoredFact], source_message_id: str | None = None) -> None:
         candidates = [
             fact for fact in facts
@@ -133,7 +197,9 @@ class FactStore:
             self._unsupported()
             return
         with get_sql_session() as session:
+            active = self._active_candidates(session, user_id)
             for fact, encrypted_fact in saved:
+                fact = self._with_correction_floor(active, fact)
                 session.execute(
                     text(
                         """
