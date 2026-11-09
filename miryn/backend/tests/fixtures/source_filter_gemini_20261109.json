@@ -1,0 +1,359 @@
+{
+  "model": "gemini-3.5-flash-lite",
+  "flags_off": true,
+  "generation_calls": 8,
+  "rows": [
+    {
+      "case": "quoted",
+      "message": "A passage in a novel says: \"Actually, my race is January 11, not December 14.\" I am only quoting the book.",
+      "expected": "none",
+      "requested_model": "gemini-3.5-flash-lite",
+      "http_status": 200,
+      "usage": {
+        "promptTokenCount": 476,
+        "candidatesTokenCount": 101,
+        "totalTokenCount": 577,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 476
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "model_version": "gemini-3.5-flash-lite",
+      "finish_reason": "STOP",
+      "raw_response": "```json\n{\n  \"facts\": [\n    {\n      \"fact\": \"The user is quoting a book passage where a character says their race is January 11, not December 14.\",\n      \"category\": \"life_event\",\n      \"importance\": 0.1,\n      \"emotional_weight\": 0.0,\n      \"source\": \"quoted\",\n      \"corrects\": null\n    }\n  ]\n}\n```",
+      "parsed": {
+        "facts": [
+          {
+            "fact": "The user is quoting a book passage where a character says their race is January 11, not December 14.",
+            "category": "life_event",
+            "importance": 0.1,
+            "emotional_weight": 0.0,
+            "source": "quoted",
+            "corrects": null
+          }
+        ]
+      },
+      "final_facts": []
+    },
+    {
+      "case": "hypothetical",
+      "message": "If I were to quit my job and move to Pune next month, I might feel happier. This is only a hypothetical.",
+      "expected": "none",
+      "requested_model": "gemini-3.5-flash-lite",
+      "http_status": 200,
+      "usage": {
+        "promptTokenCount": 470,
+        "candidatesTokenCount": 47,
+        "totalTokenCount": 517,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 470
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "model_version": "gemini-3.5-flash-lite",
+      "finish_reason": "STOP",
+      "raw_response": "{\"facts\":[{\"fact\":\"Considering quitting current job and moving to Pune next month\",\"category\":\"life_event\",\"importance\":0.7,\"emotional_weight\":0.5,\"source\":\"hypothetical\",\"corrects\":null}]}",
+      "parsed": {
+        "facts": [
+          {
+            "fact": "Considering quitting current job and moving to Pune next month",
+            "category": "life_event",
+            "importance": 0.7,
+            "emotional_weight": 0.5,
+            "source": "hypothetical",
+            "corrects": null
+          }
+        ]
+      },
+      "final_facts": []
+    },
+    {
+      "case": "third_party",
+      "message": "My friend Mira corrected her race date: her race is January 11, not December 14.",
+      "expected": "none",
+      "requested_model": "gemini-3.5-flash-lite",
+      "http_status": 200,
+      "usage": {
+        "promptTokenCount": 467,
+        "candidatesTokenCount": 157,
+        "totalTokenCount": 624,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 467
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "model_version": "gemini-3.5-flash-lite",
+      "finish_reason": "STOP",
+      "raw_response": "```json\n{\n  \"facts\": [\n    {\n      \"fact\": \"Mira's race date is January 11\",\n      \"category\": \"life_event\",\n      \"importance\": 0.5,\n      \"emotional_weight\": 0.1,\n      \"source\": \"third_party\",\n      \"corrects\": {\n        \"entity\": \"Mira's race\",\n        \"attribute\": \"date\",\n        \"old_value\": \"December 14\",\n        \"new_value\": \"January 11\",\n        \"polarity_old\": \"neutral\",\n        \"polarity_new\": \"neutral\"\n      }\n    }\n  ]\n}\n```",
+      "parsed": {
+        "facts": [
+          {
+            "fact": "Mira's race date is January 11",
+            "category": "life_event",
+            "importance": 0.5,
+            "emotional_weight": 0.1,
+            "source": "third_party",
+            "corrects": {
+              "entity": "Mira's race",
+              "attribute": "date",
+              "old_value": "December 14",
+              "new_value": "January 11",
+              "polarity_old": "neutral",
+              "polarity_new": "neutral"
+            }
+          }
+        ]
+      },
+      "final_facts": []
+    },
+    {
+      "case": "self_statement",
+      "message": "I am vegetarian and I do not eat chicken.",
+      "expected": "self",
+      "requested_model": "gemini-3.5-flash-lite",
+      "http_status": 200,
+      "usage": {
+        "promptTokenCount": 455,
+        "candidatesTokenCount": 143,
+        "totalTokenCount": 598,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 455
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "model_version": "gemini-3.5-flash-lite",
+      "finish_reason": "STOP",
+      "raw_response": "```json\n{\n  \"facts\": [\n    {\n      \"fact\": \"Is vegetarian\",\n      \"category\": \"preference\",\n      \"importance\": 0.6,\n      \"emotional_weight\": 0.0,\n      \"source\": \"self_current\",\n      \"corrects\": null\n    },\n    {\n      \"fact\": \"Does not eat chicken\",\n      \"category\": \"preference\",\n      \"importance\": 0.6,\n      \"emotional_weight\": 0.0,\n      \"source\": \"self_current\",\n      \"corrects\": null\n    }\n  ]\n}\n```",
+      "parsed": {
+        "facts": [
+          {
+            "fact": "Is vegetarian",
+            "category": "preference",
+            "importance": 0.6,
+            "emotional_weight": 0.0,
+            "source": "self_current",
+            "corrects": null
+          },
+          {
+            "fact": "Does not eat chicken",
+            "category": "preference",
+            "importance": 0.6,
+            "emotional_weight": 0.0,
+            "source": "self_current",
+            "corrects": null
+          }
+        ]
+      },
+      "final_facts": [
+        {
+          "text": "Is vegetarian",
+          "category": "preference",
+          "importance": 0.6,
+          "emotional_weight": 0.0,
+          "extractor": "llm",
+          "corrects": null
+        },
+        {
+          "text": "Does not eat chicken",
+          "category": "preference",
+          "importance": 0.6,
+          "emotional_weight": 0.0,
+          "extractor": "llm",
+          "corrects": null
+        }
+      ]
+    },
+    {
+      "case": "self_correction",
+      "message": "I previously told you my race is December 14. Actually, my race is January 11, not December 14.",
+      "expected": "correction",
+      "requested_model": "gemini-3.5-flash-lite",
+      "http_status": 200,
+      "usage": {
+        "promptTokenCount": 473,
+        "candidatesTokenCount": 154,
+        "totalTokenCount": 627,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 473
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "model_version": "gemini-3.5-flash-lite",
+      "finish_reason": "STOP",
+      "raw_response": "```json\n{\n  \"facts\": [\n    {\n      \"fact\": \"The user's race is January 11\",\n      \"category\": \"life_event\",\n      \"importance\": 0.8,\n      \"emotional_weight\": 0.5,\n      \"source\": \"self_current\",\n      \"corrects\": {\n        \"entity\": \"race\",\n        \"attribute\": \"date\",\n        \"old_value\": \"December 14\",\n        \"new_value\": \"January 11\",\n        \"polarity_old\": \"neutral\",\n        \"polarity_new\": \"neutral\"\n      }\n    }\n  ]\n}\n```",
+      "parsed": {
+        "facts": [
+          {
+            "fact": "The user's race is January 11",
+            "category": "life_event",
+            "importance": 0.8,
+            "emotional_weight": 0.5,
+            "source": "self_current",
+            "corrects": {
+              "entity": "race",
+              "attribute": "date",
+              "old_value": "December 14",
+              "new_value": "January 11",
+              "polarity_old": "neutral",
+              "polarity_new": "neutral"
+            }
+          }
+        ]
+      },
+      "final_facts": [
+        {
+          "text": "The user's race is January 11",
+          "category": "life_event",
+          "importance": 0.8,
+          "emotional_weight": 0.5,
+          "extractor": "llm",
+          "corrects": {
+            "entity": "race",
+            "attribute": "date",
+            "old_value": "December 14",
+            "new_value": "January 11",
+            "polarity_old": "neutral",
+            "polarity_new": "neutral"
+          }
+        }
+      ]
+    },
+    {
+      "case": "question_assertion",
+      "message": "Given that my dog is allergic to chicken, what food should I buy?",
+      "expected": "self",
+      "requested_model": "gemini-3.5-flash-lite",
+      "http_status": 200,
+      "usage": {
+        "promptTokenCount": 460,
+        "candidatesTokenCount": 56,
+        "totalTokenCount": 516,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 460
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "model_version": "gemini-3.5-flash-lite",
+      "finish_reason": "STOP",
+      "raw_response": "{\"facts\": [{\"fact\": \"The user's dog is allergic to chicken\", \"category\": \"health\", \"importance\": 0.75, \"emotional_weight\": 0.4, \"source\": \"self_current\", \"corrects\": null}]}",
+      "parsed": {
+        "facts": [
+          {
+            "fact": "The user's dog is allergic to chicken",
+            "category": "health",
+            "importance": 0.75,
+            "emotional_weight": 0.4,
+            "source": "self_current",
+            "corrects": null
+          }
+        ]
+      },
+      "final_facts": [
+        {
+          "text": "The user's dog is allergic to chicken",
+          "category": "health",
+          "importance": 0.75,
+          "emotional_weight": 0.4,
+          "extractor": "llm",
+          "corrects": null
+        }
+      ]
+    },
+    {
+      "case": "mixed",
+      "message": "My friend Mira is moving to Pune. Separately, I started a new job as a teacher this week.",
+      "expected": "self_only",
+      "requested_model": "gemini-3.5-flash-lite",
+      "http_status": 200,
+      "usage": {
+        "promptTokenCount": 467,
+        "candidatesTokenCount": 155,
+        "totalTokenCount": 622,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 467
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "model_version": "gemini-3.5-flash-lite",
+      "finish_reason": "STOP",
+      "raw_response": "```json\n{\n  \"facts\": [\n    {\n      \"fact\": \"Friend Mira is moving to Pune\",\n      \"category\": \"relationship\",\n      \"importance\": 0.75,\n      \"emotional_weight\": 0.5,\n      \"source\": \"third_party\",\n      \"corrects\": null\n    },\n    {\n      \"fact\": \"Started a new job as a teacher this week\",\n      \"category\": \"work_career\",\n      \"importance\": 0.9,\n      \"emotional_weight\": 0.7,\n      \"source\": \"self_current\",\n      \"corrects\": null\n    }\n  ]\n}\n```",
+      "parsed": {
+        "facts": [
+          {
+            "fact": "Friend Mira is moving to Pune",
+            "category": "relationship",
+            "importance": 0.75,
+            "emotional_weight": 0.5,
+            "source": "third_party",
+            "corrects": null
+          },
+          {
+            "fact": "Started a new job as a teacher this week",
+            "category": "work_career",
+            "importance": 0.9,
+            "emotional_weight": 0.7,
+            "source": "self_current",
+            "corrects": null
+          }
+        ]
+      },
+      "final_facts": [
+        {
+          "text": "Started a new job as a teacher this week",
+          "category": "work_career",
+          "importance": 0.9,
+          "emotional_weight": 0.7,
+          "extractor": "llm",
+          "corrects": null
+        }
+      ]
+    },
+    {
+      "case": "recall_only",
+      "message": "Do you remember when my race is and whether I have a dog?",
+      "expected": "none",
+      "requested_model": "gemini-3.5-flash-lite",
+      "http_status": 200,
+      "usage": {
+        "promptTokenCount": 459,
+        "candidatesTokenCount": 4,
+        "totalTokenCount": 463,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 459
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "model_version": "gemini-3.5-flash-lite",
+      "finish_reason": "STOP",
+      "raw_response": "{\"facts\":[]}",
+      "parsed": {
+        "facts": []
+      },
+      "final_facts": []
+    }
+  ]
+}
