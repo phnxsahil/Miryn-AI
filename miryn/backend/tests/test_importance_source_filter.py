@@ -52,9 +52,9 @@ def test_quoted_hypothetical_third_party_are_not_stored():
     assert facts[0].corrects is None
 
 
-def test_missing_source_keeps_fact_but_never_a_correction_marker():
+def test_missing_source_is_not_stored():
     facts, _ = _run([_fact("race is January 11", None, _CORRECTS)])
-    assert len(facts) == 1 and facts[0].corrects is None
+    assert facts == []
 
 
 def test_prompt_declares_source_values():
