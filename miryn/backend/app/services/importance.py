@@ -427,7 +427,7 @@ def _parse_corrects(raw: Any) -> dict | None:
 
 
 class _SourceFiltered(list):
-    """Empty result: the LLM answered, but every fact was not the user's own current statement."""
+    """Empty result: no fact had an explicit, valid self_current source label."""
 
 
 async def score_message_llm(llm: Any, text: str) -> list[ScoredFact]:
@@ -454,7 +454,7 @@ async def score_message_llm(llm: Any, text: str) -> list[ScoredFact]:
         if fact_text.endswith("?") or _WH_LEAD.match(fact_text):
             continue
         source = str(item.get("source") or "").strip().lower()
-        if source and source != "self_current":
+        if source != "self_current":
             # Quoted, hypothetical and third-party statements are not the user's
             # own current assertions: never store them as durable facts.
             source_filtered = True
