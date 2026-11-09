@@ -187,6 +187,12 @@ class FactStore:
         candidates = [
             fact for fact in facts
             if fact.category != "chitchat"
+            # With model extraction enabled, heuristic scoring is only a
+            # conversation-importance hint. Persisting it before refinement
+            # creates attribution races and repeat-count cleanup problems.
+            # Fail closed if refinement/its worker is unavailable. Explicit
+            # manual memories and the deliberately disabled-LLM mode remain.
+            and not (settings.IMPORTANCE_USE_LLM and fact.extractor == "heuristic")
             and fact.importance >= settings.IMPORTANCE_CORE_THRESHOLD * 0.8
         ]
         if not candidates:
