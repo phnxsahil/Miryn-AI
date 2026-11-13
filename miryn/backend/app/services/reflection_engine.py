@@ -6,6 +6,7 @@ import logging
 from sqlalchemy import text
 from app.services.llm_service import LLMService
 from app.core.database import get_db, has_sql, get_sql_session
+from app.services.open_loop_parse import parse_open_loops
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +28,13 @@ class ReflectionEngine:
                 "entities": [],
                 "emotions": {},
                 "topics": [],
+                "open_loops": [],
                 "patterns": {},
                 "insights": "",
             }
 
         # ponytail: one LLM call instead of three — 66% cost reduction on reflection
-        entities, emotions, topics = await self._extract_all(conversation)
+        entities, emotions, topics, open_loops = await self._extract_all(conversation)
         patterns = await self._detect_patterns(user_id, topics)
         insights = await self._generate_insights(patterns)
 
@@ -40,6 +42,7 @@ class ReflectionEngine:
             "entities": entities,
             "emotions": emotions,
             "topics": topics,
+            "open_loops": open_loops,
             "patterns": patterns,
             "insights": insights,
         }
@@ -48,7 +51,7 @@ class ReflectionEngine:
         """Combined extraction: entities + emotions + topics in one LLM call."""
         if LLMService.quota_dead():
             logger.info("Skipping reflection extraction while Gemini quota cooldown is active")
-            return [], {}, []
+            return [], {}, [], []
         payload = self._conversation_payload(conversation)
         prompt = (
             "You will be given a JSON payload describing a conversation. "
@@ -56,10 +59,13 @@ class ReflectionEngine:
             "Extract the following from the conversation and return as a single JSON object:\n\n"
             "1. \"entities\": array of key entities (people, places, organizations, concepts)\n"
             "2. \"emotions\": object with primary_emotion (string), intensity (0-1), secondary_emotions (array)\n"
-            "3. \"topics\": array of short topic strings\n\n"
+            "3. \"topics\": array of short topic strings\n"
+            "4. \"open_loops\": array of up to 3 objects {\"topic\": short string, \"importance\": 1-3} for things the user "
+            "left unresolved in this conversation (a pending decision, a plan not yet done, or a question they still want "
+            "answered). Do not list topics that were simply discussed. Use an empty array if nothing is unresolved.\n\n"
             f"Conversation JSON:\n{payload}"
         )
-        response = await self.llm.generate(prompt, max_tokens=300)
+        response = await self.llm.generate(prompt, max_tokens=400)
         parsed = self.llm.parse_json_response(response)
 
         if isinstance(parsed, dict):
@@ -68,10 +74,10 @@ class ReflectionEngine:
             topics = parsed.get("topics", []) if isinstance(parsed.get("topics"), list) else []
             if not emotions.get("primary_emotion"):
                 emotions = {"primary_emotion": "neutral", "intensity": 0.5, "secondary_emotions": []}
-            return entities, emotions, topics
+            return entities, emotions, topics, parse_open_loops(parsed.get("open_loops"))
 
         # Fallback: if combined parse fails, return safe defaults
-        return [], {"primary_emotion": "neutral", "intensity": 0.5, "secondary_emotions": []}, []
+        return [], {"primary_emotion": "neutral", "intensity": 0.5, "secondary_emotions": []}, [], []
 
     async def detect_contradictions(self, beliefs: List[Dict], new_statement: str) -> List[Dict]:
         """

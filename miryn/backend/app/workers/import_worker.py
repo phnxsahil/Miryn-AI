@@ -67,11 +67,9 @@ async def process_chatgpt_import(user_id: str, raw_content: bytes):
             if emotions.get("primary_emotion"):
                 identity.update_identity(user_id, {"emotions": [emotions]})
             
-            # 2. Track open loops
-            for topic in result.get("topics", []):
-                # Ensure topic is string
-                topic_str = topic if isinstance(topic, str) else str(topic)
-                identity.track_open_loop(user_id, topic_str, importance=1)
+            # 2. Track open loops (only items the model marked unresolved)
+            for loop in result.get("open_loops") or []:
+                identity.track_open_loop(user_id, loop["topic"], importance=loop.get("importance", 1))
             
             memories_added += 1
             
@@ -147,10 +145,9 @@ async def process_gemini_import(user_id: str, raw_content: bytes):
             if emotions.get("primary_emotion") and emotions["primary_emotion"] != "neutral":
                 identity.update_identity(user_id, {"emotions": [emotions]})
             
-            # 2. Track open loops from topics
-            for topic in result.get("topics", []):
-                topic_str = topic if isinstance(topic, str) else str(topic)
-                identity.track_open_loop(user_id, topic_str, importance=1)
+            # 2. Track open loops (only items the model marked unresolved)
+            for loop in result.get("open_loops") or []:
+                identity.track_open_loop(user_id, loop["topic"], importance=loop.get("importance", 1))
                 
             memories_added += 1
             

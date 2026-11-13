@@ -22,7 +22,7 @@ def analyze_reflection(user_id: str, conversation: dict, source_message_id: str 
     """
     if LLMService.quota_dead():
         logger.info("Skipping reflection task for user %s while Gemini quota cooldown is active", user_id)
-        return {"entities": [], "emotions": {}, "topics": [], "patterns": {}, "insights": ""}
+        return {"entities": [], "emotions": {}, "topics": [], "open_loops": [], "patterns": {}, "insights": ""}
 
     llm = LLMService()
     engine = ReflectionEngine(llm)
@@ -53,12 +53,10 @@ def analyze_reflection(user_id: str, conversation: dict, source_message_id: str 
     if updates:
         identity_engine.update_identity(user_id, updates)
 
-    # 4. Write open loops from all topics (importance and resolved state extracted per-topic)
-    # We use a separate loop for track_open_loop because it handles its own merging logic
-    # Note: In a future optimization, we could batch these into one update_identity call.
-    for topic in result.get("topics", []):
-        importance = topic.get("importance", 1) if isinstance(topic, dict) else 1
-        identity_engine.track_open_loop(user_id, topic, importance=importance)
+    # 4. Write open loops only for items the model marked as unresolved. Plain discussion
+    # topics stay topics (used for patterns) and are not turned into open loops.
+    for loop in result.get("open_loops") or []:
+        identity_engine.track_open_loop(user_id, loop["topic"], importance=loop.get("importance", 1))
 
     source_text = user_message or conversation.get("user")
     if source_message_id and source_text and settings.IMPORTANCE_USE_LLM and llm_is_usable(llm) and not LLMService.quota_dead():
