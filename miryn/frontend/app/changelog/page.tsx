@@ -19,6 +19,18 @@ type Entry = {
 
 const entries: Entry[] = [
   {
+    version: "v0.8.5",
+    date: "November 13, 2026",
+    title: "Open loops now hold real unfinished decisions",
+    live: true,
+    points: [
+      "The Identity page's Open loops list used to fill up with topic labels (for example \"career\" or \"moving\") that were never resolved. New conversations now add an open loop only when you state something genuinely pending, such as a decision you have not made yet. At most three per conversation.",
+      "This uses the memory extraction Miryn already runs, so there is no extra model call and no added cost. Open loops already saved are left as they are; they are not rewritten or removed.",
+      "Checked on a live fictional test account: a message about an undecided lease added one real open loop. This is a small check, not a measured accuracy figure, and the parser may miss some pending items.",
+      "Also pinned a background-worker dependency so fresh backend builds start reliably.",
+    ],
+  },
+  {
     version: "v0.8.4",
     date: "November 2, 2026",
     title: "Recall quality: no hash-noise matches, relevant facts first",
