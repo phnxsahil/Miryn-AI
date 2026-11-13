@@ -23,6 +23,8 @@ google-cloud-aiplatform==1.91.0
 
 # Background jobs
 celery[redis]==5.3.4
+# kombu 5.7+ needs redis-py 6.1+, which breaks the Render worker on a fresh build (VersionMismatch). Keep until redis is upgraded.
+kombu==5.5.4
 
 # Auth
 PyJWT[crypto]==2.11.0
