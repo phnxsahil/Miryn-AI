@@ -856,14 +856,19 @@ Formatting requirements:
             context_parts.append("What you know about this user (stable facts, use naturally, do not recite):")
             context_parts.extend(self._format_fact_line(fact) for fact in known_facts[:8])
         if memories:
-            context_parts.append("Relevant past conversations:")
+            context_parts.append(
+                "Relevant past conversations (each line says who wrote it when known; "
+                "'Miryn' lines are your own earlier words, not facts the user stated):"
+            )
             for mem in memories[:5]:
                 content = mem.get("content", "")
                 ts = mem.get("created_at", "")
+                speaker = {"user": "User", "assistant": "Miryn"}.get(str(mem.get("role") or "").lower())
+                label = f"{speaker}: " if speaker else ""
                 if ts:
                     # ponytail: timestamps let the model distinguish recent vs old memories
-                    context_parts.append(f"- [{ts}] {content}")
+                    context_parts.append(f"- [{ts}] {label}{content}")
                 else:
-                    context_parts.append(f"- {content}")
+                    context_parts.append(f"- {label}{content}")
 
         return "\n".join(context_parts)
