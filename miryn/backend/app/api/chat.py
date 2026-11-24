@@ -438,6 +438,24 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
         known_facts = await asyncio.to_thread(FactStore().list_top, user_id, 8, request.message)
     except Exception:
         logger.exception("Known-fact retrieval failed for user %s", user_id)
+    recent_turns: list[dict] = []
+    if settings.RECENT_TURNS_LIMIT > 0 and conversation_id:
+        try:
+            recent_turns = await asyncio.wait_for(
+                asyncio.to_thread(
+                    orchestrator.memory.recent_turns,
+                    user_id,
+                    conversation_id,
+                    settings.RECENT_TURNS_LIMIT,
+                    None,
+                    request.message,
+                ),
+                timeout=settings.RECENT_TURNS_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Recent-turn retrieval timed out for user %s", user_id)
+        except Exception:
+            logger.exception("Recent-turn retrieval failed for user %s", user_id)
     _fire_and_forget(_store_stream_facts(user_id, heuristic_facts, user_msg_id), "store_stream_facts", user_id)
     importance = max((fact.importance for fact in heuristic_facts), default=0.1)
 
@@ -445,7 +463,7 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
         chunks: list[str] = []
         try:
             async for chunk in orchestrator.llm.stream_chat(
-                context={"identity": identity, "memories": memories, "patterns": {}, "known_facts": known_facts},
+                context={"identity": identity, "memories": memories, "patterns": {}, "known_facts": known_facts, "recent_turns": recent_turns},
                 user_message=request.message,
                 identity=identity,
             ):
