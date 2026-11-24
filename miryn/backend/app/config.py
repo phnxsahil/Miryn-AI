@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     # confirms the LLM correction marker is reliable; while off, no
     # existing memory is ever auto-hidden.
     MEMORY_SUPERSESSION_ENABLED: bool = False
+    # Subject/source provenance for stored facts (migration 016). OFF by
+    # default: while off, nothing reads or writes memory_facts.subject and
+    # supersession behaves exactly as before. When ON, supersession links
+    # require both facts to carry subject 'user' with trusted source messages.
+    MEMORY_SUBJECT_ENABLED: bool = False
     # Read-path correction ordering: a validated explicit correction sorts
     # ahead of the fact it corrects. Separate from the supersession gate -
     # no status flip, no importance mutation, no supersession row, and

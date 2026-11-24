@@ -179,6 +179,94 @@ def bumped_importance(old: float, new: float) -> float:
     return min(0.99, base + (1.0 - base) * 0.15)
 
 
+_SUBJECT_SQL_OFF = {"subject_col": "", "subject_val": "", "subject_set": ""}
+_SUBJECT_SQL_ON = {
+    "subject_col": ", subject",
+    "subject_val": ", :subject",
+    # Unknown never overrides a known subject; a known subject fills unknown;
+    # disagreement (user vs other) collapses to unknown instead of picking one.
+    "subject_set": """
+                            subject = CASE
+                                WHEN EXCLUDED.subject = 'unknown' THEN memory_facts.subject
+                                WHEN memory_facts.subject = 'unknown' THEN EXCLUDED.subject
+                                WHEN memory_facts.subject = EXCLUDED.subject THEN memory_facts.subject
+                                ELSE 'unknown'
+                            END,""",
+}
+
+
+def subject_params(fact: Any, source_message_id: str | None) -> dict[str, Any]:
+    """Subject to persist. A 'user' claim without a server-side source message is unknown."""
+    subject = getattr(fact, "subject", "unknown")
+    if subject not in ("user", "other"):
+        subject = "unknown"
+    if subject == "user" and not source_message_id:
+        subject = "unknown"
+    return {"subject": subject}
+
+
+def _message_text(session: Any, user_id: str, message_id: str) -> tuple[str | None, str | None]:
+    """(text, conversation_id) of a stored USER message owned by user_id, else (None, None).
+
+    Ownership is checked on both the message and its conversation, so an id
+    from another account or a non-user (assistant) message never verifies.
+    """
+    row = session.execute(
+        text(
+            """
+            SELECT m.content, m.content_encrypted, m.conversation_id
+            FROM messages m
+            JOIN conversations c ON c.id = m.conversation_id
+            WHERE m.id = :mid AND m.user_id = :uid AND c.user_id = :uid AND m.role = 'user'
+            """
+        ),
+        {"mid": message_id, "uid": user_id},
+    ).mappings().first()
+    if not row:
+        return None, None
+    content = row.get("content")
+    if not content and row.get("content_encrypted"):
+        try:
+            content = decrypt_text(row["content_encrypted"])
+        except Exception:
+            content = None
+    return (str(content) if content else None), str(row["conversation_id"])
+
+
+def _subject_link_allowed(
+    session: Any,
+    user_id: str,
+    new_row: dict[str, Any],
+    old_row: dict[str, Any],
+    corrects: dict[str, Any],
+    source_message_id: str | None,
+) -> bool:
+    """Trusted-provenance gate for an implicit supersession link.
+
+    A model's "subject: user" is only a claim. A link needs: both facts stored
+    with subject 'user'; the new fact's source message is the server-supplied
+    id, stored for this owner as a user message, and its text actually
+    contains the corrected value; the old fact also traces to a stored user
+    message of the same owner (it may come from an earlier conversation).
+    Any missing piece means no link.
+    """
+    if new_row.get("subject") != "user" or old_row.get("subject") != "user":
+        return False
+    if not source_message_id or new_row.get("source_message_id") != str(source_message_id):
+        return False
+    old_source = old_row.get("source_message_id")
+    if not old_source or old_source == str(source_message_id):
+        return False
+    new_text, _ = _message_text(session, user_id, str(source_message_id))
+    if not new_text:
+        return False
+    value_tokens = _correction_tokens(str(corrects.get("new_value") or ""))
+    if not value_tokens or not _tokens_match(value_tokens, _correction_tokens(new_text)):
+        return False
+    old_text, _ = _message_text(session, user_id, str(old_source))
+    return bool(old_text)
+
+
 class FactStore:
     def _unsupported(self) -> None:
         logger.warning("memory_facts: supabase backend not supported")
@@ -201,6 +289,7 @@ class FactStore:
         if not has_sql():
             self._unsupported()
             return
+        subject_sql = _SUBJECT_SQL_ON if settings.MEMORY_SUBJECT_ENABLED else _SUBJECT_SQL_OFF
         with get_sql_session() as session:
             for fact, encrypted_fact in saved:
                 encrypted_corrects = None
@@ -217,10 +306,10 @@ class FactStore:
                         """
                         INSERT INTO memory_facts (
                             user_id, fact, fact_key, category, importance, emotional_weight,
-                            source_message_id, extractor, corrects
+                            source_message_id, extractor, corrects{subject_col}
                         ) VALUES (
                             :user_id, :fact, :fact_key, :category, :importance, :emotional_weight,
-                            :source_message_id, :extractor, :corrects
+                            :source_message_id, :extractor, :corrects{subject_val}
                         )
                         ON CONFLICT (user_id, fact_key) WHERE status = 'active'
                         DO UPDATE SET
@@ -235,12 +324,13 @@ class FactStore:
                             -- Keep the first stored marker unless the new write
                             -- carries one (worker refinement can add it after a
                             -- heuristic insert of the same text).
-                            corrects = COALESCE(EXCLUDED.corrects, memory_facts.corrects),
+                            corrects = COALESCE(EXCLUDED.corrects, memory_facts.corrects),{subject_set}
                             last_seen_at = NOW(),
                             updated_at = NOW()
-                        """
+                        """.format(**subject_sql)
                     ),
                     {
+                        **subject_params(fact, source_message_id),
                         "user_id": user_id,
                         "fact": encrypted_fact,
                         "fact_key": fact_key(fact.text),
@@ -501,10 +591,10 @@ class FactStore:
             rows = session.execute(
                 text(
                     """
-                    SELECT id, fact, category, extractor, created_at
+                    SELECT id, fact, category, extractor, created_at{subject_cols}
                     FROM memory_facts
                     WHERE user_id = :user_id AND status = 'active'
-                    """
+                    """.format(subject_cols=", subject, source_message_id" if settings.MEMORY_SUBJECT_ENABLED else "")
                 ),
                 {"user_id": user_id},
             ).mappings().all()
@@ -523,6 +613,10 @@ class FactStore:
                         "category": row["category"],
                         "extractor": row["extractor"],
                         "created_at": row["created_at"],
+                        "subject": row.get("subject") if settings.MEMORY_SUBJECT_ENABLED else None,
+                        "source_message_id": (
+                            str(row["source_message_id"]) if settings.MEMORY_SUBJECT_ENABLED and row.get("source_message_id") else None
+                        ),
                     }
                 )
             for fact in correcting:
@@ -533,8 +627,16 @@ class FactStore:
                 if new_row is None:
                     continue
                 pool = [c for c in candidates if c["id"] != new_row["id"]]
+                # Ambiguity is judged over every matching fact first (unknown
+                # and other included), so an unattributed match blocks a link
+                # instead of being silently skipped.
                 chosen = select_supersede_candidate(pool, new_row, fact.corrects)
                 if chosen is None:
+                    continue
+                if settings.MEMORY_SUBJECT_ENABLED and not _subject_link_allowed(
+                    session, user_id, new_row, chosen, fact.corrects, source_message_id
+                ):
+                    logger.info("supersession link skipped: subject/source not verified")
                     continue
                 updated = session.execute(
                     text(
