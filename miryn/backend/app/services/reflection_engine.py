@@ -62,7 +62,9 @@ class ReflectionEngine:
             "3. \"topics\": array of short topic strings\n"
             "4. \"open_loops\": array of up to 3 objects {\"topic\": short string, \"importance\": 1-3} for things the user "
             "left unresolved in this conversation (a pending decision, a plan not yet done, or a question they still want "
-            "answered). Do not list topics that were simply discussed. Use an empty array if nothing is unresolved.\n\n"
+            "answered). Base every entry on what the user said. The assistant text is context only: do not record a "
+            "loop, plan or fact that appears only in the assistant's reply, but do record one when the user "
+            "explicitly accepts, adopts or asks about something the assistant suggested. Do not list topics that were simply discussed. Use an empty array if nothing is unresolved.\n\n"
             f"Conversation JSON:\n{payload}"
         )
         response = await self.llm.generate(prompt, max_tokens=400)
