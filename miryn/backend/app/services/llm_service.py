@@ -50,21 +50,18 @@ _SENTENCE_END_RE = re.compile(r"[.!?â¦][\"'âÂ»)\]}]*\s*$")
 BANNED_PHRASES = [
     "it makes complete sense",
     "that makes complete sense",
-    "I hear you",
     "that cuts deeper",
     "cuts twice as deep",
     "sharp sting",
     "the sting",
     "running the tape",
     "on loop",
-    "holding space",
-    "that must be so hard",
 ]
 
 PRESET_VOICES = {
     "companion": {
         "shape": "Talk like a warm, mature partner who knows them well. Open with one plain line that shows you actually heard them, notice the small things they mention, and reassure without babying. Disagree gently when it matters. No pet names, no forced flirting.",
-        "length": "2 to 5 sentences. Loose and warm, like someone who cares texting back.",
+        "length": "Match the moment. Light or casual messages get a few loose, warm lines. When they bring something painful or tangled, take the room you need to answer the specific things they said. Do not pad and do not cut it short.",
         "questions": "Ask a question only when you really want the answer. At least every other reply should end on a statement, not a question.",
     },
     "mirror": {
@@ -91,13 +88,16 @@ PRESET_VOICES = {
 
 DEFAULT_VOICE = {
     "shape": "Respond to what they actually said first, then add one useful thought.",
-    "length": "2 to 4 sentences.",
+    "length": "Match the moment: brief for light messages, fuller when they bring something heavy.",
     "questions": "Ask a question only when it helps. Do not end every reply with one.",
 }
 
 
 def _local_time_line(identity: dict) -> str:
-    tz_name = identity.get("timezone") or identity.get("tz") or "UTC"
+    tz_name = identity.get("timezone") or identity.get("tz")
+    if not tz_name:
+        # No known timezone: the server clock is UTC and would give a wrong greeting for most users.
+        return "The user's timezone is unknown. Do not mention the time of day (morning, afternoon, evening, tonight)."
     try:
         now = datetime.now(ZoneInfo(tz_name))
     except Exception:
@@ -694,7 +694,7 @@ Partial reply:
         values = identity.get("values", {})
         beliefs = identity.get("beliefs", [])
         open_loops = identity.get("open_loops", [])
-        preset_id = identity.get("preset", "companion")
+        preset_id = identity.get("preset") or "companion"  # a stored None must not drop the persona
 
         preset_modifier = ""
         behaviors = {}
@@ -736,7 +736,11 @@ Partial reply:
         loops_prose = ""
         if open_loops:
             loop_lines = []
-            for loop in open_loops[:5]:
+            # Newest first: stored order is oldest first, so old loops used to crowd out recent ones.
+            def _loop_recency(loop):
+                return str(loop.get("last_mentioned") or "") if isinstance(loop, dict) else ""
+
+            for loop in sorted(open_loops, key=_loop_recency, reverse=True)[:5]:
                 if isinstance(loop, dict):
                     topic = loop.get("topic", "unknown")
                     importance = loop.get("importance", "?")
@@ -774,7 +778,7 @@ USER PROFILE:
 - Personality traits: {traits_prose}
 - Core values: {values_prose}
 {"- Beliefs:" + chr(10) + beliefs_prose if beliefs_prose else ""}
-{"- Open threads to follow up on:" + chr(10) + loops_prose if loops_prose else ""}
+{"- Open threads (may be stale; what the user says now always wins, and never assume a thread is still true):" + chr(10) + loops_prose if loops_prose else ""}
 
 YOUR BEHAVIORAL STYLE:
 {preset_modifier}
@@ -783,6 +787,14 @@ HOW YOUR REPLIES ARE SHAPED:
 - Shape: {voice["shape"]}
 - Length: {voice["length"]}
 - Questions: {voice["questions"]}
+
+WHEN SOMEONE IS HURTING:
+- Let the reply follow what they actually wrote. Name the specific things they described (the event, the person, the feeling in their own words) before any advice. A generic line of sympathy is worse than none.
+- Comfort first. Offer a next step only if they ask or seem stuck, and keep it small.
+- Do not minimise, do not rush to fix, and do not turn their pain into a lesson.
+- Read context before reacting to alarming words. A quoted, past, hypothetical or negated statement ("I don't want to die") is not the same as a current statement of intent. If it is unclear how they are right now, ask once, calmly and in plain words, instead of assuming either way or using a script.
+- Do not claim to be monitoring them or able to act outside this chat.
+- Stay with what they actually told you. Do not invent biographical or scenario facts (scenes, places, actions, people, events) they did not mention, for example do not describe them standing in a kitchen unless they said so. You may reflect a feeling they might have if you clearly label it as a guess ("it sounds like it might be..."). If you want a detail, ask for it.
 
 NOW:
 {_local_time_line(identity)}
@@ -793,12 +805,12 @@ Your purpose:
 1. Remember everything the user shares
 2. Notice patterns in their behavior and emotions
 3. Reflect insights back gently
-4. Be honest, direct, avoid fluff
+4. Be honest and direct, with warmth. Cut filler, not care
 5. Sound like a person, not a script. Vary how you open and how you end.
 
 Never use these stock phrases or close variants of them: {banned_prose}. Do not reuse a descriptive word or image you already used earlier in this conversation. Do not start two replies in a row with the same kind of sentence.
 
-Speak naturally, like a thoughtful, sharp friend who truly knows them. Avoid sounding like a generic AI or a therapist."""
+Speak naturally, like a thoughtful, sharp friend who truly knows them. Avoid clinical jargon and canned scripts, but do not avoid warmth."""
 
         return prompt
 
@@ -810,7 +822,7 @@ Speak naturally, like a thoughtful, sharp friend who truly knows them. Avoid sou
         parts.append(f"Current message: {user_message}")
         parts.append("""
 Formatting requirements:
-- Follow the length and shape in HOW YOUR REPLIES ARE SHAPED. Short is fine when the message is short, longer is fine when they bring something heavy.
+- Follow the length and shape in HOW YOUR REPLIES ARE SHAPED. Length follows the moment: short for light messages, as long as needed for heavy ones, never padded.
 - Always finish the sentence you are writing and end with sentence-ending punctuation.
 - Answer directly with a conversational, insightful tone.
 - Use markdown only when strictly necessary for clarity.

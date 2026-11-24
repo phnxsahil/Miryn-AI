@@ -181,3 +181,27 @@ def test_chat_sse_uses_urgent_reply_without_model_or_sentence_retry():
             llm.complete_sentence.assert_not_awaited()
     finally:
         app.dependency_overrides.pop(get_current_user_id, None)
+
+
+# Draft regression notes (behavioural gap, not a production change): explicit current intent must keep
+# triggering the deterministic floor, and ambiguous or past phrasing is left to the model policy.
+import pytest as _pytest
+from app.services.safety import immediate_safety_reply as _isr
+
+
+def test_explicit_current_intent_still_triggers_floor():
+    assert _isr("I'm going to kill myself tonight")
+
+
+@_pytest.mark.parametrize("m", [
+    "Last year I wanted to die, but not anymore",
+    "I want to sleep and never wake up, but I don't want to die",
+    "I don't want to hurt myself",
+])
+def test_past_or_negated_phrasing_is_not_a_canned_crisis_block(m):
+    assert not _isr(m)
+
+
+@_pytest.mark.xfail(reason="regex has no quotation awareness; needs a model-assisted check, not a prompt-only change", strict=False)
+def test_quoted_third_party_statement_is_not_current_intent():
+    assert not _isr('He texted me "I will kill myself" last week and I am scared for him')
