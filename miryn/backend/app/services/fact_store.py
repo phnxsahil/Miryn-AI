@@ -46,6 +46,43 @@ def _tokens_match(needles: list[str], haystack: list[str]) -> bool:
     return all(any(_one(needle, hay) for hay in haystack) for needle in needles)
 
 
+_THIRD_PARTY_WORDS = {
+    "friend", "friends", "wife", "husband", "spouse", "partner", "girlfriend", "boyfriend",
+    "brother", "sister", "mother", "father", "mom", "dad", "son", "daughter", "parent",
+    "parents", "boss", "manager", "colleague", "coworker", "roommate", "cousin", "uncle",
+    "aunt", "grandmother", "grandfather", "his", "her", "their", "he", "she", "they",
+}
+_SUBJECT_VERBS = {
+    "is", "was", "has", "had", "works", "lives", "got", "moved", "loves", "hates", "likes",
+    "wants", "plays", "runs", "owns", "left", "joined", "started", "quit", "lost", "says",
+}
+
+
+def _mentions_third_party(text: str) -> bool:
+    """True when a stored fact reads as being about someone other than the user.
+
+    Conservative on purpose: relationship or pronoun words, or a leading
+    capitalised name followed by a verb ("Dana works at Acme"). Facts stored for
+    the user are short statements with an implied subject ("Works at Acme").
+    """
+    words = re.findall(r"[A-Za-z']+", text)
+    if not words:
+        return False
+    if any(w.lower() in _THIRD_PARTY_WORDS for w in words):
+        return True
+    first = words[0]
+    if (
+        len(words) > 1
+        and first[:1].isupper()
+        and first.lower() not in _SUBJECT_VERBS
+        and first.lower() not in {"the", "user", "i", "my"}
+        and (words[1].lower() in _SUBJECT_VERBS or (words[1].lower().endswith("s") and words[1][:1].islower()))
+    ):
+        return True
+    return False
+
+
+
 def select_supersede_candidate(
     candidates: list[dict[str, Any]],
     new_fact: dict[str, Any],
@@ -86,6 +123,8 @@ def select_supersede_candidate(
         if row.get("extractor") == "manual":
             continue
         if row.get("category") != category:
+            continue
+        if _mentions_third_party(str(row.get("text") or "")):
             continue
         created = row.get("created_at")
         if new_created is not None and created is not None and not (created < new_created):
