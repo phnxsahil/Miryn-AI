@@ -217,7 +217,7 @@ class MemoryLayer:
                 result = sql_session.execute(
                     text(
                         """
-                        SELECT id, content, metadata, importance_score, created_at,
+                        SELECT id, role, content, metadata, importance_score, created_at,
                                content_encrypted, metadata_encrypted,
                                1 - (embedding <=> CAST(:query_embedding AS vector)) as similarity
                         FROM messages
@@ -242,7 +242,7 @@ class MemoryLayer:
                 result = session.execute(
                     text(
                         """
-                        SELECT id, content, metadata, importance_score, created_at,
+                        SELECT id, role, content, metadata, importance_score, created_at,
                                content_encrypted, metadata_encrypted,
                                1 - (embedding <=> CAST(:query_embedding AS vector)) as similarity
                         FROM messages
