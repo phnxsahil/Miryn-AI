@@ -395,7 +395,7 @@ export default function ChatInterface() {
         </div>
         {!pinned && messages.length > 0 && <button type="button" onClick={jumpToLatest} className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] px-3 py-2 text-xs shadow-lg"><ArrowDown size={14} /> Jump to latest</button>}
       </div>
-      <div className="shrink-0 px-4 pb-4 pt-2 md:px-8 md:pb-6"><div className="mx-auto max-w-3xl"><InputBox onSend={sendMessage} streaming={streaming} onStop={() => requestRef.current?.abort()} disabled={loading && !streaming} /></div></div>
+      <div className="shrink-0 px-4 pb-[max(1rem,var(--safe-bottom))] pt-2 md:px-8 md:pb-6"><div className="mx-auto max-w-3xl"><InputBox onSend={sendMessage} streaming={streaming} onStop={() => requestRef.current?.abort()} disabled={loading && !streaming} /></div></div>
     </div>
   );
 }
