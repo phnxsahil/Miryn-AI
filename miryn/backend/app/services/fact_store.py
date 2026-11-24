@@ -389,7 +389,7 @@ class FactStore:
             return [_public_fact(row, include_markers) for row in facts]
         query_tokens = _correction_tokens(query)
         if not query_tokens:
-            return facts[:n]
+            return [_public_fact(row, include_markers) for row in facts[:n]]
 
         def relevance(fact: dict[str, Any]) -> float:
             fact_tokens = _correction_tokens(str(fact["content"]))
