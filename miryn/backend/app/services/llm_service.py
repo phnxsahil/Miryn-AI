@@ -97,7 +97,10 @@ DEFAULT_VOICE = {
 
 
 def _local_time_line(identity: dict) -> str:
-    tz_name = identity.get("timezone") or identity.get("tz") or "UTC"
+    tz_name = identity.get("timezone") or identity.get("tz")
+    if not tz_name:
+        # No known timezone: the server clock is UTC and would give a wrong greeting for most users.
+        return "The user's timezone is unknown. Do not mention the time of day (morning, afternoon, evening, tonight)."
     try:
         now = datetime.now(ZoneInfo(tz_name))
     except Exception:
@@ -736,7 +739,11 @@ Partial reply:
         loops_prose = ""
         if open_loops:
             loop_lines = []
-            for loop in open_loops[:5]:
+            # Newest first: stored order is oldest first, so old loops used to crowd out recent ones.
+            def _loop_recency(loop):
+                return str(loop.get("last_mentioned") or "") if isinstance(loop, dict) else ""
+
+            for loop in sorted(open_loops, key=_loop_recency, reverse=True)[:5]:
                 if isinstance(loop, dict):
                     topic = loop.get("topic", "unknown")
                     importance = loop.get("importance", "?")

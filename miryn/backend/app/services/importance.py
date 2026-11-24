@@ -151,7 +151,10 @@ def _is_recall_probe(sentence: str, clauses: list[str] | None = None) -> bool:
     if _REQUEST_LEAD.match(sentence):
         return True
     if not sentence.endswith("?"):
-        return False
+        # Chat users often drop the question mark ("what is my manager name and where do i work").
+        # Treat an unpunctuated sentence as a question only with a clear wh-lead plus aux inversion.
+        unpunctuated = not re.search(r"[.!?]\s*$", sentence)
+        return bool(unpunctuated and _WH_LEAD.match(sentence) and _AUX_INVERSION.search(sentence))
     if _WH_LEAD.match(sentence) or _AUX_INVERSION.search(sentence):
         return True
     # A question need not start with the interrogative clause:
