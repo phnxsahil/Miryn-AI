@@ -59,3 +59,9 @@ def test_reflection_loop_extraction_ignores_assistant_only_content():
     from app.services import reflection_engine
     src = inspect.getsource(reflection_engine)
     assert "Base every entry on what the user said" in src and "explicitly accepts, adopts" in src
+
+
+def test_hurting_guidance_forbids_invented_details():
+    p = _prompt()
+    assert "Do not invent biographical or scenario facts" in p
+    assert "clearly label it as a guess" in p
