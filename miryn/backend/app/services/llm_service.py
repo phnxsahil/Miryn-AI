@@ -45,7 +45,7 @@ _quota_dead_until = 0.0
 _model_quota_dead_until: dict[str, float] = {}
 CHAT_MAX_OUTPUT_TOKENS = 2048
 CHAT_CONTINUATION_MAX_TOKENS = 256
-_SENTENCE_END_RE = re.compile(r"[.!?â¦][\"'âÂ»)\]}]*\s*$")
+_SENTENCE_END_RE = re.compile(r"[.!?\u2026\u0964\u0965][\"'\u2019\u201d\u00bb)\]}]*\s*$")
 
 BANNED_PHRASES = [
     "it makes complete sense",

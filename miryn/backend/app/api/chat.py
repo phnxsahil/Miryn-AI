@@ -481,7 +481,7 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
         if response_text and not _has_sentence_ending(response_text):
             completion = await orchestrator.llm.complete_sentence(response_text, identity)
             if completion:
-                separator = "" if response_text.endswith((" ", "\n")) or completion.startswith(tuple(".,!?;:â¦")) else " "
+                separator = "" if response_text.endswith((" ", "\n")) or completion.startswith(tuple(".,!?;:\u2026\u0964")) else " "
                 appended = f"{separator}{completion}"
                 chunks.append(appended)
                 yield f"data: {json.dumps({'chunk': appended})}\n\n"
