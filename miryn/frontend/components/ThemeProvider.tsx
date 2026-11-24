@@ -11,6 +11,13 @@ type ThemeContextValue = {
 };
 
 const STORAGE_KEY = "miryn-theme";
+// Keep the browser/installed-app chrome colour in step with the in-app theme.
+const THEME_COLORS: Record<Theme, string> = { dark: "#0a0a0a", light: "#f2f7f5" };
+
+function applyTheme(theme: Theme) {
+  document.documentElement.dataset.theme = theme;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEME_COLORS[theme]);
+}
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function isTheme(value: string | null): value is Theme {
@@ -30,20 +37,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     const nextTheme = isTheme(stored) ? stored : "dark";
     setThemeState(nextTheme);
-    document.documentElement.dataset.theme = nextTheme;
+    applyTheme(nextTheme);
   }, []);
 
   const setTheme = useCallback((nextTheme: Theme) => {
     setThemeState(nextTheme);
     window.localStorage.setItem(STORAGE_KEY, nextTheme);
-    document.documentElement.dataset.theme = nextTheme;
+    applyTheme(nextTheme);
   }, []);
 
   const toggleTheme = useCallback(() => {
     setThemeState((currentTheme) => {
       const nextTheme = currentTheme === "dark" ? "light" : "dark";
       window.localStorage.setItem(STORAGE_KEY, nextTheme);
-      document.documentElement.dataset.theme = nextTheme;
+      applyTheme(nextTheme);
       return nextTheme;
     });
   }, []);

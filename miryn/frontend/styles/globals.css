@@ -728,3 +728,6 @@ html.js .landing-ambient:not(.is-near) .mood-orb { animation-play-state: paused;
 .legal-page .miryn-wall-card { background: var(--miryn-surface); border: 1px solid var(--miryn-card-border); border-radius: 20px; box-shadow: none; }
 .legal-page .miryn-fragment { color: var(--miryn-parchment-muted); }
 .legal-page a:focus-visible { outline: 2px solid var(--miryn-moss); outline-offset: 4px; }
+
+/* Safe-area insets as variables so layout can use them and they can be overridden in tests. */
+:root{--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}

@@ -1,9 +1,18 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import TrafficAnalytics from "@/components/TrafficAnalytics";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import "../styles/globals.css";
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0a0a0a",
+};
+
 export const metadata: Metadata = {
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "Miryn", statusBarStyle: "black" },
   title: "Miryn AI — Persistent Memory & Evolving AI Companion",
   description: "An AI companion that remembers, learns, and evolves with you. Powered by 3-tier memory architecture and dynamic identity engine.",
   icons: {
