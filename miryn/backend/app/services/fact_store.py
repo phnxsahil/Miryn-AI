@@ -46,6 +46,51 @@ def _tokens_match(needles: list[str], haystack: list[str]) -> bool:
     return all(any(_one(needle, hay) for hay in haystack) for needle in needles)
 
 
+_THIRD_PARTY_WORDS = {
+    "friend", "friends", "wife", "husband", "spouse", "partner", "girlfriend", "boyfriend",
+    "brother", "sister", "mother", "father", "mom", "dad", "son", "daughter", "parent",
+    "parents", "boss", "manager", "colleague", "coworker", "roommate", "cousin", "uncle",
+    "aunt", "grandmother", "grandfather", "his", "her", "their", "he", "she", "they", "him", "them",
+}
+# Stored user facts are short statements with the user as the implied subject
+# ("Works at Acme", "Training for a triathlon"). A fact is treated as the
+# user's own only on POSITIVE evidence: it opens with "The user"/"User"/"I", or
+# with a known verb that takes an implied subject. Anything else (a leading
+# name of any case, an unknown opening word) is ambiguous and is never
+# superseded. A fact that also names a relationship, pronoun or quoted speech
+# is ambiguous too.
+_OWNED_OPENERS = {
+    "works", "worked", "working", "lives", "lived", "living", "got", "gets", "moved", "moving",
+    "started", "starting", "stopped", "quit", "left", "joined", "lost", "has", "have", "had",
+    "is", "am", "was", "prefers", "likes", "loves", "hates", "dislikes", "wants", "plans",
+    "trying", "training", "studying", "learning", "preparing", "planning", "feels", "feeling",
+    "struggles", "struggling", "owns", "takes", "taking", "runs", "running", "goes", "going",
+    "enjoys", "avoids", "needs", "uses", "drinks", "eats", "sleeps", "wakes", "reports",
+    "recently", "currently", "no", "not", "new", "freelances", "studies", "attends",
+}
+
+
+def _mentions_other_person_or_quote(text: str) -> bool:
+    if any(ch in text for ch in ('"', "\u201c", "\u201d", "`")):
+        return True
+    return any(w.lower() in _THIRD_PARTY_WORDS for w in re.findall(r"[A-Za-z']+", text))
+
+
+def _is_owned_by_user(text: str) -> bool:
+    if any(ch in text for ch in ('"', "\u201c", "\u201d", "`")):
+        return False
+    words = re.findall(r"[A-Za-z']+", text)
+    if not words:
+        return False
+    if any(w.lower() in _THIRD_PARTY_WORDS for w in words):
+        return False
+    first = words[0]
+    if first.lower() in {"the", "user", "i", "my"}:
+        # "The user ..." / "I ..." only; "The" alone could start a third-party clause.
+        return first.lower() in {"user", "i"} or (len(words) > 1 and words[1].lower() == "user")
+    return first[:1].isupper() and first.lower() in _OWNED_OPENERS
+
+
 def select_supersede_candidate(
     candidates: list[dict[str, Any]],
     new_fact: dict[str, Any],
@@ -99,6 +144,16 @@ def select_supersede_candidate(
             continue
         eligible.append(row)
     if len(eligible) != 1:
+        return None
+    # Ambiguity is judged over every matching fact, owned or not; only then is
+    # the single match required to positively read as the user's own fact.
+    chosen_text = str(eligible[0].get("text") or "")
+    if str(corrects.get("kind") or "") == "state_change":
+        # Implicit state changes carry no explicit "not X" wording, so require
+        # positive evidence that the stored fact is the user's own.
+        if not _is_owned_by_user(chosen_text):
+            return None
+    elif _mentions_other_person_or_quote(chosen_text):
         return None
     return eligible[0]
 
