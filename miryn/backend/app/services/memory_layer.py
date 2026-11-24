@@ -276,6 +276,46 @@ class MemoryLayer:
         data = response.data or []
         return [self._decrypt_message(dict(row)) for row in data]
 
+    def recent_turns(
+        self,
+        user_id: str,
+        conversation_id: str | None,
+        limit: int,
+        sql_session: Any | None = None,
+        exclude_text: str | None = None,
+    ) -> List[Dict[str, Any]]:
+        """Latest `limit` turns of one conversation, oldest first, decrypted.
+
+        Scoped by BOTH user_id and conversation_id so a guessed conversation id can never
+        return another user's rows. Skips expired rows. If the newest row is the user message
+        being answered right now (same text), it is dropped so it is not shown twice.
+        Returns [] when SQL is unavailable or limit <= 0.
+        """
+        if not conversation_id or limit <= 0 or not has_sql():
+            return []
+        query = text(
+            """
+            SELECT id, role, content, content_encrypted, created_at
+            FROM messages
+            WHERE user_id = :user_id AND conversation_id = :cid
+              AND (delete_at IS NULL OR delete_at > NOW())
+            ORDER BY created_at DESC, CAST(id AS TEXT) DESC
+            LIMIT :n
+            """
+        )
+        params = {"user_id": user_id, "cid": conversation_id, "n": limit + 1}
+        if sql_session is not None:
+            rows = sql_session.execute(query, params).mappings().all()
+        else:
+            with get_sql_session() as session:
+                rows = session.execute(query, params).mappings().all()
+        turns = [self._decrypt_message(dict(r)) for r in rows]
+        if exclude_text and turns and turns[0].get("role") == "user" and (turns[0].get("content") or "").strip() == exclude_text.strip():
+            turns = turns[1:]
+        turns = turns[:limit]
+        turns.reverse()
+        return [t for t in turns if t.get("content")]
+
     def _temporal_search(self, user_id: str, days: int, limit: int, sql_session: Any | None = None):
         """
         Retrieve episodic messages for a user created within the past `days`, ordered by recency.

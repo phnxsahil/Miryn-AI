@@ -12,6 +12,7 @@ import threading
 import time
 from pathlib import Path
 from app.config import settings
+from app.services.recent_turns import build_recent_turns_block
 from app.services import llm_budget
 from app.services.safety import SAFETY_POLICY, BLOCKED_REPLY, immediate_safety_reply, provider_blocked
 
@@ -850,11 +851,21 @@ Formatting requirements:
     def _format_context(self, context: dict) -> str:
         memories = context.get("memories", [])
         known_facts = context.get("known_facts", [])
+        recent_turns = context.get("recent_turns") or []
+        if recent_turns:
+            shown_ids = {str(t.get("id")) for t in recent_turns if t.get("id")}
+            memories = [m for m in memories if str(m.get("id")) not in shown_ids]
 
         context_parts = []
         if known_facts:
             context_parts.append("What you know about this user (stable facts, use naturally, do not recite):")
             context_parts.extend(self._format_fact_line(fact) for fact in known_facts[:8])
+        if recent_turns:
+            block = build_recent_turns_block(
+                recent_turns, max_chars=settings.RECENT_TURNS_MAX_CHARS
+            )
+            if block:
+                context_parts.append(block)
         if memories:
             context_parts.append(
                 "Relevant past conversations (each line says who wrote it when known; "
