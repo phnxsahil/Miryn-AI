@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     LLM_TIMEOUT_SECONDS: float = 20.0
     # Upper bound for context/memory retrieval before falling back to empty context (seconds).
     CONTEXT_RETRIEVAL_TIMEOUT_SECONDS: float = 1.5
+    # Latest turns of the CURRENT conversation sent to the model as role-tagged lines.
+    # 0 (default) = off, behaviour unchanged. Reads one indexed-by-user query, own timeout below.
+    RECENT_TURNS_LIMIT: int = 0
+    RECENT_TURNS_MAX_CHARS: int = 3000
+    RECENT_TURNS_TIMEOUT_SECONDS: float = 0.6
     # Upper bound for optional contradiction detection (seconds).
     CONFLICT_DETECTION_TIMEOUT_SECONDS: float = 2.0
     # Run conflict detection inline (slower) vs best-effort background.

@@ -66,10 +66,30 @@ class ConversationOrchestrator:
         except Exception:
             self.logger.exception("Context retrieval failed for user %s", user_id)
 
+        recent_turns: list = []
+        if settings.RECENT_TURNS_LIMIT > 0:
+            try:
+                recent_turns = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.memory.recent_turns,
+                        user_id,
+                        conversation_id,
+                        settings.RECENT_TURNS_LIMIT,
+                        None,
+                        message,
+                    ),
+                    timeout=settings.RECENT_TURNS_TIMEOUT_SECONDS,
+                )
+            except asyncio.TimeoutError:
+                self.logger.warning("Recent-turn retrieval timed out for user %s", user_id)
+            except Exception:
+                self.logger.exception("Recent-turn retrieval failed for user %s", user_id)
+
         context = {
             "identity": identity,
             "memories": memories,
             "patterns": {},
+            "recent_turns": recent_turns,
         }
         try:
             context["known_facts"] = FactStore().list_top(user_id, 8, query=message)
