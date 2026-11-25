@@ -19,6 +19,17 @@ type Entry = {
 
 const entries: Entry[] = [
   {
+    version: "v0.8.6",
+    date: "November 25, 2026",
+    title: "Settings and privacy wording: deactivate, not delete",
+    live: true,
+    points: [
+      "Settings now says \"Deactivate account\" instead of \"Delete account\", and the confirmation word is DEACTIVATE. The button does what it always did: it deactivates the account and signs you out. Your stored conversations and memories are not erased by it.",
+      "The Export data and Clear conversations hints, the privacy page and the docs now describe what those actions do: deleted memories stop being shown or retrieved as memories, and facts or patterns already drawn from them may remain. Clear conversations hides past conversations from the app.",
+      "Wording and layout only (including a stacked layout on narrow screens). No behaviour, storage or data handling changed, and no hard-delete or erase option was added.",
+    ],
+  },
+  {
     version: "v0.8.5",
     date: "November 13, 2026",
     title: "Open loops: extract pending items instead of topic labels",
