@@ -85,7 +85,7 @@ const SECTIONS = [
     title: "Retention & deletion",
     content: [
       "We keep your data while your account is active. Some memory entries expire automatically as part of the memory system.",
-      "You can delete individual memories at any time from the Memory page; in-app deletion flags those records so they are no longer shown or used. When you delete your account from Settings, it is deactivated immediately and the email tied to it is anonymised - but account deletion does not by itself erase stored conversation and memory records. For erasure of remaining records, email us at worksahilsharma@gmail.com with your request and we will respond within a reasonable time.",
+      "You can delete individual memories at any time from the Memory page; in-app deletion flags those records so they are no longer shown or retrieved as memories. Facts or patterns already drawn from them may remain. When you deactivate your account from Settings, it stops working immediately and the email tied to it is anonymised - but deactivation does not by itself erase stored conversation and memory records. For erasure of remaining records, email us at worksahilsharma@gmail.com with your request and we will respond within a reasonable time.",
       "Residual copies in provider backups and logs are removed on those providers' routine deletion cycles.",
     ],
   },

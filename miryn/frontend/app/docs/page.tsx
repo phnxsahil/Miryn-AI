@@ -41,7 +41,7 @@ const FEATURES = [
     icon: Database,
     name: "Memory Bank",
     tagline: "Your personal context, curated and encrypted at rest.",
-    desc: "Miryn stores memories across three tiers: Transient (short session cache), Episodic (7-day rolling window), and Core (permanent life context). You maintain full sovereignty to add, filter, or erase any memory.",
+    desc: "Miryn stores memories across three tiers: Transient (short session cache), Episodic (7-day rolling window), and Core (permanent life context). You can add memories, delete individual ones (they stop being shown or retrieved as memories), and export your data.",
     steps: [
       "Navigate to Memory Bank from the sidebar.",
       "Filter by All, Core, Episodic, or Emotional memory tags.",

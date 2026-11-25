@@ -217,7 +217,7 @@ export default function SettingsPage() {
             <div><h1 className="font-editorial text-3xl md:text-4xl">Data & privacy</h1><p className="mt-2 text-sm text-[color:var(--theme-muted)]">Export or remove your data</p></div>
             <div className="bg-[color:var(--theme-card)] rounded-2xl border border-[color:var(--theme-border)] px-5 divide-y divide-white/[0.04]">
               <Row label="Episodic retention" hint="Current retention setting"><span className="text-sm text-[color:var(--theme-muted)]">{user?.data_retention || "7d"}</span></Row>
-              <Row label="Export data" hint="Download all memories, identity, and conversations as JSON">
+              <Row label="Export data" hint="Download your memories, identity, and saved facts as JSON">
                 <button onClick={async () => { setExporting(true); try { const blob = await api.exportData(); const a = Object.assign(document.createElement("a"),{href:URL.createObjectURL(blob),download:`miryn-export-${new Date().toISOString().slice(0,10)}.json`}); document.body.appendChild(a); a.click(); a.remove(); showToast("Export downloaded"); } catch(err){showToast(getErrorMessage(err,"Export failed"),true);} finally{setExporting(false);}}} disabled={exporting} className="flex items-center gap-2 px-4 py-2 text-sm bg-[color:var(--theme-input)] border border-[color:var(--theme-border)] rounded-xl text-[color:var(--theme-text)] hover:bg-[color:var(--theme-card-hover)] transition-colors disabled:opacity-50">
                   <Download size={13} />{exporting ? "Exporting..." : "Export"}
                 </button>
@@ -227,19 +227,19 @@ export default function SettingsPage() {
                   <Trash2 size={13} />Purge
                 </button>
               </Row>
-              <Row label="Clear conversations" hint="Permanently remove all chat history">
+              <Row label="Clear conversations" hint="Hides all past conversations from the app">
                 <button onClick={async () => { try { await api.clearConversations(); showToast("Conversations cleared"); } catch(err){showToast(getErrorMessage(err),true);}}} className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 bg-red-500/[0.06] border border-red-500/15 rounded-xl hover:bg-red-500/10 transition-colors">
                   <Trash2 size={13} />Clear
                 </button>
               </Row>
             </div>
             <div className="bg-[color:var(--theme-danger-bg)] border border-[color:var(--theme-danger-border)] rounded-2xl p-5 space-y-4">
-              <div className="flex items-center gap-2 text-red-400"><AlertTriangle size={15} /><h3 className="text-sm font-semibold">Delete account</h3></div>
-              <p className="text-xs text-[color:var(--theme-dim)] leading-relaxed">Permanently deletes your account, memories, and all data. Cannot be undone.</p>
-              <div className="flex items-center gap-2.5">
-                <input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} placeholder='Type "DELETE" to confirm' className="flex-1 bg-[color:var(--theme-input)] border border-red-500/15 rounded-xl px-3 py-2 text-sm text-[color:var(--theme-text)] outline-none focus:border-red-500/30 placeholder:text-[color:var(--theme-dim)]" />
-                <button onClick={async () => { if(deleteConfirm!=="DELETE") return showToast('Type DELETE to confirm',true); try{await api.deleteAccount();api.logout();router.push("/");}catch(err){showToast(getErrorMessage(err),true);}}} disabled={deleteConfirm !== "DELETE"} className="px-4 py-2 text-sm text-red-400 bg-red-500/[0.08] border border-red-500/20 rounded-xl hover:bg-red-500/12 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
-                  Delete
+              <div className="flex items-center gap-2 text-red-400"><AlertTriangle size={15} /><h3 className="text-sm font-semibold">Deactivate account</h3></div>
+              <p className="text-xs text-[color:var(--theme-dim)] leading-relaxed">This deactivates your account and signs you out. Your stored conversations and memories are not erased. See the privacy page to ask for erasure.</p>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+                <input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} placeholder='Type "DEACTIVATE" to confirm' className="sm:flex-1 min-w-0 bg-[color:var(--theme-input)] border border-red-500/15 rounded-xl px-3 py-2 text-sm text-[color:var(--theme-text)] outline-none focus:border-red-500/30 placeholder:text-[color:var(--theme-dim)]" />
+                <button onClick={async () => { if(deleteConfirm!=="DEACTIVATE") return showToast('Type DEACTIVATE to confirm',true); try{await api.deleteAccount();api.logout();router.push("/");}catch(err){showToast(getErrorMessage(err),true);}}} disabled={deleteConfirm !== "DEACTIVATE"} className="sm:shrink-0 px-4 py-2 text-sm text-red-400 bg-red-500/[0.08] border border-red-500/20 rounded-xl hover:bg-red-500/12 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                  Deactivate
                 </button>
               </div>
             </div>
