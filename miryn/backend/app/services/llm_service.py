@@ -697,7 +697,7 @@ Partial reply:
         values = identity.get("values", {})
         beliefs = identity.get("beliefs", [])
         open_loops = identity.get("open_loops", [])
-        preset_id = identity.get("preset", "companion")
+        preset_id = identity.get("preset") or "companion"
 
         preset_modifier = ""
         behaviors = {}
