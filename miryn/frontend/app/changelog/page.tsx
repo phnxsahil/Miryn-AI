@@ -19,6 +19,17 @@ type Entry = {
 
 const entries: Entry[] = [
   {
+    version: "v0.8.7",
+    date: "November 26, 2026",
+    title: "Timezone fallback: an unrecognised timezone is treated as unknown",
+    live: true,
+    points: [
+      "If a timezone value could not be recognised, Miryn used to tell the model it was the user's local time in UTC. It now treats that case like a missing timezone: the model is told the timezone is unknown and not to mention the time of day.",
+      "Recognised timezones and missing timezones behave as before. This fixes the unrecognised-value case only; no new timezone data is stored.",
+      "Checked with offline tests only, no model calls. This is a small correctness fix, not a measured change in reply quality.",
+    ],
+  },
+  {
     version: "v0.8.6",
     date: "November 25, 2026",
     title: "Settings and privacy wording: deactivate, not delete",
