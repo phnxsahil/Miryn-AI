@@ -98,14 +98,19 @@ DEFAULT_VOICE = {
 
 def _local_time_line(identity: dict) -> str:
     tz_name = identity.get("timezone") or identity.get("tz")
-    if not tz_name:
+    if isinstance(tz_name, str):
+        tz_name = tz_name.strip()
+    zone = None
+    if isinstance(tz_name, str) and tz_name:
+        try:
+            zone = ZoneInfo(tz_name)
+        except Exception:
+            zone = None
+    if zone is None:
+        # Missing, blank, non-string or unrecognised zone: all take the same no-time-of-day path.
         # No known timezone: the server clock is UTC and would give a wrong greeting for most users.
         return "The user's timezone is unknown. Do not mention the time of day (morning, afternoon, evening, tonight)."
-    try:
-        now = datetime.now(ZoneInfo(tz_name))
-    except Exception:
-        now = datetime.now(timezone.utc)
-        tz_name = "UTC"
+    now = datetime.now(zone)
     return (
         f"The user's local time is {now.strftime('%A %I:%M %p')} ({tz_name}). "
         "Only say morning, afternoon, tonight or similar when it matches this time."
