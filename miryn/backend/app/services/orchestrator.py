@@ -66,10 +66,18 @@ class ConversationOrchestrator:
         except Exception:
             self.logger.exception("Context retrieval failed for user %s", user_id)
 
+        recent_turns: list = []
+        try:
+            from app.services.recent_turns import fetch_recent_turns
+            recent_turns = await fetch_recent_turns(conversation_id, sql_session=sql_session)
+        except Exception:
+            self.logger.exception("Recent-turn fetch failed for user %s", user_id)
+
         context = {
             "identity": identity,
             "memories": memories,
             "patterns": {},
+            "recent_turns": recent_turns,
         }
         try:
             context["known_facts"] = FactStore().list_top(user_id, 8, query=message)

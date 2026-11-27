@@ -21,6 +21,7 @@ from app.services.importance import make_conversation_title, score_message_heuri
 from app.services.fact_store import FactStore
 from app.services.memory_layer import chat_tier_for
 from app.services.llm_service import QuotaExhausted, _has_sentence_ending
+from app.services.recent_turns import fetch_recent_turns
 from app.services.orchestrator import ConversationOrchestrator
 from app.workers.reflection_worker import analyze_reflection
 
@@ -230,7 +231,7 @@ async def _prepare_stream_context(
     message: str,
     conversation_id: str,
     sql_session=None,
-) -> tuple[dict, list[dict]]:
+) -> tuple[dict, list[dict], list[dict]]:
     identity = orchestrator.identity.get_identity(user_id, sql_session=sql_session) if sql_session is not None else orchestrator.identity.get_identity(user_id)
     memories: list[dict] = []
     try:
@@ -249,7 +250,8 @@ async def _prepare_stream_context(
         logger.warning("Context retrieval timed out for user %s", user_id)
     except Exception:
         logger.exception("Context retrieval failed during streaming for user %s", user_id)
-    return identity, memories
+    recent_turns = await fetch_recent_turns(conversation_id, sql_session=sql_session)
+    return identity, memories, recent_turns
 
 
 def _fire_and_forget(coro: asyncio.Future, label: str, user_id: str) -> None:
@@ -415,7 +417,7 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
             with get_sql_session() as session:
                 if not conversation_id:
                     conversation_id = _create_conversation_with_fallback(user_id, make_conversation_title(request.message), sql_session=session)
-                identity, memories = await _prepare_stream_context(user_id, request.message, conversation_id, sql_session=session)
+                identity, memories, recent_turns = await _prepare_stream_context(user_id, request.message, conversation_id, sql_session=session)
                 prepared_with_sql = True
                 _touch_conversation_updated_at(conversation_id, sql_session=session)
         except Exception:
@@ -424,7 +426,7 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
     if not prepared_with_sql:
         if not conversation_id:
             conversation_id = _create_conversation_with_fallback(user_id, make_conversation_title(request.message))
-        identity, memories = await _prepare_stream_context(user_id, request.message, conversation_id)
+        identity, memories, recent_turns = await _prepare_stream_context(user_id, request.message, conversation_id)
         _touch_conversation_updated_at(conversation_id)
 
     user_msg_id = str(uuid4())
@@ -445,7 +447,7 @@ async def stream_message(request: ChatRequest, user_id: str = Depends(get_curren
         chunks: list[str] = []
         try:
             async for chunk in orchestrator.llm.stream_chat(
-                context={"identity": identity, "memories": memories, "patterns": {}, "known_facts": known_facts},
+                context={"identity": identity, "memories": memories, "patterns": {}, "known_facts": known_facts, "recent_turns": recent_turns},
                 user_message=request.message,
                 identity=identity,
             ):

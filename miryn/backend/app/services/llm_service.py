@@ -855,6 +855,7 @@ Formatting requirements:
     def _format_context(self, context: dict) -> str:
         memories = context.get("memories", [])
         known_facts = context.get("known_facts", [])
+        recent_turns = context.get("recent_turns", [])
 
         context_parts = []
         if known_facts:
@@ -870,5 +871,13 @@ Formatting requirements:
                     context_parts.append(f"- [{ts}] {content}")
                 else:
                     context_parts.append(f"- {content}")
+        if recent_turns:
+            # The running conversation: what makes pronouns, follow-ups and
+            # "as I just said" resolvable. Memories above are long-term; this
+            # is the immediate thread.
+            context_parts.append("Conversation so far (oldest first, the last line is their previous message):")
+            for turn in recent_turns:
+                speaker = "Them" if turn.get("role") == "user" else "You"
+                context_parts.append(f"{speaker}: {turn.get('content', '')}")
 
         return "\n".join(context_parts)
