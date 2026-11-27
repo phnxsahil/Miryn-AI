@@ -85,6 +85,53 @@ engine.dispose()
 '''
 
 
+
+def _pid_command(pid):
+    """Return the process command line for pid, or None if it is not running."""
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as handle:
+            return handle.read().replace(b"\x00", b" ").strip()
+    except (FileNotFoundError, PermissionError, ProcessLookupError, OSError):
+        return None
+
+
+def _clear_stale_pidfile(path):
+    """Remove a leftover Celery pidfile unless a live Celery process owns it.
+
+    A restarted Render instance keeps /tmp. The previous boot's pidfile
+    survives, and its pid number usually belongs to an unrelated process in
+    the new container, so Celery exits 73 ("already running") and the
+    supervisor stops the container in a loop. Only a live process whose
+    command line is actually Celery may keep the file; anything else means
+    the file is stale. Deleting a file never signals or disrupts the process
+    named inside it.
+    """
+    try:
+        with open(path, "r", encoding="ascii", errors="ignore") as handle:
+            raw = handle.read().strip().split()[0]
+    except (FileNotFoundError, IndexError):
+        return
+    except OSError:
+        log(f"Could not read {path}; leaving it in place")
+        return
+    try:
+        pid = int(raw)
+    except ValueError:
+        pid = None
+    if pid is not None and pid > 0:
+        command = _pid_command(pid) or b""
+        if b"celery" in command.lower():
+            log(f"Active Celery process {pid} found; keeping {path}")
+            return
+    try:
+        os.remove(path)
+        log(f"Removed stale pidfile {path}")
+    except FileNotFoundError:
+        pass
+    except OSError:
+        log(f"Could not remove stale pidfile {path}; leaving it in place")
+
+
 def main():
     signal.signal(signal.SIGTERM, handle_stop)
     signal.signal(signal.SIGINT, handle_stop)
@@ -111,6 +158,7 @@ def main():
             "--timeout-keep-alive", "30", "--proxy-headers",
             "--forwarded-allow-ips", "*",
         ])
+        _clear_stale_pidfile("/tmp/miryn-celery.pid")
         worker = spawn([
             sys.executable, "-m", "celery", "-A", "app.workers.celery_app:celery_app",
             "worker", "-B", "--loglevel=info", "--concurrency=1", "--pool=solo",
