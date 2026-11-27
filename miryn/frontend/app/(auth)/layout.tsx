@@ -1,4 +1,6 @@
 import SwellBackground from "@/components/swell/SwellBackground";
+import "@/styles/swell-assets.css";
+import "@/styles/swell-tooth.css";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
