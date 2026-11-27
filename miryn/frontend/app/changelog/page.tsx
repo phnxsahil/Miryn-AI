@@ -19,6 +19,17 @@ type Entry = {
 
 const entries: Entry[] = [
   {
+    version: "v0.9.0",
+    date: "November 27, 2026",
+    title: "Swell art direction: companion-facing screens get the new visual system",
+    points: [
+      "The chat, identity, memory, sanctuary and auth screens now use the Swell visual system: a soft wave-field background with light and dark themes, the v2 type treatment with the italic accent word, a raised composer cradle, and transparent panels that sit on the wave.",
+      "The landing page is unchanged.",
+      "The wave artwork ships as scoped inline data-URI stylesheets loaded only by the app and auth layouts, so the landing page never downloads it; the baked /swell/*.webp files will replace the inline versions in a follow-up.",
+      "This entry is committed on the swell-redesign branch while the visual pass is reviewed on the preview deployment. The production site is unaffected until that branch merges.",
+    ],
+  },
+  {
     version: "v0.8.7",
     date: "November 26, 2026",
     title: "Timezone fallback: an unrecognised timezone is treated as unknown",
