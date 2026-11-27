@@ -104,7 +104,12 @@ async def process_outreach():
             count += 1
             
         except Exception as exc:
-            logger.error("Failed to process outreach for item %s: %s", item, exc, exc_info=True)
+            logger.error("Failed to process outreach for user %s: %s", item.get("user_id"), exc, exc_info=True)
+            # Provider-side failures (quota, retired model) affect every remaining
+            # item in this batch; stop instead of burning one LLM call per item.
+            if isinstance(exc, QuotaExhausted) or getattr(exc, "code", None) in (404, 429):
+                logger.info("Aborting remaining outreach items after provider-side failure")
+                break
 
     return count
 

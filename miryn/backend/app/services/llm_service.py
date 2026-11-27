@@ -142,6 +142,31 @@ def _gemini_quota_error(exc: Exception) -> bool:
     return any(marker in error_text for marker in ("quota", "resource_exhausted", "rate limit", "rate_limit", "429"))
 
 
+
+def _gemini_error_class(exc: Exception) -> str:
+    """Sanitized error category for fallback logs.
+
+    Never logs the error body: provider messages can echo request context.
+    Returns a short stable class such as 'quota', 'not_found', 'http_503',
+    'status_unavailable', or the exception type name.
+    """
+    if _gemini_quota_error(exc):
+        return "quota"
+    code = getattr(exc, "code", None)
+    try:
+        code_value = int(code) if code is not None else None
+    except (TypeError, ValueError):
+        code_value = None
+    if code_value == 404:
+        return "not_found"
+    if code_value is not None:
+        return f"http_{code_value}"
+    status = getattr(exc, "status", None)
+    status_value = str(getattr(status, "name", status)).upper() if status is not None else ""
+    if status_value:
+        return f"status_{status_value.lower()}"
+    return type(exc).__name__
+
 def _retry_delay_seconds(exc: Exception) -> float:
     error_text = str(exc)
     patterns = (
@@ -437,7 +462,11 @@ Partial reply:
                             if _gemini_quota_error(exc):
                                 _mark_model_quota_dead(candidate_model, _retry_delay_seconds(exc))
                                 quota_failures.append(exc)
-                            self.logger.warning("Gemini model %s unavailable/quota, trying fallback.", candidate_model)
+                            elif _gemini_error_class(exc) == "not_found":
+                                # Permanent for this project (retired/unavailable model):
+                                # skip it for hours instead of wasting a call on every request.
+                                _mark_model_quota_dead(candidate_model, 6 * 60 * 60)
+                            self.logger.warning("Gemini model %s failed (%s), trying fallback.", candidate_model, _gemini_error_class(exc))
                             continue
                         self.logger.exception("Gemini generation failed for model %s", candidate_model)
                         raise
@@ -618,7 +647,11 @@ Partial reply:
                         if _gemini_quota_error(exc):
                             _mark_model_quota_dead(candidate_model, _retry_delay_seconds(exc))
                             quota_failures.append(exc)
-                        self.logger.warning("Gemini stream model %s unavailable/quota, trying fallback.", candidate_model)
+                        elif _gemini_error_class(exc) == "not_found":
+                            # Permanent for this project (retired/unavailable model):
+                            # skip it for hours instead of wasting a call on every request.
+                            _mark_model_quota_dead(candidate_model, 6 * 60 * 60)
+                        self.logger.warning("Gemini stream model %s failed (%s), trying fallback.", candidate_model, _gemini_error_class(exc))
                         continue
                     self.logger.exception("Gemini streaming failed for model %s", candidate_model)
                     raise
