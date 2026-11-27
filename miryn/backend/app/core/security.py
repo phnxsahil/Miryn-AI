@@ -5,7 +5,9 @@ from jwt import InvalidTokenError
 import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import text
 from app.config import settings
+from app.core.database import get_db, get_sql_session, has_sql
 
 security = HTTPBearer(auto_error=False)
 
@@ -61,7 +63,37 @@ def get_current_user_id(
             headers={"WWW-Authenticate": "Bearer"},
         )
     token = credentials.credentials
-    return _decode_token(token, expected_type="access")
+    user_id = _decode_token(token, expected_type="access")
+    _assert_account_active(user_id)
+    return user_id
+
+
+def _assert_account_active(user_id: str) -> None:
+    """Reject tokens whose account is deleted or no longer exists.
+
+    JWTs are stateless: without this lookup an access token issued before
+    account deletion would keep authenticating until it expired. The refresh
+    endpoint already applies the same check before issuing new tokens.
+    A lookup failure denies the request (fail closed), matching /refresh.
+    """
+    unavailable = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Account not available",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    if has_sql():
+        with get_sql_session() as session:
+            row = session.execute(
+                text("SELECT is_deleted FROM users WHERE id = :user_id LIMIT 1"),
+                {"user_id": user_id},
+            ).mappings().first()
+        if not row or row.get("is_deleted"):
+            raise unavailable
+        return
+    res = get_db().table("users").select("is_deleted").eq("id", user_id).limit(1).execute()
+    user = res.data[0] if res.data else None
+    if not user or user.get("is_deleted"):
+        raise unavailable
 
 
 def _decode_token(token: str, expected_type: str = "access") -> str:

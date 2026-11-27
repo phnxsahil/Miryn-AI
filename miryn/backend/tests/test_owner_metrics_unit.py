@@ -60,8 +60,18 @@ class AccountMetricsTests(unittest.TestCase):
         @contextmanager
         def session(): yield None
         fake_db.get_sql_session = session
+        # The auth dependency now verifies the token's account exists and is
+        # not deleted; seed that lookup with an active account for these
+        # synthetic users.
+        from unittest.mock import MagicMock
+        from app.core import security as security_module
+        active_lookup = MagicMock()
+        active_lookup.mappings.return_value.first.return_value = {"is_deleted": 0}
+        @contextmanager
+        def active_session():
+            yield MagicMock(execute=MagicMock(return_value=active_lookup))
         client = TestClient(app)
-        with patch.object(settings, 'ANALYTICS_OWNER_USER_IDS', 'owner-id'):
+        with patch.object(settings, 'ANALYTICS_OWNER_USER_IDS', 'owner-id'), patch.object(security_module, 'has_sql', lambda: True), patch.object(security_module, 'get_sql_session', active_session):
             self.assertEqual(client.get('/analytics/owner').status_code, 401)
             other = create_access_token('other-id')
             self.assertEqual(client.get('/analytics/owner', headers={'Authorization':'Bearer '+other}).status_code, 403)
