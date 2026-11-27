@@ -78,25 +78,27 @@ def _validate_conversation_owner(conversation_id: str, user_id: str) -> None:
 
     if has_sql():
         with get_sql_session() as session:
-            owner = session.execute(
-                text("SELECT user_id FROM conversations WHERE id = :conversation_id LIMIT 1"),
+            row = session.execute(
+                text("SELECT user_id, is_deleted FROM conversations WHERE id = :conversation_id LIMIT 1"),
                 {"conversation_id": conversation_id},
-            ).scalar()
-        if not owner:
+            ).mappings().first()
+        # A deleted conversation is gone for the owner too: posting to it must
+        # not resurrect its history into the reply prompt.
+        if not row or row.get("is_deleted"):
             raise HTTPException(status_code=404, detail="Conversation not found")
-        if str(owner) != str(user_id):
+        if str(row["user_id"]) != str(user_id):
             raise HTTPException(status_code=403, detail="Conversation does not belong to this user")
         return
 
     db = get_db()
     response = (
         db.table("conversations")
-        .select("user_id")
+        .select("user_id, is_deleted")
         .eq("id", conversation_id)
         .limit(1)
         .execute()
     )
-    if not response.data:
+    if not response.data or response.data[0].get("is_deleted"):
         raise HTTPException(status_code=404, detail="Conversation not found")
     if str(response.data[0].get("user_id")) != str(user_id):
         raise HTTPException(status_code=403, detail="Conversation does not belong to this user")
