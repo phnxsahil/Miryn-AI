@@ -164,7 +164,7 @@ def test_chat_sse_uses_urgent_reply_without_model_or_sentence_retry():
              patch('app.api.chat.has_sql', return_value=False), \
              patch('app.api.chat._create_conversation_with_fallback', return_value='offline-conversation'), \
              patch('app.api.chat._touch_conversation_updated_at'), \
-             patch('app.api.chat._prepare_stream_context', new=AsyncMock(return_value=({'preset': 'mirror'}, []))), \
+             patch('app.api.chat._prepare_stream_context', new=AsyncMock(return_value=({'preset': 'mirror'}, [], []))), \
              patch('app.api.chat.FactStore') as facts, \
              patch('app.api.chat._store_stream_facts', new=AsyncMock()), \
              patch('app.api.chat._background_stream_postprocess', new=AsyncMock()), \
