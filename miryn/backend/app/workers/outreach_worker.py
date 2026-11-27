@@ -33,6 +33,12 @@ Return only the message text, nothing else."""
         logger.info("Skipping outreach generation for user %s after Gemini quota exhaustion", user_id)
         return ""
 
+def _provider_side_failure(exc: Exception) -> bool:
+    """True when the failure is provider-side (quota exhausted, retired model,
+    rate limited) and therefore affects every remaining item in the batch."""
+    return isinstance(exc, QuotaExhausted) or getattr(exc, "code", None) in (404, 429)
+
+
 async def process_outreach():
     """
     Find stale loops, generate personalized messages, and send them.
@@ -107,7 +113,7 @@ async def process_outreach():
             logger.error("Failed to process outreach for user %s: %s", item.get("user_id"), exc, exc_info=True)
             # Provider-side failures (quota, retired model) affect every remaining
             # item in this batch; stop instead of burning one LLM call per item.
-            if isinstance(exc, QuotaExhausted) or getattr(exc, "code", None) in (404, 429):
+            if _provider_side_failure(exc):
                 logger.info("Aborting remaining outreach items after provider-side failure")
                 break
 
