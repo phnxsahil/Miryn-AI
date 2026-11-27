@@ -72,7 +72,7 @@ function StaticChat() {
 
 export default function AuthShell({ children, title, subtitle }: AuthShellProps) {
   return (
-    <div className="grid min-h-dvh grid-cols-1 bg-[color:var(--theme-bg)] font-ui text-[color:var(--theme-text)] md:grid-cols-[52%_48%]">
+    <div className="grid min-h-dvh grid-cols-1 bg-transparent font-ui text-[color:var(--theme-text)] md:grid-cols-[52%_48%]">
 
       {/* ── Left panel ── */}
       <aside className="hidden min-h-dvh md:flex md:flex-col relative overflow-hidden bg-[color:var(--theme-sidebar)] border-r border-[color:var(--theme-border)]">
@@ -119,7 +119,7 @@ export default function AuthShell({ children, title, subtitle }: AuthShellProps)
       </aside>
 
       {/* ── Right panel ── */}
-      <section className="flex min-h-dvh flex-col justify-start bg-[color:var(--theme-bg)] px-5 py-6 sm:px-8 md:px-10 lg:px-16">
+      <section className="flex min-h-dvh flex-col justify-start bg-transparent px-5 py-6 sm:px-8 md:px-10 lg:px-16">
         <header className="flex justify-center py-4 md:hidden">
           <Link href="/" className="inline-flex min-h-11 items-center rounded-sm transition-opacity hover:opacity-80">
             <MirynLogo showText />
