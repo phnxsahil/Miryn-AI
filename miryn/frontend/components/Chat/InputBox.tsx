@@ -149,7 +149,7 @@ export default function InputBox({
             void processFiles(e.dataTransfer.files);
           }
         }}
-        className={`relative flex flex-col bg-[color:var(--theme-card)] rounded-[28px] border transition-all duration-200 ${
+        className={`swell-composer relative flex flex-col bg-[color:var(--theme-card)] rounded-[28px] border transition-all duration-200 ${
           isDragging
             ? "border-[color:var(--theme-accent)] bg-[color:var(--theme-card)] shadow-[0_0_25px_var(--accent-glow)]"
             : "border-[color:var(--theme-border)] focus-within:border-[color:var(--theme-border)]"
