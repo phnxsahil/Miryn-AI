@@ -10,6 +10,8 @@ import { useChatStore } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
 import LoadingState from "@/components/ui/LoadingState";
 import MirynLogo from "@/components/MirynLogo";
+import "@/styles/swell-assets.css";
+import "@/styles/swell-tooth.css";
 import SwellBackground from "@/components/swell/SwellBackground";
 
 export default function AppLayout({
