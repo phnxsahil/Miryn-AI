@@ -8,6 +8,7 @@ can resolve pronouns, avoid re-asking, and carry the thread naturally.
 """
 
 import logging
+from datetime import datetime, timezone
 
 from sqlalchemy import text
 
@@ -39,6 +40,11 @@ async def fetch_recent_turns(
     """
     if not conversation_id:
         return []
+    # Deleted-for-the-user messages (memory delete, episodic purge, expired
+    # retention) must never come back inside the reply prompt. delete_at is
+    # the user-facing deletion marker; the nightly worker only hard-deletes
+    # later, so without this filter deleted content would keep surfacing.
+    now = datetime.now(timezone.utc).isoformat()
     try:
         if has_sql() and sql_session is not None:
             result = sql_session.execute(
@@ -47,11 +53,12 @@ async def fetch_recent_turns(
                     SELECT role, content, content_encrypted
                     FROM messages
                     WHERE conversation_id = :cid
+                      AND (delete_at IS NULL OR delete_at > :now)
                     ORDER BY created_at DESC, CAST(id AS TEXT) DESC
                     LIMIT :limit
                     """
                 ),
-                {"cid": conversation_id, "limit": limit},
+                {"cid": conversation_id, "limit": limit, "now": now},
             )
             rows = [dict(row) for row in result.mappings().all()]
             rows.reverse()
@@ -72,6 +79,7 @@ async def fetch_recent_turns(
             db.table("messages")
             .select("role, content")
             .eq("conversation_id", conversation_id)
+            .or_(f"delete_at.is.null,delete_at.gt.{now}")
             .order("created_at", desc=True)
             .limit(limit)
             .execute()
