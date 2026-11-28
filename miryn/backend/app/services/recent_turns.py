@@ -77,7 +77,7 @@ async def fetch_recent_turns(
         db = get_db()
         response = (
             db.table("messages")
-            .select("role, content")
+            .select("role, content, content_encrypted")
             .eq("conversation_id", conversation_id)
             .or_(f"delete_at.is.null,delete_at.gt.{now}")
             .order("created_at", desc=True)
@@ -86,11 +86,17 @@ async def fetch_recent_turns(
         )
         rows = list(response.data or [])
         rows.reverse()
-        return [
-            {"role": row.get("role") or "user", "content": _trim(row.get("content", ""))}
-            for row in rows
-            if row.get("content")
-        ]
+        turns = []
+        for row in rows:
+            content = row.get("content")
+            if not content and row.get("content_encrypted"):
+                try:
+                    content = decrypt_text(row.get("content_encrypted"))
+                except Exception:
+                    content = ""
+            if content:
+                turns.append({"role": row.get("role") or "user", "content": _trim(content)})
+        return turns
     except Exception:
         logger.exception("Recent-turn fetch failed for conversation %s", conversation_id)
         return []
