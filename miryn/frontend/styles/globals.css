@@ -731,3 +731,114 @@ html.js .landing-ambient:not(.is-near) .mood-orb { animation-play-state: paused;
 
 /* Safe-area insets as variables so layout can use them and they can be overridden in tests. */
 :root{--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+
+/* ---- Swell art direction (app screens only; landing untouched) --------- */
+.swell-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.swell-art {
+  position: absolute;
+  inset: -4%;
+  background-size: cover;
+  background-position: top center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 600ms ease;
+  will-change: transform;
+  animation: swell-drift 15s ease-in-out infinite alternate;
+}
+.swell-bg-chat .swell-art-day { background-image: url("/swell/chat-day.webp"); }
+.swell-bg-chat .swell-art-night { background-image: url("/swell/chat-night.webp"); }
+.swell-bg-empty .swell-art-day { background-image: url("/swell/empty-day.webp"); }
+.swell-bg-empty .swell-art-night { background-image: url("/swell/empty-night.webp"); }
+[data-theme="light"] .swell-art-day { opacity: 1; }
+[data-theme="dark"] .swell-art-night { opacity: 1; }
+.swell-tooth {
+  position: absolute;
+  inset: 0;
+  background-image: url("/swell/paper-tooth.webp");
+  background-repeat: repeat;
+  background-size: 512px 512px;
+  mix-blend-mode: overlay;
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+[data-theme="light"] .swell-tooth { opacity: 0.42; }
+@keyframes swell-drift {
+  from { transform: translate3d(-1.2%, 0, 0); }
+  to { transform: translate3d(1.2%, 0, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .swell-art { animation: none; transition: none; }
+  .swell-tooth { transition: none; }
+}
+
+/* Swell token retune, scoped to the app shell so the landing keeps its own
+   palette. Values from the v2 spec section 3. */
+[data-theme="light"] .swell-app {
+  --theme-bg: #faf7ed;
+  --theme-bg-rgb: 250 247 237;
+  --theme-surface: #eef3ef;
+  --theme-surface-rgb: 238 243 239;
+  --theme-text: #1b3329;
+  --theme-text-rgb: 27 51 41;
+  --theme-dim: #5b6f63;
+  --theme-dim-rgb: 91 111 99;
+  --theme-accent: #294b3c;
+  --theme-accent-rgb: 41 75 60;
+  --theme-accent-strong: #294b3c;
+  --theme-accent-strong-rgb: 41 75 60;
+  --theme-accent-contrast: #faf7ed;
+}
+[data-theme="dark"] .swell-app {
+  --theme-bg: #0b0e0c;
+  --theme-bg-rgb: 11 14 12;
+  --theme-surface: rgba(255, 255, 255, 0.05);
+  --theme-surface-rgb: 20 26 22;
+  --theme-text: #edf2ec;
+  --theme-text-rgb: 237 242 236;
+  --theme-dim: #98a79d;
+  --theme-dim-rgb: 152 167 157;
+  --theme-accent: #9cc58a;
+  --theme-accent-rgb: 156 197 138;
+  --theme-accent-strong: #9cc58a;
+  --theme-accent-strong-rgb: 156 197 138;
+  --theme-accent-contrast: #0b0e0c;
+}
+.swell-app > *:not(.swell-bg) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Swell phase 2a: composer cradle, v2 type scale, italic accent word.
+   Still scoped to .swell-app so the landing keeps its own rules. */
+.swell-app .swell-composer {
+  background: color-mix(in srgb, var(--theme-card) 78%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 32px;
+  box-shadow: 0 18px 48px -24px rgb(11 14 12 / 0.45), 0 2px 10px -4px rgb(11 14 12 / 0.18);
+}
+[data-theme="light"] .swell-app .swell-composer {
+  background: color-mix(in srgb, #fffdf6 82%, transparent);
+  box-shadow: 0 18px 48px -28px rgb(43 58 49 / 0.35), 0 2px 10px -6px rgb(43 58 49 / 0.15);
+}
+.swell-app h1.font-editorial {
+  font-size: 32px;
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+}
+@media (min-width: 768px) {
+  .swell-app h1.font-editorial {
+    font-size: 40px;
+    line-height: 1.05;
+  }
+}
+.swell-app .swell-em {
+  font-style: italic;
+  color: var(--theme-accent);
+}

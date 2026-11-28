@@ -380,7 +380,7 @@ export default function ChatInterface() {
             {loading && !streaming && messages.length === 0 && <p className="py-10 text-sm text-[color:var(--theme-muted)]">Loading conversation…</p>}
             {messages.length === 0 && !loading && !status && (
               <div className="flex min-h-[min(520px,60vh)] flex-col justify-center py-12">
-                <h1 className="text-center font-editorial text-3xl leading-tight tracking-[-0.03em] md:text-5xl">What can I help with today?</h1>
+                <h1 className="text-center font-editorial text-3xl leading-tight tracking-[-0.03em] md:text-5xl">What can I <em className="swell-em">help</em> with today?</h1>
                 <p className="mx-auto mt-3 max-w-md text-center text-sm leading-relaxed text-[color:var(--theme-muted)]">Start anywhere. Miryn can carry useful context into future conversations.</p>
                 <div className="mx-auto mt-10 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
                   {suggestions.map((item) => <button key={item.title} type="button" onClick={() => void sendMessage(item.prompt)} className="rounded-2xl border border-[color:var(--theme-border)] bg-[color:var(--theme-card)] px-4 py-4 text-left text-sm text-[color:var(--theme-muted)] transition-colors hover:border-white/25 hover:text-[color:var(--theme-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--theme-accent)]">{item.title}</button>)}

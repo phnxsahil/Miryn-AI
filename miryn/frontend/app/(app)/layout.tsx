@@ -10,6 +10,9 @@ import { useChatStore } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
 import LoadingState from "@/components/ui/LoadingState";
 import MirynLogo from "@/components/MirynLogo";
+import "@/styles/swell-assets.css";
+import "@/styles/swell-tooth.css";
+import SwellBackground from "@/components/swell/SwellBackground";
 
 export default function AppLayout({
   children,
@@ -96,9 +99,10 @@ export default function AppLayout({
   }
 
   return (
-    <div className="h-[100dvh] bg-[color:var(--theme-bg)] text-[color:var(--theme-text)] flex flex-col md:flex-row font-ui overflow-hidden">
+    <div className="swell-app h-[100dvh] bg-[color:var(--theme-bg)] text-[color:var(--theme-text)] flex flex-col md:flex-row font-ui overflow-hidden relative">
+      <SwellBackground variant="chat" />
       {/* Mobile Header */}
-      <header className="md:hidden border-b border-[color:var(--theme-border)] px-3 pb-1 pt-[max(0.25rem,var(--safe-top))] flex items-center justify-between bg-[color:var(--theme-bg)] z-40">
+      <header className="md:hidden border-b border-[color:var(--theme-border)] px-3 pb-1 pt-[max(0.25rem,var(--safe-top))] flex items-center justify-between bg-transparent z-40">
         <button
           onClick={toggleMenu}
           className="flex h-11 w-11 items-center justify-center p-2 text-[color:var(--theme-dim)] hover:text-[color:var(--theme-text)] transition-colors"
