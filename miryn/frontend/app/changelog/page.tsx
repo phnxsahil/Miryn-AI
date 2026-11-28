@@ -19,6 +19,17 @@ type Entry = {
 
 const entries: Entry[] = [
   {
+    version: "v0.8.8",
+    date: "November 28, 2026",
+    title: "Replies see the current conversation; deleted content stays out of the prompt",
+    live: true,
+    points: [
+      "Miryn's reply prompt used to carry only long-term memories and stable facts, so the model could not see the message before yours unless memory retrieval happened to surface it. The prompt now includes the last few turns of the ongoing conversation (up to 10, trimmed), so pronouns, corrections and follow-ups can resolve against what was actually just said.",
+      "Privacy guards ship with it: messages you delete and conversations you delete are excluded before anything reaches the model, and posting to a deleted conversation is refused instead of resurrecting its history into a reply.",
+      "Checked with the full offline test suite (334 tests, no live model calls) and a small two-scenario live comparison on a fictional account, one scenario judged blind. Both preferred the new behavior; two scenarios is directional evidence, not a measured quality figure. No extra model call was added per reply; prompts are slightly longer.",
+    ],
+  },
+  {
     version: "v0.8.7",
     date: "November 26, 2026",
     title: "Timezone fallback: an unrecognised timezone is treated as unknown",
