@@ -27,7 +27,7 @@ def _run(monkeypatch, chunks, completion=""):
     monkeypatch.setattr(chat, "_touch_conversation_updated_at", lambda *a, **k: None)
 
     async def prep(*a, **k):
-        return {}, []
+        return {}, [], []
 
     async def noop(*a, **k):
         return None

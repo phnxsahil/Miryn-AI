@@ -132,7 +132,7 @@ def test_chat_stream_saves_sentence_complete_reply():
          patch("app.api.chat.has_sql", return_value=False), \
          patch("app.api.chat._create_conversation_with_fallback", return_value="conv-complete"), \
          patch("app.api.chat._touch_conversation_updated_at"), \
-         patch("app.api.chat._prepare_stream_context", new=AsyncMock(return_value=({}, []))), \
+         patch("app.api.chat._prepare_stream_context", new=AsyncMock(return_value=({}, [], []))), \
          patch("app.api.chat.score_message_heuristic", return_value=[]), \
          patch("app.api.chat.FactStore") as fact_store, \
          patch("app.api.chat._store_stream_facts", new=AsyncMock()), \
